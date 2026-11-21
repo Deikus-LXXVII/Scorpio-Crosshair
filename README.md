@@ -1,6 +1,6 @@
 # Scorpio crosshair overlay
 
-Scorpio is a free crosshair overlay for PC games on Windows and Linux. It draws a Counter-Strike 2 (CS2) crosshair in its own window over your game, shows it only while a game is in front, and never opens, reads, hooks or injects into the game or its anti-cheat.
+Scorpio is a free crosshair overlay for PC games on Windows and Linux. It draws a CS2-based crosshair in its own window over your game, shows it only while a game is in front, and never opens, reads, hooks or injects into the game or its anti-cheat.
 
 <p align="center">
   <picture>
@@ -21,14 +21,14 @@ Scorpio is a free crosshair overlay for PC games on Windows and Linux. It draws 
 </p>
 
 <p align="center">
-  <img src="docs/images/scorpio-saved-and-pro-crosshairs.webp" alt="Scorpio settings window: a green CS2 crosshair in the preview at 4x, its share code, four saved crosshairs and pro player crosshairs" width="820">
+  <img src="docs/images/scorpio-saved-and-pro-crosshairs.webp" alt="Scorpio settings window: a green crosshair in the preview at 4x, its share code, four saved crosshairs and pro player crosshairs" width="820">
 </p>
 
 | | |
 | --- | --- |
 | What it is | A crosshair overlay: a transparent, click-through window on top of the game |
 | Systems | Windows 10 and 11. Linux with X11 or XWayland |
-| Crosshair | CS2 settings and share codes, five static styles |
+| Crosshair | CS2-based, five static styles; CS2 crosshair codes work |
 | When it shows | Only while a game is the window in front |
 | Memory and CPU | 6.9 MB of private memory and 0 ms of CPU time over 10 s while it waits (measured on Windows 11) |
 | Price | Free |
@@ -54,12 +54,12 @@ The second and the third way each have a switch. Both are on by default.
   <img src="docs/images/scorpio-game-detection.webp" alt="Scorpio Games tab: two added games, one with its own crosshair, and switches for fullscreen windows and games from launchers" width="820">
 </p>
 
-### The crosshair is the one from CS2
+### CS2-based crosshairs
 
 - **Five static styles.** Static Cross, Static Circle, Dot Only, Static Square and Static Quad.
-- **CS2's settings with CS2's meaning.** Length, thickness, gap, centre dot, T shape, colour, opacity and outline.
-- **Share codes in and out.** Paste a CS2 or CS:GO share code to import it. Scorpio reads the `CSGO-` codes and the newer codes that start with `CS`. Copy gives a code that CS2 imports.
-- **Finer than CS2 in two places.** Thickness moves in half steps. The outline can be 1 to 6 pixels wide, where CS2 draws 1 pixel. A share code carries neither, so thickness is rounded in a copied code and the outline width stays in Scorpio.
+- **The settings you know.** Length, thickness, gap, centre dot, T shape, colour, opacity and outline.
+- **CS2 crosshair codes work in Scorpio.** Paste a code to import it; Scorpio reads codes that start with `CSGO-` or `CS`. Copy gives a code you can paste back.
+- **Finer in two places.** Thickness moves in half steps. The outline can be 1 to 6 pixels wide. A share code carries neither, so thickness is rounded in a copied code and the outline width stays in Scorpio.
 - **Static only.** A code with a dynamic style is shown as the static style it rests as. An overlay cannot know when you move or shoot.
 - **13 pro crosshairs.** ropz, b1t, jL, Twistzz, XANTARES, Spinx, iM, w0nderful, karrigan, apEX, sh1ro, flameZ and mezii. The codes were seen in their matches and confirmed by a second source. They do not come from the players, the teams or Valve.
 - **Saved crosshairs.** Save up to 100, rename them, and step through them with a shortcut.
@@ -69,7 +69,7 @@ The second and the third way each have a switch. Both are on by default.
 There are no image crosshairs, on purpose.
 
 <p align="center">
-  <img src="docs/images/scorpio-crosshair-editor.webp" alt="Scorpio Crosshair tab: preview with a CS2 share code field, and sliders for style, length, thickness in half steps, and gap" width="820">
+  <img src="docs/images/scorpio-crosshair-editor.webp" alt="Scorpio Crosshair tab: preview with a share code field, and sliders for style, length, thickness in half steps, and gap" width="820">
 </p>
 
 ### Controls
@@ -174,7 +174,7 @@ Two things differ from Windows. **Hide from screen capture** is disabled, becaus
 ### First steps
 
 1. Click the tray icon. The settings window opens on the **Crosshair** tab.
-2. Paste a CS2 share code into **Share code**, or set the crosshair with the sliders.
+2. Paste a CS2 crosshair code into **Share code**, or set the crosshair with the sliders.
 3. Open the **Games** tab and click **Add a game**. You can skip this step for a fullscreen game or a game from a launcher.
 4. Switch to the game. The crosshair shows. The line in the title bar of the settings window says what the overlay does now, for example "Hidden until a game is in front".
 
@@ -204,13 +204,13 @@ It depends on the game's rules, and no overlay can promise that you will never b
 
 None of them has approved it directly. Scorpio crosses none of their lines, since it never touches the game's process or the anti-cheat's process; the full list of its system calls is in the [safety section](#is-scorpio-safe-with-anti-cheats). The exception is a game whose own rules forbid crosshair overlays.
 
-### How do I use a CS2 crosshair code outside CS2?
+### Do CS2 crosshair codes work in Scorpio?
 
-Copy the share code in CS2 (**Settings**, **Game**, **Crosshair**, **Share or Import**) or from a site that lists pro crosshairs. In Scorpio, open the **Crosshair** tab and paste the code into **Share code**. Scorpio draws the same crosshair over any game it detects. A dynamic crosshair is shown in its static resting style.
+Yes. Copy the code from your game's crosshair settings or from a site that lists pro crosshairs. In Scorpio, open the **Crosshair** tab and paste the code into **Share code**. Scorpio draws the same crosshair over any game it detects. A dynamic crosshair is shown in its static resting style.
 
-### Can I copy my Scorpio crosshair back into CS2?
+### Can I take my Scorpio crosshair back into the game?
 
-Yes. Click **Copy** next to the share code and import the code in CS2. Thickness in half steps is rounded in the code, and an outline wider than 1 pixel stays in Scorpio, because CS2 share codes carry neither.
+Yes. Click **Copy** next to the share code and import the code in the game. Thickness in half steps is rounded in the code, and an outline wider than 1 pixel stays in Scorpio, because share codes carry neither.
 
 ### Does Scorpio work on Linux?
 
@@ -235,7 +235,7 @@ Scorpio does not touch the game or its input. While it waits, it uses 0 ms of CP
 
 ### Can I use an image or a custom shape as a crosshair?
 
-No. Scorpio has CS2's crosshair system only: five static styles and CS2's settings.
+No. Scorpio's crosshairs are CS2-based only: five static styles and their settings.
 
 ### Which pro players' crosshairs are included?
 
@@ -303,7 +303,7 @@ One small native process does everything that runs while you play. The settings 
 ```
 scorpio (Rust, Tauri 2)
 ├── core/        pure logic with unit tests, no OS calls
-│   ├── crosshair    CS2 settings, share codes, shapes in pixels
+│   ├── crosshair    CS2-based settings, share codes, shapes in pixels
 │   ├── raster       shapes to a premultiplied RGBA bitmap
 │   ├── center       exact centring
 │   ├── focus        the two-of-four match
