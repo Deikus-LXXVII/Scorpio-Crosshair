@@ -16,7 +16,7 @@ Scorpio is a free crosshair overlay for PC games on Windows and Linux. It draws 
 
 <p align="center">
   <a href="README.ru.md">Русский</a> ·
-  <a href="https://deikus-lxxvii.github.io/Scorpio-Crosshair/">Website</a> ·
+  <a href="https://scorpio.lxxvll.com/">Website</a> ·
   <a href="#is-scorpio-safe-with-anti-cheats">Anti-cheat safety</a> ·
   <a href="#faq">FAQ</a>
 </p>

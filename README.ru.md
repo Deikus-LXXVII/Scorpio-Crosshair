@@ -16,7 +16,7 @@ Scorpio показывает прицел из Counter-Strike 2 (CS2) повер
 
 <p align="center">
   <a href="README.md">English</a> ·
-  <a href="https://deikus-lxxvii.github.io/Scorpio-Crosshair/">Сайт</a>
+  <a href="https://scorpio.lxxvll.com/">Сайт</a>
 </p>
 
 <p align="center">
