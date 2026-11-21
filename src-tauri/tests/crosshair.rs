@@ -1,4 +1,4 @@
-//! Port of reference/test/unit/crosshair.test.js.
+//! Share codes and drawing, checked against published reference codes.
 
 use scorpio_lib::core::crosshair::{draw, pixels, read_code, resting_style, to_svg, write_code, Crosshair, Decoded, Piece, Pixels};
 use serde_json::Value;
