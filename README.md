@@ -232,8 +232,15 @@ Check these in order:
 
 1. The title bar of the settings window says "Hidden by shortcut". Press the hide shortcut again.
 2. Scorpio does not see the window as a game. Add the game on the **Games** tab.
-3. The game runs in exclusive fullscreen. Windows may not draw other windows over an exclusive fullscreen game. Switch the game to borderless or windowed fullscreen.
+3. The game runs in exclusive fullscreen. This is the most common cause. See [The crosshair does not show in fullscreen](#the-crosshair-does-not-show-in-fullscreen).
 4. On Linux, the game runs as a native Wayland window. Scorpio sees only X11 windows.
+
+### The crosshair does not show in fullscreen
+
+The game most likely runs in exclusive fullscreen. In that mode the game sends its picture to the screen past the Windows desktop, and Windows draws no other window over it. No overlay that stays out of the game can show there, Scorpio included. Overlays that do show, like Steam's or Discord's, are loaded into the game, and Scorpio never does that.
+
+- Switch the game to **borderless** or **windowed fullscreen** in its video settings. This always works.
+- Windows 10 and 11 usually turn a game's exclusive fullscreen into borderless by themselves ("fullscreen optimizations"). If they are switched off, more games run in exclusive fullscreen. Check the game's `.exe`: **Properties → Compatibility → Disable fullscreen optimizations** should be off. Some system tweaks, such as AtlasOS, switch them off for every program through the `__COMPAT_LAYER` variable.
 
 ### Does Scorpio lower my frame rate or add input lag?
 

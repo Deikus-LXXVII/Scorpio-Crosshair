@@ -24,6 +24,8 @@ const FAQ = [
 		`No overlay can promise that. Scorpio never touches the game, but a game's own rules can forbid crosshair overlays.` ],
 	[ 'Does it work with Vanguard, Easy Anti-Cheat, BattlEye or VAC?',
 		`None of them has approved it directly. Scorpio crosses none of their lines, since it never touches the game or the anti-cheat. The exception is a game whose own rules forbid crosshair overlays.` ],
+	[ 'Why is the crosshair not showing over my game?',
+		`Most likely the game runs in exclusive fullscreen. Windows draws no other window over such a game, so no overlay that stays out of the game can show there. Switch the game to borderless or windowed fullscreen.` ],
 	[ 'Does Scorpio lower my frame rate?',
 		`Most likely not, though we have not measured it. Scorpio is one small process, nearly idle on the processor, and loads nothing into the game.` ],
 	[ 'Does Scorpio collect data?',
