@@ -13,7 +13,7 @@ budget on purpose, in its own commit, after the figure improved.
 | Threads, idle / after the settings window | 9 / 13 | 12 / 16 |
 | CPU time over 30 s idle | 0 ms | 16 ms (one scheduler tick) |
 | Web view processes with the settings window closed | 0 | 0 |
-| `scorpio.exe` size | 5.3 MB | 4.6 MB (over: 0.1.1 already measured 5.2 MB) |
+| `scorpio.exe` size | 6.1 MB (0.1.3, with 11 dictionaries and Latin Extended fonts) | 4.6 MB (over: 0.1.1 already measured 5.2 MB) |
 
 Medians of three runs with the owner's bench script (25 s after start, then
 30 s), and three steady-state runs 180 to 210 s after start (7.3 MB, 0 ms).
