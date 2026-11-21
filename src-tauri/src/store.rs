@@ -127,7 +127,6 @@ pub struct Settings {
     /// pixels. (0, 0) is exactly centred.
     pub offset: (i32, i32),
     pub start_with_system: bool,
-    pub hide_from_capture: bool,
     /// Off by default: updates install by themselves, between games.
     pub update_manually: bool,
 }
@@ -164,16 +163,28 @@ impl Settings {
 pub fn load(path: &Path) -> Settings {
     let text = match fs::read_to_string(path) {
         Ok(text) => text,
-        Err(_) => return Settings::default(),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Settings::default(),
+        Err(error) => {
+            // Unreadable but present: keep a copy before defaults replace it.
+            log::warn!("settings could not be read ({error}); starting from defaults");
+            let _ = fs::copy(path, broken_name(path));
+            return Settings::default();
+        }
     };
     match serde_json::from_str::<Settings>(&text) {
         Ok(settings) => settings.validated(),
         Err(error) => {
             log::warn!("settings unreadable ({error}); starting from defaults");
-            let _ = fs::rename(path, path.with_extension("broken.json"));
+            let _ = fs::rename(path, broken_name(path));
             Settings::default()
         }
     }
+}
+
+/// `settings.broken-<seconds>.json`, so an earlier broken copy is never lost.
+fn broken_name(path: &Path) -> std::path::PathBuf {
+    let seconds = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs());
+    path.with_extension(format!("broken-{seconds}.json"))
 }
 
 /// Writes through a temporary file and a rename, so a crash mid-write never
@@ -236,7 +247,8 @@ mod tests {
         let path = dir.join("settings.json");
         fs::write(&path, "{ not json").unwrap();
         assert_eq!(load(&path), Settings::default());
-        assert!(dir.join("settings.broken.json").exists());
+        let kept = fs::read_dir(&dir).unwrap().filter_map(Result::ok).any(|e| e.file_name().to_string_lossy().starts_with("settings.broken-"));
+        assert!(kept);
     }
 
     #[test]

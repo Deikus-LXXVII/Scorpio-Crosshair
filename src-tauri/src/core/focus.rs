@@ -14,6 +14,8 @@ pub struct WindowInfo {
     pub title: String,
     pub window_class: String,
     pub fullscreen: bool,
+    /// The monitor the window is on: x, y, width, height in physical pixels.
+    pub monitor: Option<[i32; 4]>,
 }
 
 /// The four checks of a saved game.
@@ -118,12 +120,13 @@ pub struct FocusState {
     pub game: Option<usize>,
 }
 
-/// After the window in front changes. Scorpio's own windows show the crosshair
-/// and keep the game that was in focus. `detected` says whether an unsaved
-/// window counts as a game (launcher install or fullscreen, not excluded).
+/// After the window in front changes. Nothing in front (the desktop, or no
+/// window at all) hides the crosshair. Scorpio's own windows show it and keep
+/// the game that was in focus. `detected` says whether an unsaved window
+/// counts as a game (launcher install or fullscreen, not excluded).
 pub fn next_state(previous: &FocusState, front: Option<&WindowInfo>, own_pid: u32, saved: &[Fingerprint], detected: impl Fn(&WindowInfo) -> bool) -> FocusState {
     let Some(front) = front else {
-        return previous.clone();
+        return FocusState { visible: false, game: None };
     };
     if front.pid == own_pid {
         return FocusState { visible: true, game: previous.game };
@@ -141,7 +144,7 @@ mod tests {
     const OWN: u32 = 4242;
 
     fn window(pid: u32, name: &str, path: &str, title: &str, class: &str, fullscreen: bool) -> WindowInfo {
-        WindowInfo { pid, name: name.into(), path: path.into(), title: title.into(), window_class: class.into(), fullscreen }
+        WindowInfo { pid, name: name.into(), path: path.into(), title: title.into(), window_class: class.into(), fullscreen, monitor: None }
     }
 
     fn cs2() -> WindowInfo {
@@ -201,7 +204,7 @@ mod tests {
         s = step(&s, Some(&own));
         assert_eq!(s, FocusState { visible: true, game: Some(0) }, "settings in front: shown, same game");
         assert!(step(&step(&s, Some(&browser())), Some(&own)).visible, "settings opened over the browser: shown to tune it");
-        assert_eq!(step(&s, None), s);
+        assert_eq!(step(&s, None), FocusState { visible: false, game: None }, "the desktop or no window hides it");
 
         let other = WindowInfo { pid: 77, ..browser() };
         assert_eq!(next_state(&s, Some(&other), OWN, &saved, |w| w.pid == 77), FocusState { visible: true, game: None });

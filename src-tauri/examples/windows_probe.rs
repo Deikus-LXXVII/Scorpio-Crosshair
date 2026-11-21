@@ -73,7 +73,7 @@ mod probe {
             pixel.copy_from_slice(&[0, 64, 0, 64]);
         }
         let pause = |ms| std::thread::sleep(Duration::from_millis(ms));
-        platform.send(Command::ExcludeFromCapture(true));
+        platform.send(Command::Raise);
         platform.send(Command::Show { bitmap: bitmap.clone(), x: 200, y: 200, unlocked: false, button: None });
         pause(400);
         note(format!("after locked show: overlay {}", overlay_state()));
@@ -82,7 +82,7 @@ mod probe {
         pause(400);
         note(format!("after unlocked show: overlay {}", overlay_state()));
         platform.send(Command::ListenTo { mouse: vec![], keys: vec![] });
-        platform.send(Command::ExcludeFromCapture(false));
+        platform.send(Command::Raise);
         platform.send(Command::Hide);
         pause(200);
         note(format!("after hide: overlay {}", overlay_state()));

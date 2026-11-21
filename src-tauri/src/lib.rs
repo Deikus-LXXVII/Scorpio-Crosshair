@@ -29,6 +29,9 @@ struct Shared {
     /// Registered shortcut id -> what it does.
     hotkeys: Mutex<HashMap<u32, Hotkey>>,
     lock_item: MenuItem<tauri::Wry>,
+    /// Held from reading the settings to writing them, so two threads saving
+    /// at once can't write an older copy last.
+    saving: Mutex<()>,
 }
 
 fn shared(handle: &AppHandle) -> tauri::State<'_, Shared> {
@@ -43,10 +46,7 @@ fn apply(handle: &AppHandle, effects: Effects) {
         state.platform.send(command);
     }
     if effects.settings_changed {
-        let settings = state.app.lock().unwrap().settings.clone();
-        if let Err(error) = store::save(&state.path, &settings) {
-            log::error!("could not save settings: {error}");
-        }
+        let settings = persist(handle);
         let _ = handle.emit_to(SETTINGS_WINDOW, "settings", &settings);
     }
     if effects.status_changed || effects.settings_changed {
@@ -54,6 +54,17 @@ fn apply(handle: &AppHandle, effects: Effects) {
         let _ = state.lock_item.set_text(if status.locked { "Unlock position" } else { "Lock position" });
         let _ = handle.emit_to(SETTINGS_WINDOW, "status", &status);
     }
+}
+
+/// Writes the current settings and returns what was written.
+fn persist(handle: &AppHandle) -> Settings {
+    let state = shared(handle);
+    let _saving = state.saving.lock().unwrap();
+    let settings = state.app.lock().unwrap().settings.clone();
+    if let Err(error) = store::save(&state.path, &settings) {
+        log::error!("could not save settings: {error}");
+    }
+    settings
 }
 
 fn primary_display(handle: &AppHandle) -> Option<Display> {
@@ -68,20 +79,22 @@ fn register_hotkeys(handle: &AppHandle, settings: &Settings) -> Vec<String> {
     let state = shared(handle);
     let shortcuts = handle.global_shortcut();
     let _ = shortcuts.unregister_all();
-    let mut map = state.hotkeys.lock().unwrap();
-    map.clear();
+    // Built without the lock: registering waits on the main thread, and the
+    // shortcut handler takes this lock there.
+    let mut map = HashMap::new();
     let mut refused = Vec::new();
     for (id, accelerator) in settings.keys.all() {
         if accelerator.trim().is_empty() {
             continue;
         }
         match accelerator.parse::<Shortcut>() {
-            Ok(shortcut) if shortcuts.register(shortcut).is_ok() => {
+            Ok(shortcut) if !map.contains_key(&shortcut.id()) && shortcuts.register(shortcut).is_ok() => {
                 map.insert(shortcut.id(), Hotkey::from_id(id).expect("known id"));
             }
             _ => refused.push(id.to_string()),
         }
     }
+    *state.hotkeys.lock().unwrap() = map;
     refused
 }
 
@@ -105,7 +118,7 @@ fn open_settings(handle: &AppHandle) {
         return;
     }
     let built = WebviewWindowBuilder::new(handle, SETTINGS_WINDOW, WebviewUrl::App("index.html".into()))
-        .title("Scorpio")
+        .title(app::SETTINGS_TITLE)
         .inner_size(980.0, 700.0)
         .min_inner_size(760.0, 560.0)
         .decorations(false)
@@ -181,7 +194,9 @@ fn save_settings(handle: AppHandle, settings: Settings) -> (Settings, Vec<String
     };
     let refused = if keys_changed { register_hotkeys(&handle, &settings) } else { Vec::new() };
     sync_autostart(&handle, settings.start_with_system);
-    apply(&handle, effects);
+    // The window already has these settings: saved, but not echoed back.
+    persist(&handle);
+    apply(&handle, Effects { settings_changed: false, status_changed: true, ..effects });
     (settings, refused)
 }
 
@@ -277,7 +292,7 @@ fn setup(handle: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(display) = primary_display(handle) {
         app.display = display;
     }
-    handle.manage(Shared { app: Mutex::new(app), platform, path, hotkeys: Mutex::new(HashMap::new()), lock_item });
+    handle.manage(Shared { app: Mutex::new(app), platform, path, hotkeys: Mutex::new(HashMap::new()), lock_item, saving: Mutex::new(()) });
 
     TrayIconBuilder::with_id("scorpio")
         .icon(handle.default_window_icon().cloned().ok_or("no icon")?)
@@ -328,7 +343,7 @@ fn setup(handle: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
                     let app = state.app.lock().unwrap();
                     (app.focus.visible, app.settings.update_manually)
                 };
-                update::install_if_idle(&events_handle, visible, manual);
+                update::on_focus(&events_handle, visible, manual);
             }
         }
     })?;

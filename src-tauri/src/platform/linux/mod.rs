@@ -15,6 +15,7 @@ use std::error::Error;
 use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
 use std::sync::Arc;
 use x11rb::connection::Connection;
+use x11rb::protocol::randr::ConnectionExt as _;
 use x11rb::protocol::xproto::{AtomEnum, ChangeWindowAttributesAux, ClientMessageEvent, ConnectionExt as _, EventMask, Window};
 use x11rb::protocol::Event as XEvent;
 use x11rb::rust_connection::RustConnection;
@@ -66,6 +67,9 @@ fn setup(conn: RustConnection, screen_num: usize, events: Sender<Event>) -> Resu
     let overlay = Overlay::create(&conn, screen_num)?;
     let input = Input::new(&conn);
     conn.change_window_attributes(root, &ChangeWindowAttributesAux::new().event_mask(EventMask::PROPERTY_CHANGE))?;
+    // A resolution or monitor change moves the centre; without RandR it is
+    // simply not seen.
+    let _ = conn.randr_select_input(root, x11rb::protocol::randr::NotifyMask::SCREEN_CHANGE);
     conn.flush()?;
     Ok(State { conn, atoms, root, overlay, input, active: None, last: None, events })
 }
@@ -103,8 +107,8 @@ impl State {
                 self.input.listen(&self.conn, self.root, mouse, keys);
                 Ok(())
             }
-            // X11 has no way to keep a window out of captures.
-            Command::ExcludeFromCapture(_) | Command::Quit => Ok(()),
+            Command::Raise => self.overlay.raise(&self.conn),
+            Command::Quit => Ok(()),
         };
         if let Err(e) = result {
             log::warn!("overlay command failed: {e}");
@@ -122,6 +126,11 @@ impl State {
                 if Some(e.window) == self.active
                     && [self.atoms._NET_WM_NAME, self.atoms._NET_WM_STATE, u32::from(AtomEnum::WM_NAME)].contains(&e.atom) =>
             {
+                self.refresh_foreground();
+                None
+            }
+            XEvent::RandrScreenChangeNotify(_) => {
+                self.last = None;
                 self.refresh_foreground();
                 None
             }

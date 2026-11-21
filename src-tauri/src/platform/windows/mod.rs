@@ -132,14 +132,18 @@ fn create_window(
         let instance = GetModuleHandleW(None).map_err(|error| error.to_string())?.into();
         let cursor = LoadCursorW(None, IDC_ARROW).unwrap_or_default();
         RegisterClassW(&WNDCLASSW { lpfnWndProc: procedure, hInstance: instance, hCursor: cursor, lpszClassName: class, ..Default::default() });
-        CreateWindowExW(ex_style, class, w!("Scorpio"), style, 0, 0, 0, 0, parent, None, Some(instance), None)
+        CreateWindowExW(ex_style, class, w!("Scorpio overlay"), style, 0, 0, 0, 0, parent, None, Some(instance), None)
             .map_err(|error| format!("a window could not be created: {error}"))
     }
 }
 
 fn report_foreground(hwnd: HWND) {
     if let Some(event) = window::foreground_event(hwnd) {
-        STATE.with(|state| state.get().map(|state| state.events.send(event)));
+        STATE.with(|state| {
+            if let Some(state) = state.get() {
+                let _ = state.events.send(event);
+            }
+        });
     }
 }
 
@@ -179,7 +183,7 @@ fn drain_commands(state: &State) {
         match state.commands.try_recv() {
             Ok(Command::Show { bitmap, x, y, unlocked, button }) => overlay::show(&bitmap, x, y, unlocked, button),
             Ok(Command::Hide) => overlay::hide(),
-            Ok(Command::ExcludeFromCapture(exclude)) => overlay::exclude_from_capture(exclude),
+            Ok(Command::Raise) => overlay::raise(),
             Ok(Command::ListenTo { mouse, keys }) => state.listener.borrow_mut().listen(state.sink, mouse, keys),
             // SAFETY: no pointers; ends this thread's message loop.
             Ok(Command::Quit) | Err(TryRecvError::Disconnected) => return unsafe { PostQuitMessage(0) },

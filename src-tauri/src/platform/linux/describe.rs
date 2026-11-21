@@ -4,6 +4,7 @@
 
 use crate::core::focus::WindowInfo;
 use x11rb::connection::Connection;
+use x11rb::protocol::randr::ConnectionExt as _;
 use x11rb::protocol::xproto::{Atom, AtomEnum, ConnectionExt, GetPropertyReply, Window};
 
 x11rb::atom_manager! {
@@ -40,7 +41,23 @@ pub fn describe(conn: &impl Connection, atoms: &Atoms, window: Window) -> Option
         .and_then(|r| r.value32().map(|mut states| states.any(|s| s == atoms._NET_WM_STATE_FULLSCREEN)))
         .unwrap_or(false);
     let path = if pid == 0 { String::new() } else { process_path(pid) };
-    Some(WindowInfo { pid, name: file_stem(&path), path, title, window_class, fullscreen })
+    let monitor = monitor_of(conn, window);
+    Some(WindowInfo { pid, name: file_stem(&path), path, title, window_class, fullscreen, monitor })
+}
+
+/// The RandR monitor holding the window's centre, else the primary one.
+fn monitor_of(conn: &impl Connection, window: Window) -> Option<[i32; 4]> {
+    let geometry = conn.get_geometry(window).ok()?.reply().ok()?;
+    let origin = conn.translate_coordinates(window, geometry.root, 0, 0).ok()?.reply().ok()?;
+    let cx = i32::from(origin.dst_x) + i32::from(geometry.width) / 2;
+    let cy = i32::from(origin.dst_y) + i32::from(geometry.height) / 2;
+    let monitors = conn.randr_get_monitors(geometry.root, true).ok()?.reply().ok()?.monitors;
+    let rect = |m: &x11rb::protocol::randr::MonitorInfo| [i32::from(m.x), i32::from(m.y), i32::from(m.width), i32::from(m.height)];
+    let holds = |m: &&x11rb::protocol::randr::MonitorInfo| {
+        let [x, y, w, h] = rect(m);
+        (x..x + w).contains(&cx) && (y..y + h).contains(&cy)
+    };
+    monitors.iter().find(holds).or_else(|| monitors.iter().find(|m| m.primary)).map(rect)
 }
 
 /// The window manager's list of managed top-level windows, minus our own.

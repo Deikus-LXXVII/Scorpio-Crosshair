@@ -60,8 +60,9 @@ pub enum Command {
     Show { bitmap: Bitmap, x: i32, y: i32, unlocked: bool, button: Option<(i32, i32, i32, i32)> },
     /// Hide the overlay without destroying it.
     Hide,
-    /// Keep the overlay out of screenshots and recordings where the OS allows it.
-    ExcludeFromCapture(bool),
+    /// Put the shown overlay back above every other window; sent when the
+    /// window in front changes, since a newly active window may go above it.
+    Raise,
     /// Mouse buttons and keys to report; nothing is listened to otherwise.
     ListenTo { mouse: Vec<MouseButton>, keys: Vec<String> },
     Quit,

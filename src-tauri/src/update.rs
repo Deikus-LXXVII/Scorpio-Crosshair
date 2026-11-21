@@ -1,9 +1,11 @@
 //! Updates: signed packages from the releases page, checked at start and
-//! every few hours. Automatic installs wait until no game is in front, so a
-//! restart never lands in the middle of a match. Only Scorpio's own HTTPS
-//! request is involved; nothing touches a game.
+//! every few hours. An automatic update is downloaded and installed only
+//! after no game has been in front for a few minutes, so a restart never
+//! lands in a match and the package never waits in memory. Only Scorpio's
+//! own HTTPS request is involved; nothing touches a game.
 
 use serde::Serialize;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Mutex;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
@@ -11,6 +13,8 @@ use tauri_plugin_updater::{Update, UpdaterExt};
 
 const FIRST_CHECK: Duration = Duration::from_secs(30);
 const EVERY: Duration = Duration::from_secs(6 * 60 * 60);
+/// How long no game must be in front before an automatic install.
+const QUIET: Duration = Duration::from_secs(3 * 60);
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(tag = "state", rename_all = "camelCase")]
@@ -20,8 +24,6 @@ pub enum UpdateState {
     UpToDate,
     Available { version: String, notes: Option<String> },
     Downloading { version: String, percent: u8 },
-    /// Downloaded and waiting for a moment without a game in front.
-    Ready { version: String },
     Installing { version: String },
     Failed { message: String },
     /// This install is updated by something else (a Linux package).
@@ -32,8 +34,11 @@ pub enum UpdateState {
 pub struct Updates {
     state: Mutex<Option<UpdateState>>,
     found: Mutex<Option<Update>>,
-    downloaded: Mutex<Option<(Update, Vec<u8>)>>,
-    busy: Mutex<bool>,
+    busy: AtomicBool,
+    /// Counts the times a game came to the front; a quiet wait that sees it
+    /// change was interrupted by play.
+    games_seen: AtomicU64,
+    waiting: AtomicBool,
 }
 
 /// The updater replaces an AppImage or runs the Windows installer; a .deb
@@ -43,8 +48,7 @@ pub fn supported() -> bool {
 }
 
 pub fn state(handle: &AppHandle) -> UpdateState {
-    let updates = handle.state::<Updates>();
-    let current = updates.state.lock().unwrap().clone();
+    let current = handle.state::<Updates>().state.lock().unwrap().clone();
     current.unwrap_or(if supported() { UpdateState::Idle } else { UpdateState::Unsupported })
 }
 
@@ -53,7 +57,15 @@ fn set(handle: &AppHandle, state: UpdateState) {
     let _ = handle.emit_to(crate::SETTINGS_WINDOW, "update", &state);
 }
 
-/// Looks for a newer version. Returns what it found.
+fn plain(error: &str) -> String {
+    if error.contains("404") || error.to_lowercase().contains("could not fetch") {
+        "The update server could not be reached. Try again later.".into()
+    } else {
+        format!("The update could not be checked: {error}")
+    }
+}
+
+/// Looks for a newer version and remembers it.
 pub async fn check(handle: &AppHandle) -> UpdateState {
     if !supported() {
         return UpdateState::Unsupported;
@@ -76,53 +88,32 @@ pub async fn check(handle: &AppHandle) -> UpdateState {
     state
 }
 
-fn plain(error: &str) -> String {
-    if error.contains("404") || error.to_lowercase().contains("could not fetch") {
-        "The update server could not be reached. Try again later.".into()
-    } else {
-        format!("The update could not be checked: {error}")
-    }
-}
-
-/// Downloads the update found by `check`, keeping it for `install`.
-async fn download(handle: &AppHandle) -> bool {
+/// Downloads the update found by `check` and installs it; Scorpio then
+/// restarts (on Windows the installer closes it and starts the new one).
+async fn download_and_install(handle: &AppHandle) {
     let update = handle.state::<Updates>().found.lock().unwrap().clone();
-    let Some(update) = update else { return false };
+    let Some(update) = update else { return };
     let version = update.version.clone();
-    let progress_handle = handle.clone();
+    let progress = handle.clone();
     let progress_version = version.clone();
     let mut received = 0usize;
-    let result = update
+    let bytes = update
         .download(
             move |chunk, total| {
                 received += chunk;
                 if let Some(total) = total.filter(|t| *t > 0) {
                     let percent = ((received as u64 * 100) / total).min(100) as u8;
-                    set(&progress_handle, UpdateState::Downloading { version: progress_version.clone(), percent });
+                    set(&progress, UpdateState::Downloading { version: progress_version.clone(), percent });
                 }
             },
             || {},
         )
         .await;
-    match result {
-        Ok(bytes) => {
-            *handle.state::<Updates>().downloaded.lock().unwrap() = Some((update, bytes));
-            set(handle, UpdateState::Ready { version });
-            true
-        }
-        Err(error) => {
-            set(handle, UpdateState::Failed { message: format!("The download failed: {error}") });
-            false
-        }
-    }
-}
-
-/// Installs a downloaded update and restarts Scorpio. On Windows the
-/// installer closes Scorpio itself and starts the new version.
-fn install(handle: &AppHandle) {
-    let ready = handle.state::<Updates>().downloaded.lock().unwrap().take();
-    let Some((update, bytes)) = ready else { return };
-    set(handle, UpdateState::Installing { version: update.version.clone() });
+    let bytes = match bytes {
+        Ok(bytes) => bytes,
+        Err(error) => return set(handle, UpdateState::Failed { message: format!("The download failed: {error}") }),
+    };
+    set(handle, UpdateState::Installing { version });
     crate::before_exit(handle);
     match update.install(bytes) {
         Ok(()) => handle.restart(),
@@ -130,28 +121,52 @@ fn install(handle: &AppHandle) {
     }
 }
 
-/// The button: check, download and install now (the player is in the
-/// settings window, not in a game).
-pub async fn install_now(handle: AppHandle) {
-    if std::mem::replace(&mut *handle.state::<Updates>().busy.lock().unwrap(), true) {
+/// Runs `work` unless an update is already being checked or installed.
+async fn exclusive(handle: &AppHandle, work: impl std::future::Future<Output = ()>) {
+    let updates = handle.state::<Updates>();
+    if updates.busy.swap(true, Ordering::SeqCst) {
         return;
     }
-    let ready = handle.state::<Updates>().downloaded.lock().unwrap().is_some();
-    let ok = ready || (matches!(check(&handle).await, UpdateState::Available { .. }) && download(&handle).await);
-    *handle.state::<Updates>().busy.lock().unwrap() = false;
-    if ok {
-        install(&handle);
-    }
+    work.await;
+    updates.busy.store(false, Ordering::SeqCst);
 }
 
-/// Called whenever the overlay state changes: an automatic update that is
-/// ready installs only while no game is in front.
-pub fn install_if_idle(handle: &AppHandle, game_in_front: bool, manual: bool) {
-    if manual || game_in_front {
+/// The button: the player is in the settings window, not in a game.
+pub async fn install_now(handle: AppHandle) {
+    let work = async {
+        let found = handle.state::<Updates>().found.lock().unwrap().is_some();
+        if found || matches!(check(&handle).await, UpdateState::Available { .. }) {
+            download_and_install(&handle).await;
+        }
+    };
+    exclusive(&handle, work).await;
+}
+
+/// Called after every change of the window in front. Once no game has been
+/// in front for `QUIET`, a waiting automatic update installs.
+pub fn on_focus(handle: &AppHandle, game_in_front: bool, manual: bool) {
+    let updates = handle.state::<Updates>();
+    if game_in_front {
+        updates.games_seen.fetch_add(1, Ordering::SeqCst);
         return;
     }
-    if handle.state::<Updates>().downloaded.lock().unwrap().is_some() {
-        install(handle);
+    let found = updates.found.lock().unwrap().is_some();
+    if manual || !found || updates.waiting.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    let seen = updates.games_seen.load(Ordering::SeqCst);
+    let handle = handle.clone();
+    let spawned = std::thread::Builder::new().name("scorpio-update-wait".into()).spawn(move || {
+        std::thread::sleep(QUIET);
+        let updates = handle.state::<Updates>();
+        updates.waiting.store(false, Ordering::SeqCst);
+        let quiet = updates.games_seen.load(Ordering::SeqCst) == seen && !crate::game_in_front(&handle);
+        if quiet && !crate::settings_snapshot(&handle).update_manually {
+            tauri::async_runtime::block_on(exclusive(&handle, download_and_install(&handle)));
+        }
+    });
+    if spawned.is_err() {
+        updates.waiting.store(false, Ordering::SeqCst);
     }
 }
 
@@ -166,15 +181,12 @@ pub fn start(handle: &AppHandle) {
         std::thread::sleep(FIRST_CHECK);
         loop {
             let manual = crate::settings_snapshot(&handle).update_manually;
-            let busy = *handle.state::<Updates>().busy.lock().unwrap();
-            if !manual && !busy {
-                tauri::async_runtime::block_on(async {
-                    if let UpdateState::Available { .. } = check(&handle).await {
-                        if download(&handle).await {
-                            install_if_idle(&handle, crate::game_in_front(&handle), false);
-                        }
-                    }
-                });
+            let already = handle.state::<Updates>().found.lock().unwrap().is_some();
+            if !manual && !already {
+                tauri::async_runtime::block_on(exclusive(&handle, async {
+                    check(&handle).await;
+                }));
+                on_focus(&handle, crate::game_in_front(&handle), manual);
             }
             std::thread::sleep(EVERY);
         }

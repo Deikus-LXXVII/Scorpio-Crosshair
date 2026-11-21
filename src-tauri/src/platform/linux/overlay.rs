@@ -120,6 +120,15 @@ impl Overlay {
         self.paint(conn)
     }
 
+    /// Back above every other window, without moving or repainting.
+    pub fn raise(&mut self, conn: &impl Connection) -> Result<()> {
+        if self.mapped {
+            conn.configure_window(self.window, &ConfigureWindowAux::new().stack_mode(StackMode::ABOVE))?;
+            conn.flush()?;
+        }
+        Ok(())
+    }
+
     pub fn hide(&mut self, conn: &impl Connection) -> Result<()> {
         self.drag = None;
         if self.mapped {

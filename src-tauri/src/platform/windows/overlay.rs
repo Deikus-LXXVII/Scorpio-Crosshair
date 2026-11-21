@@ -17,10 +17,10 @@ use windows::Win32::Graphics::Gdi::{
 };
 use windows::Win32::UI::Input::KeyboardAndMouse::{ReleaseCapture, SetCapture};
 use windows::Win32::UI::WindowsAndMessaging::{
-    DefWindowProcW, DestroyWindow, GetCursorPos, GetWindowLongPtrW, GetWindowRect, SetWindowDisplayAffinity,
+    DefWindowProcW, DestroyWindow, GetCursorPos, GetWindowLongPtrW, GetWindowRect, IsWindowVisible,
     SetWindowLongPtrW, SetWindowPos, ShowWindow, UpdateLayeredWindow, GWL_EXSTYLE, HWND_TOPMOST, MA_NOACTIVATE,
-    SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SWP_SHOWWINDOW, SW_HIDE, ULW_ALPHA, WDA_EXCLUDEFROMCAPTURE,
-    WDA_NONE, WM_CAPTURECHANGED, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MOUSEACTIVATE, WM_MOUSEMOVE, WS_EX_LAYERED,
+    SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SWP_SHOWWINDOW, SW_HIDE, ULW_ALPHA,
+    GetForegroundWindow, WM_DISPLAYCHANGE, WM_CAPTURECHANGED, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MOUSEACTIVATE, WM_MOUSEMOVE, WS_EX_LAYERED,
     WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_EX_TRANSPARENT, WS_POPUP,
 };
 
@@ -91,12 +91,17 @@ pub fn hide() {
     });
 }
 
-pub fn exclude_from_capture(exclude: bool) {
+pub fn raise() {
     with(|overlay| {
-        let affinity = if exclude { WDA_EXCLUDEFROMCAPTURE } else { WDA_NONE };
         // SAFETY: `hwnd` is this thread's window.
-        if let Err(error) = unsafe { SetWindowDisplayAffinity(overlay.hwnd, affinity) } {
-            log::warn!("capture exclusion ({exclude}) failed: {error}");
+        unsafe {
+            if !IsWindowVisible(overlay.hwnd).as_bool() {
+                return;
+            }
+            let flags = SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE;
+            if let Err(error) = SetWindowPos(overlay.hwnd, Some(HWND_TOPMOST), 0, 0, 0, 0, flags) {
+                log::warn!("overlay could not be raised: {error}");
+            }
         }
     });
 }
@@ -253,6 +258,12 @@ impl Overlay {
 }
 
 unsafe extern "system" fn procedure(hwnd: HWND, message: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+    // A resolution change (a game going exclusive fullscreen) moves the
+    // centre: describe the window in front again. Top-level windows get it.
+    if message == WM_DISPLAYCHANGE {
+        // SAFETY: no arguments; reads which window is in front right now.
+        super::report_foreground(unsafe { GetForegroundWindow() });
+    }
     let handled = OVERLAY.with(|overlay| overlay.get().and_then(|overlay| overlay.message(message, lparam)));
     // SAFETY: forwards the untouched arguments of this window procedure.
     handled.unwrap_or_else(|| unsafe { DefWindowProcW(hwnd, message, wparam, lparam) })

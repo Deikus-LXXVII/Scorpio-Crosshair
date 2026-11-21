@@ -45,19 +45,22 @@ pub fn describe(hwnd: HWND) -> WindowInfo {
         (GetWindowTextW(hwnd, &mut title), GetClassNameW(hwnd, &mut class))
     };
     let (name, path) = process::image(pid);
+    let (fullscreen, monitor) = placement(hwnd);
     WindowInfo {
         pid,
         name,
         path,
         title: String::from_utf16_lossy(&title[..title_length.max(0) as usize]),
         window_class: String::from_utf16_lossy(&class[..class_length.max(0) as usize]),
-        fullscreen: is_fullscreen(hwnd),
+        fullscreen,
+        monitor,
     }
 }
 
-/// Borderless or exclusive fullscreen: the window covers its whole monitor
-/// without being a maximised or captioned window (a maximised browser is not a game).
-fn is_fullscreen(hwnd: HWND) -> bool {
+/// Whether the window is fullscreen, and the monitor it is on. Borderless or
+/// exclusive fullscreen: the window covers its whole monitor without being a
+/// maximised or captioned window (a maximised browser is not a game).
+fn placement(hwnd: HWND) -> (bool, Option<[i32; 4]>) {
     let mut window = RECT::default();
     let mut monitor = MONITORINFO { cbSize: size_of::<MONITORINFO>() as u32, ..Default::default() };
     // SAFETY: the out-structures are valid and `cbSize` is set as GetMonitorInfoW requires.
@@ -71,7 +74,8 @@ fn is_fullscreen(hwnd: HWND) -> bool {
         && window.top <= screen.top
         && window.right >= screen.right
         && window.bottom >= screen.bottom;
-    measured && covers && !zoomed && style & WS_CAPTION.0 != WS_CAPTION.0
+    let rect = measured.then_some([screen.left, screen.top, screen.right - screen.left, screen.bottom - screen.top]);
+    (measured && covers && !zoomed && style & WS_CAPTION.0 != WS_CAPTION.0, rect)
 }
 
 /// Visible, unowned, titled top-level windows of other processes, without the desktop.

@@ -37,7 +37,7 @@ const save = ( { now = false } = {} ) => {
 		S.refused = refused
 		if ( refused.length ) {
 
-			toast( 'Another program already uses that shortcut. Choose different keys.', { alert: true } )
+			toast( 'Those keys are taken, by another program or another shortcut. Choose different keys.', { alert: true } )
 			if ( S.tab === 'controls' ) render()
 
 		}
@@ -72,6 +72,7 @@ const change = mutate => {
 /* Preview */
 
 let previewFrame = 0
+let previewAsked = 0
 
 const paintPreview = () => {
 
@@ -81,8 +82,11 @@ const paintPreview = () => {
 		const well = document.getElementById( 'preview' )
 
 		if ( !well ) return
+		// Answers can arrive out of order; only the newest is drawn.
+		const asked = ++previewAsked
 		const svg = await invoke( 'preview', { crosshair: editing() } )
 
+		if ( asked !== previewAsked ) return
 		well.innerHTML = svg
 		sizeSvg( well.firstElementChild, S.zoom )
 		const code = document.getElementById( 'code' )
@@ -576,7 +580,7 @@ const controlsTab = () => {
 
 			const refused = S.refused.includes( id )
 
-			return setting( name, refused ? 'Another program already uses these keys.' : help, keybind( S.settings.keys[id], v => {
+			return setting( name, refused ? 'Taken, by another program or another shortcut.' : help, keybind( S.settings.keys[id], v => {
 
 				S.settings.keys[id] = v
 				S.refused = S.refused.filter( r => r !== id )
@@ -592,7 +596,6 @@ const controlsTab = () => {
 const systemTab = () => {
 
 	const s = S.settings
-	const windows = S.view.platform === 'windows'
 	const [ dx, dy ] = s.offset
 	const centred = dx === 0 && dy === 0
 
@@ -623,12 +626,6 @@ const systemTab = () => {
 				save()
 
 			}, { label: 'Start with the system' } ) ),
-			setting( 'Hide from screen capture', windows ? 'Screenshots, recordings and streams show the game without the crosshair.' : 'Not available on Linux: X11 has no way to keep a window out of captures.', toggle( s.hideFromCapture, v => {
-
-				s.hideFromCapture = v
-				save()
-
-			}, { label: 'Hide from screen capture', disabled: !windows } ), { off: !windows } ),
 		),
 		h( 'h2.t-h4', { text: 'Updates' } ),
 		updatesBlock(),
@@ -648,7 +645,6 @@ const UPDATE_TEXT = {
 	upToDate: () => `Scorpio ${S.view.version} is the newest version.`,
 	available: u => `Scorpio ${u.version} is out.`,
 	downloading: u => `Downloading Scorpio ${u.version}: ${u.percent}%.`,
-	ready: u => `Scorpio ${u.version} is downloaded. It installs when no game is in front, or now.`,
 	installing: u => `Installing Scorpio ${u.version}. Scorpio restarts in a moment.`,
 	failed: u => u.message,
 	unsupported: () => 'This copy is updated by your package manager.',
@@ -659,7 +655,7 @@ const updatesBlock = () => {
 	const u = S.update || { state: 'idle' }
 	const unsupported = u.state === 'unsupported'
 	const busy = [ 'checking', 'downloading', 'installing' ].includes( u.state )
-	const offer = [ 'available', 'ready' ].includes( u.state )
+	const offer = u.state === 'available'
 	const button = h( `button.btn${offer ? '.primary' : ''}`, {
 		type: 'button',
 		text: offer ? 'Install and restart' : 'Check for updates',
@@ -674,7 +670,7 @@ const updatesBlock = () => {
 	} )
 
 	return h( 'div.slab.flush', {},
-		setting( 'Install updates automatically', unsupported ? null : 'Scorpio checks every few hours. An update installs only while no game is in front, then Scorpio restarts.', toggle( !S.settings.updateManually, v => {
+		setting( 'Install updates automatically', unsupported ? null : 'Scorpio checks every few hours. An update installs after no game has been in front for three minutes, then Scorpio restarts.', toggle( !S.settings.updateManually, v => {
 
 			S.settings.updateManually = !v
 			save()

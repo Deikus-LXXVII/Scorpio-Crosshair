@@ -10,6 +10,10 @@ use crate::core::raster::{rasterize, slab};
 use crate::platform::{Command, Event, MouseButton};
 use crate::store::{AimMode, Game, Settings};
 
+/// The settings window's title; Scorpio's other windows (the tray's) never
+/// count as being in front.
+pub const SETTINGS_TITLE: &str = "Scorpio";
+
 /// Space around the crosshair on the unlocked slab, at least.
 const SLAB_PAD: u32 = 40;
 const SLAB_MIN: u32 = 132;
@@ -84,7 +88,8 @@ pub struct App {
     aiming: bool,
     shown: Shown,
     listening: Option<Vec<MouseButton>>,
-    capture_hidden: Option<bool>,
+    /// The window in front changed since the overlay was last raised.
+    raise: bool,
     saved_index: Option<usize>,
 }
 
@@ -103,7 +108,7 @@ impl App {
             aiming: false,
             shown: Shown::Hidden,
             listening: None,
-            capture_hidden: None,
+            raise: false,
             saved_index: None,
         }
     }
@@ -133,9 +138,21 @@ impl App {
 
     fn refocus(&mut self) {
         let saved: Vec<_> = self.settings.games.iter().map(|game| game.fingerprint.clone()).collect();
-        let front = self.front.clone();
-        let next = focus::next_state(&self.focus, front.as_ref(), self.own_pid, &saved, |window| self.detected(window));
-        if next.game != self.focus.game {
+        let hidden = FocusState { visible: false, game: None };
+        let next = match self.front.clone() {
+            // The settings window shows the crosshair so it can be tuned, for
+            // the game last in front, worked out again so a removed game
+            // never leaves a stale index behind.
+            Some(window) if window.pid == self.own_pid && window.title == SETTINGS_TITLE => {
+                let behind = self.last_outside.clone();
+                let base = focus::next_state(&hidden, behind.as_ref(), self.own_pid, &saved, |w| self.detected(w));
+                FocusState { visible: true, game: base.game }
+            }
+            // The tray menu and other windows of Scorpio's own change nothing.
+            Some(window) if window.pid == self.own_pid => return,
+            front => focus::next_state(&self.focus, front.as_ref(), self.own_pid, &saved, |w| self.detected(w)),
+        };
+        if !next.visible || next.game != self.focus.game {
             self.aiming = false;
         }
         self.focus = next;
@@ -155,6 +172,7 @@ impl App {
                     }
                 }
                 self.front = front;
+                self.raise = true;
                 self.refocus();
                 effects.status_changed = true;
             }
@@ -169,7 +187,9 @@ impl App {
             }
             Event::Key { .. } => {}
             Event::Moved { x, y } => {
-                if let Shown::Crosshair { .. } = self.shown {
+                // A drag cut short by locking reports the slab's corner; the
+                // crosshair has already gone back to its own size.
+                if !self.locked {
                     let size = self.slab_size();
                     let (cx, cy) = self.display_centre_corner(size);
                     self.settings.offset = (x - cx, y - cy);
@@ -284,8 +304,22 @@ impl App {
         self.hotkey(Hotkey::Lock)
     }
 
+    /// The monitor of the game (or of the window behind the settings), else
+    /// the primary display.
+    pub fn target_display(&self) -> Display {
+        let window = match &self.front {
+            Some(window) if window.pid == self.own_pid => self.last_outside.as_ref(),
+            front => front.as_ref(),
+        };
+        window
+            .and_then(|window| window.monitor)
+            .filter(|[_, _, width, height]| *width > 0 && *height > 0)
+            .map(|[x, y, width, height]| Display { x, y, width: width as u32, height: height as u32 })
+            .unwrap_or(self.display)
+    }
+
     fn crosshair_size(&self) -> u32 {
-        draw(self.active_crosshair(), self.display.height).size
+        draw(self.active_crosshair(), self.target_display().height).size
     }
 
     /// The unlocked slab is square and keeps the crosshair's parity, so the
@@ -304,7 +338,7 @@ impl App {
 
     /// Top-left corner that centres a square of `size` on the display.
     fn display_centre_corner(&self, size: u32) -> (i32, i32) {
-        let d = self.display;
+        let d = self.target_display();
         let area = Area { x: d.x as f64, y: d.y as f64, width: d.width as f64, height: d.height as f64 };
         let placed = centred(area, size, size, 1.0);
         (placed.x, placed.y)
@@ -315,16 +349,21 @@ impl App {
         let want = if self.should_show() {
             Shown::Crosshair {
                 crosshair: self.active_crosshair().clone(),
-                display: self.display,
+                display: self.target_display(),
                 offset: self.settings.offset,
                 unlocked: !self.locked,
             }
         } else {
             Shown::Hidden
         };
+        // A Show raises the overlay too; otherwise raise it when the window
+        // in front changed and the crosshair stays.
+        let raise = std::mem::take(&mut self.raise);
         if want != self.shown {
             effects.commands.push(self.render(&want));
             self.shown = want;
+        } else if raise && self.shown != Shown::Hidden {
+            effects.commands.push(Command::Raise);
         }
 
         let listen = if self.settings.aim.hide && self.focus.visible && self.locked { vec![self.settings.aim.button] } else { Vec::new() };
@@ -333,10 +372,7 @@ impl App {
             self.listening = Some(listen);
         }
 
-        if self.capture_hidden != Some(self.settings.hide_from_capture) {
-            effects.commands.push(Command::ExcludeFromCapture(self.settings.hide_from_capture));
-            self.capture_hidden = Some(self.settings.hide_from_capture);
-        }
+
     }
 
     fn render(&self, shown: &Shown) -> Command {
@@ -387,6 +423,7 @@ mod tests {
             title: name.to_uppercase(),
             window_class: format!("{name}-class"),
             fullscreen,
+            monitor: None,
         }
     }
 
@@ -396,7 +433,6 @@ mod tests {
         settings.detect.launchers = false;
         settings.games.push(Game { name: "Game".into(), fingerprint: focus::fingerprint(&window(1, "game", false)), crosshair: None });
         let mut app = App::new(settings, OWN);
-        app.capture_hidden = Some(false);
         app.listening = Some(Vec::new());
         app
     }
@@ -421,14 +457,14 @@ mod tests {
     fn nothing_is_sent_when_nothing_changes() {
         let mut app = app();
         app.event(Event::Foreground(Some(window(1, "game", false))));
-        assert!(app.event(Event::Foreground(Some(window(1, "game", false)))).commands.is_empty());
+        assert_eq!(app.event(Event::Foreground(Some(window(1, "game", false)))).commands, vec![Command::Raise], "only raised again");
     }
 
     #[test]
     fn own_window_keeps_the_crosshair_and_add_game_ignores_it() {
         let mut app = app();
         app.event(Event::Foreground(Some(window(1, "game", false))));
-        let effects = app.event(Event::Foreground(Some(window(OWN, "scorpio", false))));
+        let effects = app.event(Event::Foreground(Some(WindowInfo { title: SETTINGS_TITLE.into(), ..window(OWN, "scorpio", false) })));
         assert_eq!(shows(&effects), None);
         assert!(app.focus.visible);
         assert!(!app.add_game_in_front());
@@ -552,5 +588,74 @@ mod tests {
         let mut app = app();
         let nameless = WindowInfo { pid: 9, title: "Untitled".into(), ..WindowInfo::default() };
         assert!(!app.add_game(&nameless));
+    }
+
+    #[test]
+    fn the_desktop_hides_and_closing_settings_over_it_stays_hidden() {
+        let mut app = app();
+        app.event(Event::Foreground(Some(window(1, "game", false))));
+        assert_eq!(shows(&app.event(Event::Foreground(None))), Some(false));
+        let settings = WindowInfo { title: SETTINGS_TITLE.into(), ..window(OWN, "scorpio", false) };
+        assert_eq!(shows(&app.event(Event::Foreground(Some(settings)))), Some(true));
+        assert_eq!(shows(&app.event(Event::Foreground(None))), Some(false));
+    }
+
+    #[test]
+    fn the_tray_menu_changes_nothing() {
+        let mut app = app();
+        app.event(Event::Foreground(Some(window(2, "browser", false))));
+        let tray = WindowInfo { title: String::new(), ..window(OWN, "scorpio", false) };
+        assert_eq!(shows(&app.event(Event::Foreground(Some(tray)))), None);
+        assert!(!app.focus.visible);
+    }
+
+    #[test]
+    fn removing_a_game_while_tuning_keeps_the_right_game() {
+        let mut app = app();
+        for name in ["b", "c"] {
+            app.settings.games.push(Game { name: name.into(), fingerprint: focus::fingerprint(&window(5, name, false)), crosshair: None });
+        }
+        app.event(Event::Foreground(Some(window(5, "b", false))));
+        assert_eq!(app.focus.game, Some(1));
+        app.event(Event::Foreground(Some(WindowInfo { title: SETTINGS_TITLE.into(), ..window(OWN, "scorpio", false) })));
+        let mut settings = app.settings.clone();
+        settings.games.remove(0);
+        app.replace_settings(settings);
+        assert_eq!(app.focus.game, Some(0), "b moved to index 0");
+        assert_eq!(app.settings.games[0].name, "b");
+    }
+
+    #[test]
+    fn aiming_resets_when_the_crosshair_goes_away() {
+        let mut app = app();
+        app.settings.aim.hide = true;
+        app.settings.detect.fullscreen = true;
+        app.event(Event::Foreground(Some(window(4, "x", true))));
+        app.event(Event::Mouse { button: MouseButton::Right, down: true });
+        app.event(Event::Foreground(Some(window(2, "browser", false))));
+        assert_eq!(shows(&app.event(Event::Foreground(Some(window(4, "x", true))))), Some(true));
+    }
+
+    #[test]
+    fn a_move_after_locking_is_ignored() {
+        let mut app = app();
+        app.event(Event::Foreground(Some(window(1, "game", false))));
+        app.hotkey(Hotkey::Lock);
+        app.hotkey(Hotkey::Lock);
+        assert!(!app.event(Event::Moved { x: 1, y: 1 }).settings_changed);
+        assert_eq!(app.settings.offset, (0, 0));
+    }
+
+    #[test]
+    fn the_crosshair_is_centred_on_the_games_monitor() {
+        let mut app = app();
+        app.set_display(Display { x: 0, y: 0, width: 1920, height: 1080 });
+        let on_second = WindowInfo { monitor: Some([1920, 0, 2560, 1440]), ..window(1, "game", false) };
+        let effects = app.event(Event::Foreground(Some(on_second)));
+        let Some(Command::Show { bitmap, x, y, .. }) = effects.commands.first() else { panic!() };
+        assert_eq!(2 * x + bitmap.width as i32, 2 * 1920 + 2560);
+        assert_eq!(2 * y + bitmap.height as i32, 1440);
+        let settings = WindowInfo { title: SETTINGS_TITLE.into(), monitor: Some([0, 0, 1920, 1080]), ..window(OWN, "scorpio", false) };
+        assert!(app.event(Event::Foreground(Some(settings))).commands.iter().all(|c| !matches!(c, Command::Show { .. })), "tuning keeps it on the game's monitor");
     }
 }
