@@ -20,7 +20,7 @@ const mark = label => `<svg viewBox="128 128 768 768" role="img" aria-label="${l
 // [question, answer as HTML]. Three sentences at most; links and <b> only.
 const FAQ = [
 	[ 'Is a crosshair overlay bannable?',
-		`No overlay can promise that you will never be banned. Scorpio never reads or changes the game, but a game's own rules can forbid external crosshairs.` ],
+		`No overlay can promise that. Scorpio never touches the game, but a game's own rules can forbid crosshair overlays.` ],
 	[ 'Does it work with Vanguard, Easy Anti-Cheat, BattlEye or VAC?',
 		`None of them has approved it directly. Scorpio crosses none of their lines, since it never touches the game or the anti-cheat. The exception is a game whose own rules forbid crosshair overlays.` ],
 	[ 'Does Scorpio lower my frame rate?',
@@ -42,14 +42,19 @@ const CALLS = [
 	[ 'Show it in OBS, if asked', 'Only on your own computer.', '<code>127.0.0.1:47117</code>' ],
 ]
 
-// Anti-cheat comparison, read from each program's code on 2026-11-21 (Scorpio 0.1.1, Simple Crosshair Overlay 1.2.1,
-// Crosshair Y 4.2, CrossOver 3.4.11). None of the four opens, injects into or draws into a game.
-const CMP_HEAD = [ 'Hides while aiming', 'Reads keys by' ]
+// Comparison with other crosshair apps, read from each program's code on 2026-11-21: Scorpio 0.1.1 (commit 5a83600),
+// Simple Crosshair Overlay 1.2.1, Crosshair Y 4.2, CrossOver 3.4.11. None of the four opens, injects into or draws into
+// a game. Crosshair Y's codes are Valorant's; Simple Crosshair Overlay's macOS build is marked untested upstream.
+const CMP_APPS = [ 'Scorpio', 'Simple Crosshair Overlay', 'Crosshair Y', 'CrossOver' ]
 const CMP = [
-	[ 'Scorpio', 'Yes', 'System shortcuts', true ],
-	[ 'Simple Crosshair Overlay', 'No', 'Checking every key, nonstop' ],
-	[ 'Crosshair Y', 'No', 'One system shortcut' ],
-	[ 'CrossOver', 'Yes', 'Global hooks, for aiming' ],
+	[ 'Only over games', 'Yes', '—', '—', '—' ],
+	[ 'Hides while you aim', 'Yes', '—', '—', 'Yes' ],
+	[ 'Crosshair per game', 'Yes', '—', '—', '—' ],
+	[ 'CS2 crosshair codes', 'Yes', '—', '—', '—' ],
+	[ 'Crosshair in OBS', 'Yes', '—', '—', '—' ],
+	[ 'Your own image', 'Next update', 'Yes', 'Yes', 'Yes' ],
+	[ 'Reads keys by', 'System shortcuts', 'Checking every key', 'One shortcut', 'Global hooks' ],
+	[ 'Systems', 'Windows, Linux', 'Windows, macOS', 'Windows, Linux', 'Windows, macOS, Linux' ],
 ]
 
 // Efficiency, measured by the owner on a Windows 11 gaming PC, 2026-11-21: each program idle with its crosshair shown,
@@ -382,9 +387,8 @@ html.page::-webkit-scrollbar{display:none}
 .cmp>p{margin:0 0 24px;max-width:62ch;color:var(--mute)}
 .cmp .tbl thead td{border-bottom:1px solid var(--line-hi)}
 .cmp .tbl tbody th{width:28%}
-.cmp .tbl td:first-of-type{width:42%}
-.cmp .me th{font-weight:500}
-.cmp .me td{color:var(--marble)}
+.cmp .tbl td{width:18%}
+.cmp .tbl .me{color:var(--marble)}
 .cmp figcaption{margin-top:16px;color:var(--mute)}
 
 /* the efficiency chart: a table drawn as bars, one row a program, two measures side by side on their own scales */
@@ -451,7 +455,7 @@ html.js .rv.in{opacity:1;transform:none}
 	.tbl tbody th,.tbl td{padding:0;border:0}
 	.tbl td{margin-top:4px}
 	.tbl .tech{width:auto;margin-top:8px}
-	.cmp .tbl tbody th,.cmp .tbl td:first-of-type{width:auto}
+	.cmp .tbl tbody th,.cmp .tbl td{width:auto}
 	.cmp .tbl td::before{content:attr(data-label) ': ';color:var(--mute)}
 	.cmp .tbl td{color:var(--marble)}
 }
@@ -574,7 +578,7 @@ ${block( 'crosshair', 'The crosshair', `
 
 <section class="block wide" id="safety" aria-labelledby="safety-h">
 	<h2 class="name" id="safety-h">Outside the game</h2>
-	<p class="lead"><b>Scorpio never touches the game or its anti-cheat.</b> It does not open the game, read or change its memory, slip code or hooks into it, fake your keys or mouse, install a driver, or draw into the game's picture.</p>
+	<p class="lead"><b>Scorpio never touches the game or its anti-cheat.</b> It never opens the game, reads its memory, injects code, fakes your input or installs a driver.</p>
 	<table class="tbl obj">
 		<thead><tr>${HEAD.map( h => `<th scope="col">${h}</th>` ).join( '' )}</tr></thead>
 		<tbody>
@@ -582,14 +586,14 @@ ${CALLS.map( ( [ need, how, tech ] ) => `\t\t\t<tr><th scope="row">${need}</th><
 		</tbody>
 	</table>
 	<figure class="cmp obj">
-		<p><b>Of four crosshair apps, only Scorpio hides while you aim without global hooks.</b> Aimbots use them too.</p>
+		<p><b>Only Scorpio hides while you aim without global hooks,</b> which aimbots use too.</p>
 		<table class="tbl">
-			<thead><tr><td></td>${CMP_HEAD.map( h => `<th scope="col">${h}</th>` ).join( '' )}</tr></thead>
+			<thead><tr><td></td>${CMP_APPS.map( a => `<th scope="col">${a}</th>` ).join( '' )}</tr></thead>
 			<tbody>
-${CMP.map( ( [ name, aim, keys, me ] ) => `\t\t\t\t<tr${me ? ' class="me"' : ''}><th scope="row">${name}</th>${[ aim, keys ].map( ( v, i ) => `<td data-label="${CMP_HEAD[ i ]}">${v}</td>` ).join( '' )}</tr>` ).join( '\n' )}
+${CMP.map( ( [ what, ...cells ] ) => `\t\t\t\t<tr><th scope="row">${what}</th>${cells.map( ( v, i ) => `<td${i ? '' : ' class="me"'} data-label="${CMP_APPS[ i ]}">${v}</td>` ).join( '' )}</tr>` ).join( '\n' )}
 			</tbody>
 		</table>
-		<figcaption>From each app’s code. None touches the game.</figcaption>
+		<figcaption>From each app’s code.</figcaption>
 	</figure>
 	<div class="faq obj" id="faq">
 ${FAQ.map( ( [ q, a ] ) => `\t\t<details class="qa"><summary>${q}<i aria-hidden="true"></i></summary><div class="a"><p>${a}</p></div></details>` ).join( '\n' )}
@@ -597,7 +601,7 @@ ${FAQ.map( ( [ q, a ] ) => `\t\t<details class="qa"><summary>${q}<i aria-hidden=
 </section>
 ${block( 'games', 'Only over&nbsp;games', `
 		<p>The crosshair shows while a game is in front and hides when you switch away. A game is one <b>you added</b>, any <b>fullscreen</b> window, or a game from a launcher such as Steam, Epic Games or GOG.</p>
-		<p>It can also hide while you aim, and keyboard shortcuts lock, centre and switch it.</p>`, shot( 'games' ), true )}
+		<p>Keyboard shortcuts lock, centre and switch it.</p>`, shot( 'games' ), true )}
 ${block( 'efficiency', 'Efficiency', `
 		<p><b>Light on memory and idle on the processor.</b> Simple Crosshair Overlay uses less memory but keeps the processor far busier.</p>`, chart() )}
 ${block( 'obs', 'On stream', `

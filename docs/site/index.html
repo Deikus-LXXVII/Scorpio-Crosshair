@@ -102,7 +102,7 @@
 					"name": "Is a crosshair overlay bannable?",
 					"acceptedAnswer": {
 						"@type": "Answer",
-						"text": "No overlay can promise that you will never be banned. Scorpio never reads or changes the game, but a game's own rules can forbid external crosshairs."
+						"text": "No overlay can promise that. Scorpio never touches the game, but a game's own rules can forbid crosshair overlays."
 					}
 				},
 				{
@@ -233,9 +233,8 @@ html.page::-webkit-scrollbar{display:none}
 .cmp>p{margin:0 0 24px;max-width:62ch;color:var(--mute)}
 .cmp .tbl thead td{border-bottom:1px solid var(--line-hi)}
 .cmp .tbl tbody th{width:28%}
-.cmp .tbl td:first-of-type{width:42%}
-.cmp .me th{font-weight:500}
-.cmp .me td{color:var(--marble)}
+.cmp .tbl td{width:18%}
+.cmp .tbl .me{color:var(--marble)}
 .cmp figcaption{margin-top:16px;color:var(--mute)}
 
 /* the efficiency chart: a table drawn as bars, one row a program, two measures side by side on their own scales */
@@ -302,7 +301,7 @@ html.js .rv.in{opacity:1;transform:none}
 	.tbl tbody th,.tbl td{padding:0;border:0}
 	.tbl td{margin-top:4px}
 	.tbl .tech{width:auto;margin-top:8px}
-	.cmp .tbl tbody th,.cmp .tbl td:first-of-type{width:auto}
+	.cmp .tbl tbody th,.cmp .tbl td{width:auto}
 	.cmp .tbl td::before{content:attr(data-label) ': ';color:var(--mute)}
 	.cmp .tbl td{color:var(--marble)}
 }
@@ -378,7 +377,7 @@ html.js .rv.in{opacity:1;transform:none}
 
 <section class="block wide" id="safety" aria-labelledby="safety-h">
 	<h2 class="name" id="safety-h">Outside the game</h2>
-	<p class="lead"><b>Scorpio never touches the game or its anti-cheat.</b> It does not open the game, read or change its memory, slip code or hooks into it, fake your keys or mouse, install a driver, or draw into the game's picture.</p>
+	<p class="lead"><b>Scorpio never touches the game or its anti-cheat.</b> It never opens the game, reads its memory, injects code, fakes your input or installs a driver.</p>
 	<table class="tbl obj">
 		<thead><tr><th scope="col">Scorpio needs to</th><th scope="col">How it stays outside</th><th scope="col">Windows · Linux</th></tr></thead>
 		<tbody>
@@ -391,20 +390,24 @@ html.js .rv.in{opacity:1;transform:none}
 		</tbody>
 	</table>
 	<figure class="cmp obj">
-		<p><b>Of four crosshair apps, only Scorpio hides while you aim without global hooks.</b> Aimbots use them too.</p>
+		<p><b>Only Scorpio hides while you aim without global hooks,</b> which aimbots use too.</p>
 		<table class="tbl">
-			<thead><tr><td></td><th scope="col">Hides while aiming</th><th scope="col">Reads keys by</th></tr></thead>
+			<thead><tr><td></td><th scope="col">Scorpio</th><th scope="col">Simple Crosshair Overlay</th><th scope="col">Crosshair Y</th><th scope="col">CrossOver</th></tr></thead>
 			<tbody>
-				<tr class="me"><th scope="row">Scorpio</th><td data-label="Hides while aiming">Yes</td><td data-label="Reads keys by">System shortcuts</td></tr>
-				<tr><th scope="row">Simple Crosshair Overlay</th><td data-label="Hides while aiming">No</td><td data-label="Reads keys by">Checking every key, nonstop</td></tr>
-				<tr><th scope="row">Crosshair Y</th><td data-label="Hides while aiming">No</td><td data-label="Reads keys by">One system shortcut</td></tr>
-				<tr><th scope="row">CrossOver</th><td data-label="Hides while aiming">Yes</td><td data-label="Reads keys by">Global hooks, for aiming</td></tr>
+				<tr><th scope="row">Only over games</th><td class="me" data-label="Scorpio">Yes</td><td data-label="Simple Crosshair Overlay">—</td><td data-label="Crosshair Y">—</td><td data-label="CrossOver">—</td></tr>
+				<tr><th scope="row">Hides while you aim</th><td class="me" data-label="Scorpio">Yes</td><td data-label="Simple Crosshair Overlay">—</td><td data-label="Crosshair Y">—</td><td data-label="CrossOver">Yes</td></tr>
+				<tr><th scope="row">Crosshair per game</th><td class="me" data-label="Scorpio">Yes</td><td data-label="Simple Crosshair Overlay">—</td><td data-label="Crosshair Y">—</td><td data-label="CrossOver">—</td></tr>
+				<tr><th scope="row">CS2 crosshair codes</th><td class="me" data-label="Scorpio">Yes</td><td data-label="Simple Crosshair Overlay">—</td><td data-label="Crosshair Y">—</td><td data-label="CrossOver">—</td></tr>
+				<tr><th scope="row">Crosshair in OBS</th><td class="me" data-label="Scorpio">Yes</td><td data-label="Simple Crosshair Overlay">—</td><td data-label="Crosshair Y">—</td><td data-label="CrossOver">—</td></tr>
+				<tr><th scope="row">Your own image</th><td class="me" data-label="Scorpio">Next update</td><td data-label="Simple Crosshair Overlay">Yes</td><td data-label="Crosshair Y">Yes</td><td data-label="CrossOver">Yes</td></tr>
+				<tr><th scope="row">Reads keys by</th><td class="me" data-label="Scorpio">System shortcuts</td><td data-label="Simple Crosshair Overlay">Checking every key</td><td data-label="Crosshair Y">One shortcut</td><td data-label="CrossOver">Global hooks</td></tr>
+				<tr><th scope="row">Systems</th><td class="me" data-label="Scorpio">Windows, Linux</td><td data-label="Simple Crosshair Overlay">Windows, macOS</td><td data-label="Crosshair Y">Windows, Linux</td><td data-label="CrossOver">Windows, macOS, Linux</td></tr>
 			</tbody>
 		</table>
-		<figcaption>From each app’s code. None touches the game.</figcaption>
+		<figcaption>From each app’s code.</figcaption>
 	</figure>
 	<div class="faq obj" id="faq">
-		<details class="qa"><summary>Is a crosshair overlay bannable?<i aria-hidden="true"></i></summary><div class="a"><p>No overlay can promise that you will never be banned. Scorpio never reads or changes the game, but a game's own rules can forbid external crosshairs.</p></div></details>
+		<details class="qa"><summary>Is a crosshair overlay bannable?<i aria-hidden="true"></i></summary><div class="a"><p>No overlay can promise that. Scorpio never touches the game, but a game's own rules can forbid crosshair overlays.</p></div></details>
 		<details class="qa"><summary>Does it work with Vanguard, Easy Anti-Cheat, BattlEye or VAC?<i aria-hidden="true"></i></summary><div class="a"><p>None of them has approved it directly. Scorpio crosses none of their lines, since it never touches the game or the anti-cheat. The exception is a game whose own rules forbid crosshair overlays.</p></div></details>
 		<details class="qa"><summary>Does Scorpio lower my frame rate?<i aria-hidden="true"></i></summary><div class="a"><p>Most likely not, though we have not measured it. Scorpio is one small process, nearly idle on the processor, and loads nothing into the game.</p></div></details>
 		<details class="qa"><summary>Does Scorpio collect data?<i aria-hidden="true"></i></summary><div class="a"><p>No. It sends no usage data, has no account, and goes online only for updates from GitHub.</p></div></details>
@@ -416,7 +419,7 @@ html.js .rv.in{opacity:1;transform:none}
 		<h2 class="name" id="games-h">Only over&nbsp;games</h2>
 		
 		<p>The crosshair shows while a game is in front and hides when you switch away. A game is one <b>you added</b>, any <b>fullscreen</b> window, or a game from a launcher such as Steam, Epic Games or GOG.</p>
-		<p>It can also hide while you aim, and keyboard shortcuts lock, centre and switch it.</p>
+		<p>Keyboard shortcuts lock, centre and switch it.</p>
 	</div>
 	<figure class="shot"><img src="images/scorpio-game-detection.webp" width="1960" height="1400" loading="lazy" decoding="async" alt="Scorpio Games tab: two added games, one with its own crosshair, and switches for fullscreen windows and games from launchers"></figure>
 </section>
