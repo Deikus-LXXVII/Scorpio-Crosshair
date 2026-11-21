@@ -562,6 +562,18 @@ pub fn run() {
         std::env::set_var("GDK_BACKEND", "x11");
     }
 
+    // Tauri's async work (the settings window's files and calls, update
+    // checks) on one worker thread. Its default runtime starts one per
+    // logical processor (20 on the owner's PC, 1.5 MB), and they stay for
+    // the rest of the run after the first update check or settings window.
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(1)
+        .thread_name("scorpio-async")
+        .enable_all()
+        .build()
+        .expect("Scorpio's async runtime failed to start");
+    tauri::async_runtime::set(runtime.handle().clone());
+
     let shortcuts = tauri_plugin_global_shortcut::Builder::new()
         .with_handler(|handle, shortcut, event| {
             if event.state != ShortcutState::Pressed {
