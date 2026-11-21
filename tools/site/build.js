@@ -85,7 +85,7 @@ const chart = () => {
 ${EFF.map( p => `\t\t\t\t\t<tr${p.me ? ' class="me"' : ''}><th scope="row">${p.name} <span>${p.ver}</span></th>${cell( mid( p.mem ), maxM, 'MB' )}${cell( mid( p.cpu ), maxC, 'ms' )}</tr>` ).join( '\n' )}
 				</tbody>
 			</table>
-			<figcaption><span class="rig" tabindex="0" aria-describedby="rig">Windows 11 gaming PC<span class="tip" role="tooltip" id="rig">${RIG.join( '<br>' )}</span></span>, 21 November 2026: each program idle, crosshair shown, all its processes counted. Middle of three runs.</figcaption>
+			<figcaption><span class="rig" tabindex="0" aria-describedby="rig">Windows 11 gaming PC<span class="tip" role="tooltip" id="rig">${RIG.join( '<br>' )}</span></span>, 21 November 2026: each program idle, crosshair shown, all its processes counted. Middle of three runs. Windows counts CPU time in 15.6 ms steps.</figcaption>
 		</figure>`
 }
 
