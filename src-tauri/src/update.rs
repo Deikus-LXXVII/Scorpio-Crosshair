@@ -39,6 +39,8 @@ pub struct Updates {
     /// change was interrupted by play.
     games_seen: AtomicU64,
     waiting: AtomicBool,
+    /// The bundled root certificates failed where the system's worked.
+    system_roots: AtomicBool,
 }
 
 /// The updater replaces an AppImage or runs the Windows installer; a .deb
@@ -65,17 +67,52 @@ fn plain(error: &str) -> String {
     }
 }
 
+/// Mozilla's root certificates, bundled with Scorpio.
+fn bundled_roots() -> Vec<reqwest::Certificate> {
+    let roots = webpki_root_certs::TLS_SERVER_ROOT_CERTS.iter();
+    roots.filter_map(|der| reqwest::Certificate::from_der(der).ok()).collect()
+}
+
+/// Asks for the latest release. With the bundled root certificates unless
+/// `system_roots`: checking a server with those is plain Rust, while the
+/// system's go through Windows' certificate chain engine, which keeps about
+/// 1.5 MB and four threads for the rest of the run.
+async fn ask(handle: &AppHandle, system_roots: bool) -> tauri_plugin_updater::Result<Option<Update>> {
+    let updater = if system_roots {
+        handle.updater()?
+    } else {
+        let bundled = |client: reqwest::ClientBuilder| client.tls_certs_only(bundled_roots());
+        handle.updater_builder().configure_client(bundled).build()?
+    };
+    updater.check().await
+}
+
+/// The bundled roots first. If they fail where the system's work (an
+/// antivirus or a company proxy that re-signs HTTPS with its own root), the
+/// system's are used from then on.
+async fn latest(handle: &AppHandle) -> tauri_plugin_updater::Result<Option<Update>> {
+    let updates = handle.state::<Updates>();
+    if updates.system_roots.load(Ordering::SeqCst) {
+        return ask(handle, true).await;
+    }
+    let bundled = ask(handle, false).await;
+    if bundled.is_ok() {
+        return bundled;
+    }
+    let system = ask(handle, true).await;
+    if system.is_ok() {
+        updates.system_roots.store(true, Ordering::SeqCst);
+    }
+    system
+}
+
 /// Looks for a newer version and remembers it.
 pub async fn check(handle: &AppHandle) -> UpdateState {
     if !supported() {
         return UpdateState::Unsupported;
     }
     set(handle, UpdateState::Checking);
-    let result = match handle.updater() {
-        Ok(updater) => updater.check().await,
-        Err(error) => Err(error),
-    };
-    let state = match result {
+    let state = match latest(handle).await {
         Ok(Some(update)) => {
             let state = UpdateState::Available { version: update.version.clone(), notes: update.body.clone() };
             *handle.state::<Updates>().found.lock().unwrap() = Some(update);
@@ -88,32 +125,42 @@ pub async fn check(handle: &AppHandle) -> UpdateState {
     state
 }
 
+async fn download(handle: &AppHandle, update: &Update) -> tauri_plugin_updater::Result<Vec<u8>> {
+    let progress = handle.clone();
+    let version = update.version.clone();
+    let mut received = 0usize;
+    let on_chunk = move |chunk, total: Option<u64>| {
+        received += chunk;
+        if let Some(total) = total.filter(|t| *t > 0) {
+            let percent = ((received as u64 * 100) / total).min(100) as u8;
+            set(&progress, UpdateState::Downloading { version: version.clone(), percent });
+        }
+    };
+    update.download(on_chunk, || {}).await
+}
+
 /// Downloads the update found by `check` and installs it; Scorpio then
 /// restarts (on Windows the installer closes it and starts the new one).
 async fn download_and_install(handle: &AppHandle) {
-    let update = handle.state::<Updates>().found.lock().unwrap().clone();
-    let Some(update) = update else { return };
-    let version = update.version.clone();
-    let progress = handle.clone();
-    let progress_version = version.clone();
-    let mut received = 0usize;
-    let bytes = update
-        .download(
-            move |chunk, total| {
-                received += chunk;
-                if let Some(total) = total.filter(|t| *t > 0) {
-                    let percent = ((received as u64 * 100) / total).min(100) as u8;
-                    set(&progress, UpdateState::Downloading { version: progress_version.clone(), percent });
-                }
-            },
-            || {},
-        )
-        .await;
+    let updates = handle.state::<Updates>();
+    let found = updates.found.lock().unwrap().clone();
+    let Some(mut update) = found else { return };
+    let mut bytes = download(handle, &update).await;
+    if bytes.is_err() && !updates.system_roots.load(Ordering::SeqCst) {
+        // Found with the bundled roots; the download host may need the system's.
+        if let Ok(Some(again)) = ask(handle, true).await {
+            let retried = download(handle, &again).await;
+            if retried.is_ok() {
+                updates.system_roots.store(true, Ordering::SeqCst);
+                (update, bytes) = (again, retried);
+            }
+        }
+    }
     let bytes = match bytes {
         Ok(bytes) => bytes,
         Err(error) => return set(handle, UpdateState::Failed { message: format!("The download failed: {error}") }),
     };
-    set(handle, UpdateState::Installing { version });
+    set(handle, UpdateState::Installing { version: update.version.clone() });
     crate::before_exit(handle);
     match update.install(bytes) {
         Ok(()) => handle.restart(),
@@ -193,5 +240,19 @@ pub fn start(handle: &AppHandle) {
     });
     if let Err(error) = spawned {
         log::warn!("update checks not started: {error}");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_bundled_root_is_read() {
+        // A root that fails to parse is dropped silently; all of them failing
+        // would send every check to the system's roots and their cost.
+        let roots = webpki_root_certs::TLS_SERVER_ROOT_CERTS;
+        assert!(roots.len() > 100);
+        assert_eq!(bundled_roots().len(), roots.len());
     }
 }

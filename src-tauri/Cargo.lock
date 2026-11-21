@@ -3393,6 +3393,7 @@ name = "scorpio"
 version = "0.1.1"
 dependencies = [
  "log",
+ "reqwest",
  "serde",
  "serde_json",
  "tauri",
@@ -3401,6 +3402,8 @@ dependencies = [
  "tauri-plugin-global-shortcut",
  "tauri-plugin-single-instance",
  "tauri-plugin-updater",
+ "tokio",
+ "webpki-root-certs",
  "windows",
  "x11rb 0.14.0",
 ]
