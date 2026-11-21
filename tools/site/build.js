@@ -71,7 +71,7 @@ const EFF = [
 	{ name: 'CrossOver', ver: '3.4.11', mem: [ 358.1, 359.1, 360.0 ], cpu: [ 47, 31, 47 ] },
 ]
 // The PC the efficiency runs were measured on, read from it on 2026-11-21.
-const RIG = [ 'Intel Core Ultra 7 265K', 'NVIDIA GeForce RTX 5080', '128 GB DDR5-5600', 'Windows 11 Pro 25H2' ]
+const RIG = [ 'Intel Core Ultra 7 265K', 'NVIDIA GeForce RTX 5080', '128 GB DDR5-5600', 'Windows 11 Pro 25H2 with AtlasOS' ]
 const mid = a => [ ...a ].sort( ( x, y ) => x - y )[ 1 ]
 const chart = () => {
 	const maxM = Math.max( ...EFF.map( p => mid( p.mem ) ) ), maxC = Math.max( ...EFF.map( p => mid( p.cpu ) ) )
