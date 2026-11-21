@@ -2,6 +2,7 @@ pub mod app;
 pub mod core;
 pub mod platform;
 pub mod store;
+pub mod update;
 
 use app::{App, Display, Effects, Hotkey, Status};
 use core::crosshair::{self, Crosshair};
@@ -19,7 +20,7 @@ use tauri::{AppHandle, Emitter, Manager, RunEvent, WebviewUrl, WebviewWindowBuil
 use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
-const SETTINGS_WINDOW: &str = "settings";
+pub const SETTINGS_WINDOW: &str = "settings";
 
 struct Shared {
     app: Mutex<App>,
@@ -116,6 +117,20 @@ fn open_settings(handle: &AppHandle) {
     }
 }
 
+/// The overlay goes away before Scorpio does (quit or update).
+pub fn before_exit(handle: &AppHandle) {
+    shared(handle).platform.send(Command::Hide);
+}
+
+pub fn settings_snapshot(handle: &AppHandle) -> Settings {
+    shared(handle).app.lock().unwrap().settings.clone()
+}
+
+/// True while the crosshair is over a game (or a detected window).
+pub fn game_in_front(handle: &AppHandle) -> bool {
+    shared(handle).app.lock().unwrap().focus.visible
+}
+
 fn quit(handle: &AppHandle) {
     shared(handle).platform.send(Command::Quit);
     handle.exit(0);
@@ -133,10 +148,12 @@ struct View {
     installed: usize,
     platform: &'static str,
     version: &'static str,
+    update: update::UpdateState,
 }
 
 #[tauri::command]
 fn view(handle: AppHandle) -> View {
+    let update = update::state(&handle);
     let state = shared(&handle);
     let app = state.app.lock().unwrap();
     View {
@@ -147,6 +164,7 @@ fn view(handle: AppHandle) -> View {
         installed: app.installed.len(),
         platform: std::env::consts::OS,
         version: env!("CARGO_PKG_VERSION"),
+        update,
     }
 }
 
@@ -229,6 +247,16 @@ fn pro_crosshairs() -> serde_json::Value {
 }
 
 #[tauri::command]
+async fn check_updates(handle: AppHandle) -> update::UpdateState {
+    update::check(&handle).await
+}
+
+#[tauri::command]
+async fn install_update(handle: AppHandle) {
+    update::install_now(handle).await;
+}
+
+#[tauri::command]
 fn quit_app(handle: AppHandle) {
     quit(&handle);
 }
@@ -272,8 +300,10 @@ fn setup(handle: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         })
         .build(handle)?;
 
+    handle.manage(update::Updates::default());
     register_hotkeys(handle, &settings);
     sync_autostart(handle, settings.start_with_system);
+    update::start(handle);
 
     // Platform events, one at a time, for as long as Scorpio runs.
     let events_handle = handle.clone();
@@ -292,6 +322,14 @@ fn setup(handle: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
                 effects
             };
             apply(&events_handle, effects);
+            if display_check {
+                let (visible, manual) = {
+                    let state = shared(&events_handle);
+                    let app = state.app.lock().unwrap();
+                    (app.focus.visible, app.settings.update_manually)
+                };
+                update::install_if_idle(&events_handle, visible, manual);
+            }
         }
     })?;
 
@@ -337,6 +375,7 @@ pub fn run() {
         .device_event_filter(tauri::DeviceEventFilter::Always)
         .plugin(tauri_plugin_single_instance::init(|handle, _args, _cwd| open_settings(handle)))
         .plugin(shortcuts)
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, None))
         .invoke_handler(tauri::generate_handler![
             view,
@@ -348,6 +387,8 @@ pub fn run() {
             add_window,
             set_locked,
             pro_crosshairs,
+            check_updates,
+            install_update,
             quit_app
         ])
         .setup(|app| {

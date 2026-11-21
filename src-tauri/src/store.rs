@@ -128,6 +128,8 @@ pub struct Settings {
     pub offset: (i32, i32),
     pub start_with_system: bool,
     pub hide_from_capture: bool,
+    /// Off by default: updates install by themselves, between games.
+    pub update_manually: bool,
 }
 
 fn clean_name(name: &str, fallback: &str) -> String {

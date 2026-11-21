@@ -600,7 +600,7 @@ const systemTab = () => {
 		h( 'h2.t-h1-app', { text: 'System' } ),
 		h( 'h2.t-h4', { text: 'Position' } ),
 		h( 'div.slab.flush', {},
-			setting( 'Position', centred ? 'Exactly centred.' : `Moved ${dx} px across and ${dy} px down from the centre.`, h( 'div.inline-actions', {},
+			setting( 'Position', centred ? 'Exactly centred.' : `${Math.abs( dx )} px ${dx < 0 ? 'left' : 'right'} and ${Math.abs( dy )} px ${dy < 0 ? 'up' : 'down'} from the centre.`, h( 'div.inline-actions', {},
 				h( 'button.btn', { type: 'button', text: S.status?.locked === false ? 'Lock' : 'Unlock', onclick: async () => {
 
 					await invoke( 'set_locked', { locked: S.status?.locked === false } )
@@ -630,12 +630,57 @@ const systemTab = () => {
 
 			}, { label: 'Hide from screen capture', disabled: !windows } ), { off: !windows } ),
 		),
+		h( 'h2.t-h4', { text: 'Updates' } ),
+		updatesBlock(),
 		h( 'div.about', {},
 			h( 'p.t-h3', { text: `Scorpio ${S.view.version}` } ),
 			h( 'p.help', { text: 'A crosshair overlay. It draws its own window over the game and never opens, reads or changes the game or its anti-cheat.' } ),
 			h( 'p.help', { text: 'Free for non-commercial use under the PolyForm Noncommercial licence 1.0.0. Made by LXXVII.' } ),
 			h( 'button.btn.danger', { type: 'button', text: 'Quit Scorpio', onclick: () => invoke( 'quit_app' ) } ),
 		),
+	)
+
+}
+
+const UPDATE_TEXT = {
+	idle: () => 'Not checked yet.',
+	checking: () => 'Checking for a new version.',
+	upToDate: () => `Scorpio ${S.view.version} is the newest version.`,
+	available: u => `Scorpio ${u.version} is out.`,
+	downloading: u => `Downloading Scorpio ${u.version}: ${u.percent}%.`,
+	ready: u => `Scorpio ${u.version} is downloaded. It installs when no game is in front, or now.`,
+	installing: u => `Installing Scorpio ${u.version}. Scorpio restarts in a moment.`,
+	failed: u => u.message,
+	unsupported: () => 'This copy is updated by your package manager.',
+}
+
+const updatesBlock = () => {
+
+	const u = S.update || { state: 'idle' }
+	const unsupported = u.state === 'unsupported'
+	const busy = [ 'checking', 'downloading', 'installing' ].includes( u.state )
+	const offer = [ 'available', 'ready' ].includes( u.state )
+	const button = h( `button.btn${offer ? '.primary' : ''}`, {
+		type: 'button',
+		text: offer ? 'Install and restart' : 'Check for updates',
+		disabled: busy || unsupported,
+		onclick: async () => {
+
+			if ( offer ) return invoke( 'install_update' )
+			S.update = await invoke( 'check_updates' )
+			render()
+
+		},
+	} )
+
+	return h( 'div.slab.flush', {},
+		setting( 'Install updates automatically', unsupported ? null : 'Scorpio checks every few hours. An update installs only while no game is in front, then Scorpio restarts.', toggle( !S.settings.updateManually, v => {
+
+			S.settings.updateManually = !v
+			save()
+
+		}, { label: 'Install updates automatically', disabled: unsupported } ), { off: unsupported } ),
+		setting( 'Version', UPDATE_TEXT[u.state]( u ), button ),
 	)
 
 }
@@ -689,6 +734,7 @@ const start = async () => {
 	S.view = await invoke( 'view' )
 	S.settings = S.view.settings
 	S.status = S.view.status
+	S.update = S.view.update
 	lastSaved = JSON.stringify( S.settings )
 	S.pros = ( await invoke( 'pro_crosshairs' ) )?.players || []
 
@@ -700,6 +746,12 @@ const start = async () => {
 		lastSaved = text
 		S.settings = payload
 		render()
+
+	} )
+	await tauri.event.listen( 'update', ( { payload } ) => {
+
+		S.update = payload
+		if ( S.tab === 'system' ) render()
 
 	} )
 	await tauri.event.listen( 'status', ( { payload } ) => {

@@ -7,7 +7,11 @@ body { display: grid; grid-template-rows: auto auto 1fr; overflow: hidden; backg
 .titlebar .status { display: flex; flex: 1; align-items: center; justify-content: center; gap: 10px; min-width: 0; padding: 0 16px; font-size: var(--fs-small); color: var(--mute); white-space: nowrap; overflow: hidden; }
 .titlebar .status span { overflow: hidden; text-overflow: ellipsis; }
 
-#view { overflow-y: auto; scrollbar-gutter: stable; }
+#view { overflow-y: auto; }
+
+/* No scrollbars anywhere: every region still scrolls by wheel, keys and touch. */
+* { scrollbar-width: none; }
+::-webkit-scrollbar { display: none; width: 0; height: 0; }
 
 h2.t-h4 { margin: 28px 0 12px; color: var(--marble); }
 .slab.flush { background: var(--stone); }
