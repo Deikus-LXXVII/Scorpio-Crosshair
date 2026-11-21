@@ -3,7 +3,7 @@
 //! here is tested without a screen.
 
 use crate::core::center::{centred, Area};
-use crate::core::crosshair::{draw, Crosshair};
+use crate::core::crosshair::{draw, to_svg, Crosshair};
 use crate::core::focus::{self, FocusState, WindowInfo};
 use crate::core::launchers::{game_at, InstalledGame};
 use crate::core::raster::{rasterize, slab};
@@ -398,12 +398,34 @@ impl App {
         Command::Show { bitmap, x: x + offset.0, y: y + offset.1, unlocked: *unlocked, button }
     }
 
+    /// What a stream should show, for the OBS page: the crosshair as drawn
+    /// on the game's screen (never the unlocked slab), or nothing.
+    pub fn stream_view(&self) -> StreamView {
+        match &self.shown {
+            Shown::Crosshair { crosshair, display, offset, .. } => StreamView {
+                visible: true,
+                svg: to_svg(&draw(crosshair, display.height)),
+                offset: [offset.0, offset.1],
+                height: display.height,
+            },
+            Shown::Hidden => StreamView { visible: false, svg: String::new(), offset: [0, 0], height: self.target_display().height },
+        }
+    }
+
     /// Plain words for the settings window's status line.
     pub fn status(&self) -> Status {
         let game = self.focus.game.and_then(|index| self.settings.games.get(index)).map(|game| game.name.clone());
         let front = self.front.as_ref().filter(|window| window.pid != self.own_pid).cloned().or_else(|| self.last_outside.clone());
         Status { visible: self.focus.visible, game, front, locked: self.locked, hidden: self.hidden }
     }
+}
+
+#[derive(Clone, Debug, PartialEq, serde::Serialize)]
+pub struct StreamView {
+    pub visible: bool,
+    pub svg: String,
+    pub offset: [i32; 2],
+    pub height: u32,
 }
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize)]
@@ -665,5 +687,16 @@ mod tests {
         assert_eq!(2 * y + bitmap.height as i32, 1440);
         let settings = WindowInfo { title: SETTINGS_TITLE.into(), monitor: Some([0, 0, 1920, 1080]), ..window(OWN, "scorpio", false) };
         assert!(app.event(Event::Foreground(Some(settings))).commands.iter().all(|c| !matches!(c, Command::Show { .. })), "tuning keeps it on the game's monitor");
+    }
+
+    #[test]
+    fn the_stream_follows_the_overlay() {
+        let mut app = app();
+        assert!(!app.stream_view().visible);
+        app.event(Event::Foreground(Some(window(1, "game", false))));
+        let view = app.stream_view();
+        assert!(view.visible && view.svg.starts_with("<svg"));
+        app.hotkey(Hotkey::Hide);
+        assert!(!app.stream_view().visible);
     }
 }

@@ -64,6 +64,10 @@ h2.t-h4 { margin: 28px 0 12px; color: var(--marble); }
 .about { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 36px; padding-top: 24px; border-top: 1px solid var(--line); }
 .about .btn { margin-top: 12px; }
 
+.obs-steps { margin: 8px 0 12px; padding-left: 20px; font-size: var(--fs-small); color: var(--mute); }
+.obs-steps li + li { margin-top: 4px; }
+.setting.stack .code-row { margin-top: 0; }
+
 .keybind[aria-invalid="true"] { border-color: var(--porphyry-hi); }
 
 #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); max-width: calc(100% - 48px); }

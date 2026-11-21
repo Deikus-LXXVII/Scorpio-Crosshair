@@ -31,10 +31,17 @@ const save = ( { now = false } = {} ) => {
 	clearTimeout( saveTimer )
 	const run = async () => {
 
-		const [ settings, refused ] = await invoke( 'save_settings', { settings: S.settings } )
+		const { settings, refused, obsError } = await invoke( 'save_settings', { settings: S.settings } )
 
 		lastSaved = JSON.stringify( settings )
 		S.refused = refused
+		if ( obsError ) {
+
+			S.settings.obs = false
+			toast( `The OBS source could not start. ${obsError}`, { alert: true } )
+			if ( S.tab === 'system' ) render()
+
+		}
 		if ( refused.length ) {
 
 			toast( 'Those keys are taken, by another program or another shortcut. Choose different keys.', { alert: true } )
@@ -636,6 +643,8 @@ const systemTab = () => {
 
 			}, { label: 'Hide from screen capture', disabled: !windows } ), { off: !windows } ),
 		),
+		h( 'h2.t-h4', { text: 'Stream' } ),
+		obsBlock(),
 		h( 'h2.t-h4', { text: 'Updates' } ),
 		updatesBlock(),
 		h( 'div.about', {},
@@ -645,6 +654,47 @@ const systemTab = () => {
 			h( 'button.btn.danger', { type: 'button', text: 'Quit Scorpio', onclick: () => invoke( 'quit_app' ) } ),
 		),
 	)
+
+}
+
+// OBS's game capture never contains the overlay window, so the crosshair
+// reaches the stream as a Browser source served by Scorpio itself.
+const obsBlock = () => {
+
+	const on = S.settings.obs
+	const address = S.view.obsAddress
+	const rows = [
+		setting( 'Show the crosshair in OBS', 'For Game Capture, which never includes the crosshair window. Scorpio serves the crosshair to OBS on this computer only; it shows and hides with yours.', toggle( on, v => {
+
+			S.settings.obs = v
+			save( { now: true } ).then( render )
+
+		}, { label: 'Show the crosshair in OBS' } ) ),
+	]
+
+	if ( on ) {
+
+		rows.push( h( 'div.setting.stack', {},
+			h( 'div.setting-name', { text: 'In OBS' } ),
+			h( 'ol.obs-steps', {},
+				h( 'li', { text: 'Add a Browser source above your game capture.' } ),
+				h( 'li', {}, 'Set its URL to the address below, and its width and height to your canvas size (Settings, Video, Base resolution).' ),
+				h( 'li', { text: 'Keep it filling the whole canvas, untransformed.' } ),
+			),
+			h( 'div.code-row', {},
+				h( 'input.input', { value: address, readonly: true, 'aria-label': 'Address for OBS', onfocus: event => event.target.select() } ),
+				h( 'button.btn', { type: 'button', text: 'Copy', onclick: async () => {
+
+					await navigator.clipboard.writeText( address )
+					toast( 'Address copied. Paste it into the Browser source in OBS.' )
+
+				} } ),
+			),
+		) )
+
+	}
+
+	return h( 'div.slab.flush', {}, rows )
 
 }
 

@@ -129,6 +129,8 @@ pub struct Settings {
     pub start_with_system: bool,
     /// Windows only; off by default (see the plan's anti-cheat table).
     pub hide_from_capture: bool,
+    /// Serve the crosshair to OBS as a Browser source (127.0.0.1 only).
+    pub obs: bool,
     /// Off by default: updates install by themselves, between games.
     pub update_manually: bool,
 }

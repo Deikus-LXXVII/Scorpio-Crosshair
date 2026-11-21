@@ -1,6 +1,7 @@
 pub mod app;
 pub mod core;
 pub mod platform;
+pub mod obs;
 pub mod store;
 pub mod update;
 
@@ -32,6 +33,7 @@ struct Shared {
     /// Held from reading the settings to writing them, so two threads saving
     /// at once can't write an older copy last.
     saving: Mutex<()>,
+    obs: obs::Obs,
 }
 
 fn shared(handle: &AppHandle) -> tauri::State<'_, Shared> {
@@ -42,8 +44,13 @@ fn shared(handle: &AppHandle) -> tauri::State<'_, Shared> {
 /// the settings window.
 fn apply(handle: &AppHandle, effects: Effects) {
     let state = shared(handle);
+    let overlay_changed = !effects.commands.is_empty();
     for command in effects.commands {
         state.platform.send(command);
+    }
+    if overlay_changed || effects.settings_changed {
+        let view = state.app.lock().unwrap().stream_view();
+        state.obs.publish(serde_json::to_string(&view).unwrap_or_default());
     }
     if effects.settings_changed {
         let settings = persist(handle);
@@ -162,6 +169,7 @@ struct View {
     platform: &'static str,
     version: &'static str,
     update: update::UpdateState,
+    obs_address: String,
 }
 
 #[tauri::command]
@@ -178,13 +186,35 @@ fn view(handle: AppHandle) -> View {
         platform: std::env::consts::OS,
         version: env!("CARGO_PKG_VERSION"),
         update,
+        obs_address: obs::address(),
     }
 }
 
-/// Saves new settings; returns them validated and the shortcuts that could
-/// not be registered.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Saved {
+    settings: Settings,
+    /// Shortcuts that could not be registered.
+    refused: Vec<String>,
+    /// Why the OBS source could not start, if it couldn't.
+    obs_error: Option<String>,
+}
+
+/// Turns the OBS source on or off as the settings say; on failure the
+/// setting is turned back off.
+fn sync_obs(handle: &AppHandle) -> Option<String> {
+    let state = shared(handle);
+    let wanted = state.app.lock().unwrap().settings.obs;
+    let error = state.obs.set_enabled(wanted).err();
+    if error.is_some() {
+        state.app.lock().unwrap().settings.obs = false;
+    }
+    error
+}
+
+/// Saves new settings and returns them validated.
 #[tauri::command]
-fn save_settings(handle: AppHandle, settings: Settings) -> (Settings, Vec<String>) {
+fn save_settings(handle: AppHandle, settings: Settings) -> Saved {
     let state = shared(&handle);
     let (effects, keys_changed, settings) = {
         let mut app = state.app.lock().unwrap();
@@ -194,10 +224,11 @@ fn save_settings(handle: AppHandle, settings: Settings) -> (Settings, Vec<String
     };
     let refused = if keys_changed { register_hotkeys(&handle, &settings) } else { Vec::new() };
     sync_autostart(&handle, settings.start_with_system);
+    let obs_error = sync_obs(&handle);
     // The window already has these settings: saved, but not echoed back.
-    persist(&handle);
+    let settings = persist(&handle);
     apply(&handle, Effects { settings_changed: false, status_changed: true, ..effects });
-    (settings, refused)
+    Saved { settings, refused, obs_error }
 }
 
 /// The crosshair as SVG, sized for the display it will be drawn on.
@@ -292,7 +323,7 @@ fn setup(handle: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(display) = primary_display(handle) {
         app.display = display;
     }
-    handle.manage(Shared { app: Mutex::new(app), platform, path, hotkeys: Mutex::new(HashMap::new()), lock_item, saving: Mutex::new(()) });
+    handle.manage(Shared { app: Mutex::new(app), platform, path, hotkeys: Mutex::new(HashMap::new()), lock_item, saving: Mutex::new(()), obs: obs::Obs::default() });
 
     TrayIconBuilder::with_id("scorpio")
         .icon(handle.default_window_icon().cloned().ok_or("no icon")?)
@@ -319,6 +350,9 @@ fn setup(handle: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     register_hotkeys(handle, &settings);
     sync_autostart(handle, settings.start_with_system);
     update::start(handle);
+    if let Some(error) = sync_obs(handle) {
+        log::warn!("OBS source not started: {error}");
+    }
 
     // Platform events, one at a time, for as long as Scorpio runs.
     let events_handle = handle.clone();
