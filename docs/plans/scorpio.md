@@ -103,3 +103,12 @@ sounds, update checks, announcements, macOS, portable mode.
 - No log file: failures such as a settings write error are silent.
 - With hide-while-aiming on, raw mouse input wakes the platform thread for
   every movement packet. Not yet measured; add a figure to `docs/budget.md`.
+
+## Code signing (owner's decision, 2026-11-21)
+
+No paid code signing certificate: the cost is not worth it for this
+project. The Windows installer stays unsigned, so SmartScreen warns on
+first run (the README and release notes say how to continue). Once the
+owner has tested Scorpio and the fixes from that test are released, the
+installer of that version is submitted to Microsoft for analysis, once,
+not for every small release.

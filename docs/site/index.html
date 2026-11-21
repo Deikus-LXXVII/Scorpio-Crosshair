@@ -163,6 +163,8 @@ html.page::-webkit-scrollbar{display:none}
 
 /* the hero: one tablet on a wall, 56px of the page below show (R3, R7) */
 .wall{position:relative;padding:28px 28px 0}
+/* the page's keylines in the tablet's coordinates (the tablet starts 28px in): left margin, and the middle of the first block's column gap */
+.tablet{--bw:min(1280px,100vw);--kx:calc((100vw - var(--bw)) / 2 + var(--gutter) - 28px);--ax:calc(var(--kx) + (var(--bw) - 2 * var(--gutter) - 72px) * 5 / 12 + 36px)}
 .tablet{position:relative;display:grid;place-items:center;height:calc(100vh - 100px);min-height:620px;overflow:hidden;text-align:center;background:var(--stone);border-radius:2px 2px 0 0;box-shadow:inset 0 0 0 1px rgba(235,229,218,.06),inset 0 1px 0 rgba(235,229,218,.10)}
 .tablet-edge{position:relative;z-index:1;height:16px;border-radius:0 0 2px 2px;background:linear-gradient(#100f0d,#080706);border-top:1px solid rgba(235,229,218,.14);box-shadow:0 1px 0 rgba(0,0,0,.8),var(--shadow-slab)}
 .cramp{position:absolute;z-index:3;width:42px;height:14px;border-radius:2px;background:linear-gradient(180deg,var(--cramp-1),var(--cramp-2) 60%,var(--cramp-3));border:1px solid rgba(0,0,0,.7);box-shadow:inset 0 1px 0 rgba(255,236,200,.18),0 2px 4px rgba(0,0,0,.6);pointer-events:none}
@@ -267,6 +269,21 @@ html.js .rv.in{opacity:1;transform:none}
 	.tbl td+td{margin-top:8px}
 	.tbl td[data-h]::before{content:attr(data-h);display:block;font:500 10px/16px var(--text);letter-spacing:.24em;text-transform:uppercase;color:var(--mute)}
 }
+
+.hero-a{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:72px;align-items:center;justify-items:start;padding:0 var(--kx);text-align:left}
+.ha-copy{display:flex;flex-direction:column;align-items:flex-start}
+.ha-name{font:400 clamp(72px,8.4vw,128px)/.9 var(--display);letter-spacing:.12em;margin-right:-.12em;text-transform:uppercase;color:var(--lit)}
+.ha-copy .caps{margin-top:40px}
+.ha-copy .btn{margin-top:40px}
+.ha-mark{justify-self:center;width:min(100%,560px,max(440px,calc(100vh - 300px)));height:auto;aspect-ratio:1}
+@media (max-width:860px){
+	.hero-a{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto;gap:40px;align-content:center;justify-items:center;padding:0 24px 72px;text-align:center}
+	.ha-copy{align-items:center;order:2}
+	.ha-name{font-size:clamp(56px,17vw,96px)}
+	.ha-copy .caps{margin-top:28px;max-width:300px;margin-right:calc(-1 * var(--track-caps))}
+	.ha-copy .btn{margin-top:28px}
+	.ha-mark{width:min(100%,max(220px,calc(100vh - 560px)))}
+}
 @media (prefers-reduced-motion:reduce){
 	*,*::before,*::after{transition:none!important}
 	html.page{scroll-behavior:auto}
@@ -280,12 +297,25 @@ html.js .rv.in{opacity:1;transform:none}
 <a class="skip" href="#main">Skip to the content</a>
 
 <div class="wall">
-	<header class="tablet">
-		<div class="hero-lines">
-			<h1 aria-label="Scorpio"><span class="t-hero carved" data-t="Scorpio" aria-hidden="true">Scorpio</span></h1>
+
+	<header class="tablet hero-a">
+		<div class="ha-copy">
+			<h1 class="ha-name">Scorpio</h1>
 			<p class="caps">A crosshair over your game, only while you play</p>
 			<a class="btn" href="https://github.com/Deikus-LXXVII/Scorpio-Crosshair/releases/latest">Download Scorpio</a>
 		</div>
+		<svg class="ha-mark" viewBox="128 128 768 768" aria-hidden="true">
+			<defs>
+				<path id="ha-b" d="M647.8 403.4L896 512L512 680L484.2 667.8L453.5 597.7L512 623.2L766.3 512L678.5 473.6ZM403.4 376.2L512 128L680 512L667.8 539.8L597.7 570.5L623.2 512L512 257.7L473.6 345.5ZM376.2 620.6L128 512L512 344L539.8 356.2L570.5 426.3L512 400.8L257.7 512L345.5 550.4ZM620.6 647.8L512 896L344 512L356.2 484.2L426.3 453.5L400.8 512L512 766.3L550.4 678.5Z"/>
+				<radialGradient id="ha-l" gradientUnits="userSpaceOnUse" cx="330" cy="300" r="520"><stop offset="0" stop-color="#f0e4ce" stop-opacity=".34"/><stop offset=".45" stop-color="#f0e4ce" stop-opacity=".07"/><stop offset=".72" stop-color="#f0e4ce" stop-opacity="0"/></radialGradient>
+			</defs>
+			<use href="#ha-b" transform="translate(0 2.5)" fill="#ebe1cd" fill-opacity=".05"/>
+			<use href="#ha-b" transform="translate(0 -3)" fill="#000" fill-opacity=".7"/>
+			<use href="#ha-b" fill="#060605"/>
+			<use href="#ha-b" fill="url(#ha-l)"/>
+			<path d="M468 512L512 468L556 512L512 556Z" fill="#c8435a"/>
+			<path d="M468 512L512 468L556 512" fill="none" stroke="#e8899a" stroke-opacity=".5" stroke-width="2"/>
+		</svg>
 		<a class="cue" href="#games" aria-label="Go to the first section"><i></i></a>
 	</header>
 	<div class="tablet-edge"></div>

@@ -49,7 +49,153 @@ const SHOTS = {
 	obs: [ 'scorpio-obs-browser-source.webp', 'Scorpio System tab: Show the crosshair in OBS is on, with three setup steps and the Browser source address' ],
 	controls: [ 'scorpio-hide-while-aiming-and-shortcuts.webp', 'Scorpio Controls tab: the hide while aiming switch, the aim button, hold or toggle mode, and the six global shortcuts' ],
 }
-const shot = key => `<figure class="shot"><img src="images/${SHOTS[key][0]}" width="1960" height="1400" loading="lazy" decoding="async" alt="${SHOTS[key][1]}"></figure>`
+// The hero. Three concepts; switch with this one line.
+//   'a' Signum: the Nodus mark cut into the tablet, large, beside the name; its porphyry point is the page's one colour.
+//   'b' In front: the tablet is a screen with a drawn hall in it, and the crosshair stands at its vanishing point.
+//   'c' Lineae: the crosshair's arms are cut across the tablet; the name and the action sit in its quadrants, on the page's own keylines.
+const HERO = 'a'
+
+// Hall for concept b: a vaulted colonnade in one-point perspective, drawn around its vanishing point (0, 0), in px.
+const hall = () => {
+	const F = 560, W = 1.15, FLOOR = .62, TOP = -.95, NEAR = .55, FAR = 11
+	const Z = [ 1, 1.45, 2.1, 3.05, 4.4, 6.4 ]
+	const p = ( x, y, z ) => [ +( x * F / z ).toFixed( 1 ), +( y * F / z ).toFixed( 1 ) ]
+	const ln = ( a, b, o ) => `<path d="M${a[ 0 ]} ${a[ 1 ]}L${b[ 0 ]} ${b[ 1 ]}" stroke-opacity="${o}"/>`
+	const out = []
+	const op = z => Math.max( .05, .2 - z * .022 ).toFixed( 3 )
+	// the floor's edges, the architrave and the floor's joints run to the vanishing point
+	for ( const s of [ -1, 1 ] ) {
+		out.push( ln( p( s * W, FLOOR, NEAR ), p( s * W, FLOOR, FAR ), .16 ) )
+		out.push( ln( p( s * W, TOP, NEAR ), p( s * W, TOP, FAR ), .16 ) )
+	}
+	for ( let x = -W + .23; x < W - .1; x += .23 ) if ( Math.abs( x ) > .01 ) out.push( ln( p( x, FLOOR, NEAR ), p( x, FLOOR, FAR ), .07 ) )
+	for ( const z of Z ) {
+		const o = op( z )
+		out.push( ln( p( -W, FLOOR, z ), p( W, FLOOR, z ), o * .6 ) )
+		// a column on each side: two edges, a capital and a base
+		for ( const s of [ -1, 1 ] ) {
+			const xo = s * W, xi = s * ( W - .12 )
+			out.push( ln( p( xo, FLOOR, z ), p( xo, TOP, z ), o ), ln( p( xi, FLOOR, z ), p( xi, TOP, z ), o ) )
+			out.push( ln( p( s * ( W + .03 ), TOP + .05, z ), p( s * ( W - .15 ), TOP + .05, z ), o ) )
+			out.push( ln( p( s * ( W + .03 ), FLOOR - .04, z ), p( s * ( W - .15 ), FLOOR - .04, z ), o ) )
+		}
+		// the vault: a half circle from column to column
+		const [ cx, cy ] = p( 0, TOP, z ), r = +( W * F / z ).toFixed( 1 )
+		out.push( `<path d="M${cx - r} ${cy}A${r} ${r} 0 0 1 ${cx + r} ${cy}" stroke-opacity="${o}"/>` )
+	}
+	return `<svg class="hb-hall" viewBox="-1200 -900 2400 1800" aria-hidden="true"><g fill="none" stroke="#ebe5da" stroke-width="1" vector-effect="non-scaling-stroke">${out.join( '' )}</g></svg>`
+}
+
+// The crosshair at the vanishing point: four porphyry arms with a cut outline, CS2's classic shape.
+const crosshair = `<svg class="hb-x" viewBox="-16 -16 32 32" aria-hidden="true"><g fill="#c8435a" stroke="#060605" stroke-width="1"><rect x="-1.5" y="-13.5" width="3" height="9"/><rect x="-1.5" y="4.5" width="3" height="9"/><rect x="-13.5" y="-1.5" width="9" height="3"/><rect x="4.5" y="-1.5" width="9" height="3"/></g></svg>`
+
+const cue = cls => `<a class="cue${cls ? ' ' + cls : ''}" href="#games" aria-label="Go to the first section"><i></i></a>`
+const download = `<a class="btn" href="${DOWNLOAD}">Download Scorpio</a>`
+
+const HEROES = {
+	a: `
+	<header class="tablet hero-a">
+		<div class="ha-copy">
+			<h1 class="ha-name">Scorpio</h1>
+			<p class="caps">${LINE}</p>
+			${download}
+		</div>
+		<svg class="ha-mark" viewBox="128 128 768 768" aria-hidden="true">
+			<defs>
+				<path id="ha-b" d="${BANDS}"/>
+				<radialGradient id="ha-l" gradientUnits="userSpaceOnUse" cx="330" cy="300" r="520"><stop offset="0" stop-color="#f0e4ce" stop-opacity=".34"/><stop offset=".45" stop-color="#f0e4ce" stop-opacity=".07"/><stop offset=".72" stop-color="#f0e4ce" stop-opacity="0"/></radialGradient>
+			</defs>
+			<use href="#ha-b" transform="translate(0 2.5)" fill="#ebe1cd" fill-opacity=".05"/>
+			<use href="#ha-b" transform="translate(0 -3)" fill="#000" fill-opacity=".7"/>
+			<use href="#ha-b" fill="#060605"/>
+			<use href="#ha-b" fill="url(#ha-l)"/>
+			<path d="M468 512L512 468L556 512L512 556Z" fill="#c8435a"/>
+			<path d="M468 512L512 468L556 512" fill="none" stroke="#e8899a" stroke-opacity=".5" stroke-width="2"/>
+		</svg>
+		${cue()}
+	</header>`,
+	b: `
+	<header class="tablet hero-b">
+		<div class="hb-view" aria-hidden="true">${hall()}${crosshair}</div>
+		<div class="hb-copy">
+			<h1 class="hb-name">Scorpio</h1>
+			<p class="caps">${LINE}</p>
+			${download}
+		</div>
+		${cue()}
+	</header>`,
+	c: `
+	<header class="tablet hero-c">
+		<i class="hc-arm h" aria-hidden="true"></i><i class="hc-arm v" aria-hidden="true"></i><i class="hc-pt" aria-hidden="true"></i>
+		<h1 class="hc-name" aria-label="Scorpio"><span class="t-hero carved" data-t="Scorpio" aria-hidden="true">Scorpio</span></h1>
+		<div class="hc-act">
+			<p class="caps">${LINE}</p>
+			${download}
+		</div>
+		${cue( 'hc-cue' )}
+	</header>`,
+}
+
+// Per-concept styles. Shared parts (wall, tablet, edge, cramps, caps, button, cue) stay in the main sheet.
+// --kx is the page's left keyline in the tablet's coordinates: where the copy of every block starts.
+// --fx is where the figure column of the first block starts; --ax is the middle of the 72px gap between them.
+const HERO_CSS = {
+	a: `
+.hero-a{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:72px;align-items:center;justify-items:start;padding:0 var(--kx);text-align:left}
+.ha-copy{display:flex;flex-direction:column;align-items:flex-start}
+.ha-name{font:400 clamp(72px,8.4vw,128px)/.9 var(--display);letter-spacing:.12em;margin-right:-.12em;text-transform:uppercase;color:var(--lit)}
+.ha-copy .caps{margin-top:40px}
+.ha-copy .btn{margin-top:40px}
+.ha-mark{justify-self:center;width:min(100%,560px,max(440px,calc(100vh - 300px)));height:auto;aspect-ratio:1}
+@media (max-width:860px){
+	.hero-a{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto;gap:40px;align-content:center;justify-items:center;padding:0 24px 72px;text-align:center}
+	.ha-copy{align-items:center;order:2}
+	.ha-name{font-size:clamp(56px,17vw,96px)}
+	.ha-copy .caps{margin-top:28px;max-width:300px;margin-right:calc(-1 * var(--track-caps))}
+	.ha-copy .btn{margin-top:28px}
+	.ha-mark{width:min(100%,max(220px,calc(100vh - 560px)))}
+}`,
+	b: `
+.hero-b{display:block;background:var(--cut);box-shadow:inset 0 0 0 1px var(--line-hi);--vy:42%}
+.hb-view{position:absolute;inset:0}
+/* the hall fades towards the edges, so the eye goes to the far end and the copy stands on a quiet ground */
+.hb-hall{position:absolute;left:calc(50% - 1200px);top:calc(var(--vy) - 900px);width:2400px;height:1800px;-webkit-mask-image:radial-gradient(900px 640px at 50% 50%,#000 25%,rgba(0,0,0,.3) 75%);mask-image:radial-gradient(900px 640px at 50% 50%,#000 25%,rgba(0,0,0,.3) 75%)}
+.hb-x{position:absolute;left:calc(50% - 20px);top:calc(var(--vy) - 20px);width:40px;height:40px}
+.hb-copy{position:absolute;left:var(--kx);bottom:72px;display:flex;flex-direction:column;align-items:flex-start;text-align:left}
+.hb-name{font:400 clamp(64px,8vw,120px)/.9 var(--display);letter-spacing:.12em;margin-right:-.12em;text-transform:uppercase;color:var(--lit);text-shadow:0 0 40px var(--cut),0 0 12px var(--cut)}
+.hb-copy .caps{margin-top:28px;text-shadow:0 0 12px var(--cut),0 0 4px var(--cut)}
+.hb-copy .btn{margin-top:40px}
+@media (max-width:860px){
+	.hero-b{--vy:30%}
+	.hb-hall{transform:scale(.6)}
+	.hb-copy{left:24px;right:24px;bottom:112px}
+	.hb-name{font-size:clamp(56px,17vw,96px)}
+	.hb-copy .caps{max-width:300px}
+	.hb-copy .btn{margin-top:28px}
+}`,
+	c: `
+.hero-c{display:block;--ay:52%;--g:28px;--nf:min(132px,calc((var(--ax) - var(--kx) - 64px) / 4.1))}
+.hc-arm{position:absolute;pointer-events:none}
+/* the arms are cut into the stone: a dark upper wall and a lit lower one, broken by the crosshair's gap */
+.hc-arm.h{left:0;right:0;top:calc(var(--ay) - 1px);height:2px;background:linear-gradient(rgba(0,0,0,.75) 50%,rgba(235,229,218,.09) 50%);-webkit-mask-image:linear-gradient(90deg,#000 calc(var(--ax) - var(--g)),transparent 0 calc(var(--ax) + var(--g)),#000 0);mask-image:linear-gradient(90deg,#000 calc(var(--ax) - var(--g)),transparent 0 calc(var(--ax) + var(--g)),#000 0)}
+.hc-arm.v{top:0;bottom:0;left:calc(var(--ax) - 1px);width:2px;background:linear-gradient(90deg,rgba(0,0,0,.75) 50%,rgba(235,229,218,.09) 50%);-webkit-mask-image:linear-gradient(#000 calc(var(--ay) - var(--g)),transparent 0 calc(var(--ay) + var(--g)),#000 0);mask-image:linear-gradient(#000 calc(var(--ay) - var(--g)),transparent 0 calc(var(--ay) + var(--g)),#000 0)}
+.hc-pt{position:absolute;left:calc(var(--ax) - 5px);top:calc(var(--ay) - 5px);width:10px;height:10px;transform:rotate(45deg) scale(.72);border-radius:1px;background:var(--porphyry-hi)}
+.hc-name{position:absolute;left:var(--kx);bottom:calc(100% - var(--ay) + 40px);font-weight:400}
+.hc-name .t-hero{font-size:var(--nf)}
+.hc-act{position:absolute;left:calc(var(--ax) + 36px);top:calc(var(--ay) + 40px);display:flex;flex-direction:column;align-items:flex-start;text-align:left}
+.hc-act .btn{margin-top:40px}
+/* the cue travels down the lower arm itself */
+.hc-cue{left:var(--ax);transform:translateX(-50%)}
+.hc-cue i{background:none}
+@media (max-width:860px){
+	.hero-c{--ax:20px;--kx:56px;--ay:46%;--nf:min(132px,calc((100vw - 24px - var(--kx) - 28px) / 4.1))}
+	.hc-act{left:var(--kx);right:24px;top:calc(var(--ay) + 28px)}
+	.hc-act .btn{margin-top:28px}
+	.hc-name{bottom:calc(100% - var(--ay) + 28px)}
+}`,
+}
+
+const shot = key =>`<figure class="shot"><img src="images/${SHOTS[key][0]}" width="1960" height="1400" loading="lazy" decoding="async" alt="${SHOTS[key][1]}"></figure>`
 
 const ld = {
 	'@context': 'https://schema.org',
@@ -130,6 +276,8 @@ html.page::-webkit-scrollbar{display:none}
 
 /* the hero: one tablet on a wall, 56px of the page below show (R3, R7) */
 .wall{position:relative;padding:28px 28px 0}
+/* the page's keylines in the tablet's coordinates (the tablet starts 28px in): left margin, and the middle of the first block's column gap */
+.tablet{--bw:min(1280px,100vw);--kx:calc((100vw - var(--bw)) / 2 + var(--gutter) - 28px);--ax:calc(var(--kx) + (var(--bw) - 2 * var(--gutter) - 72px) * 5 / 12 + 36px)}
 .tablet{position:relative;display:grid;place-items:center;height:calc(100vh - 100px);min-height:620px;overflow:hidden;text-align:center;background:var(--stone);border-radius:2px 2px 0 0;box-shadow:inset 0 0 0 1px rgba(235,229,218,.06),inset 0 1px 0 rgba(235,229,218,.10)}
 .tablet-edge{position:relative;z-index:1;height:16px;border-radius:0 0 2px 2px;background:linear-gradient(#100f0d,#080706);border-top:1px solid rgba(235,229,218,.14);box-shadow:0 1px 0 rgba(0,0,0,.8),var(--shadow-slab)}
 .cramp{position:absolute;z-index:3;width:42px;height:14px;border-radius:2px;background:linear-gradient(180deg,var(--cramp-1),var(--cramp-2) 60%,var(--cramp-3));border:1px solid rgba(0,0,0,.7);box-shadow:inset 0 1px 0 rgba(255,236,200,.18),0 2px 4px rgba(0,0,0,.6);pointer-events:none}
@@ -234,6 +382,7 @@ html.js .rv.in{opacity:1;transform:none}
 	.tbl td+td{margin-top:8px}
 	.tbl td[data-h]::before{content:attr(data-h);display:block;font:500 10px/16px var(--text);letter-spacing:.24em;text-transform:uppercase;color:var(--mute)}
 }
+${HERO_CSS[ HERO ]}
 @media (prefers-reduced-motion:reduce){
 	*,*::before,*::after{transition:none!important}
 	html.page{scroll-behavior:auto}
@@ -326,14 +475,7 @@ ${JSON.stringify( ld, null, '\t' ).replace( /</g, '\\u003c' )}
 <a class="skip" href="#main">Skip to the content</a>
 
 <div class="wall">
-	<header class="tablet">
-		<div class="hero-lines">
-			<h1 aria-label="Scorpio"><span class="t-hero carved" data-t="Scorpio" aria-hidden="true">Scorpio</span></h1>
-			<p class="caps">${LINE}</p>
-			<a class="btn" href="${DOWNLOAD}">Download Scorpio</a>
-		</div>
-		<a class="cue" href="#games" aria-label="Go to the first section"><i></i></a>
-	</header>
+${HEROES[ HERO ]}
 	<div class="tablet-edge"></div>
 	<i class="cramp t l"></i><i class="cramp t r"></i><i class="cramp b l"></i><i class="cramp b r"></i>
 </div>
