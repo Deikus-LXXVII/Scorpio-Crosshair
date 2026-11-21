@@ -535,6 +535,8 @@ fn setup(handle: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let config = handle.path().app_config_dir()?;
     let path = config.join("settings.json");
     let started = store::now_seconds();
+    // No settings yet: the first start after installing.
+    let first_start = !path.exists();
     let (settings, trusted) = store::load(&path);
     let images = picture::folder(&config);
     if trusted {
@@ -586,7 +588,7 @@ fn setup(handle: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     handle.manage(update::Updates::default());
     register_hotkeys(handle, &settings);
     sync_autostart(handle, settings.start_with_system);
-    update::start(handle);
+    update::start(handle, first_start);
     sync_obs(handle);
 
     // Platform events, one at a time, for as long as Scorpio runs.

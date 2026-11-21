@@ -9,6 +9,10 @@ body { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows:
    doing in the middle (in words, so it has no dot), the window's controls. */
 .titlebar .title { display: flex; align-items: center; gap: 8px; }
 .titlebar .mark { width: 18px; height: 18px; }
+/* A newer Scorpio: an arrow beside the window's controls, gone when there is none. */
+.window-controls .update svg { stroke: var(--porphyry-hi); }
+.window-controls .update:hover svg { stroke: var(--marble); }
+
 .titlebar .status { flex: 1; min-width: 0; padding: 0 16px; overflow: hidden; font-size: var(--fs-small); line-height: var(--lh-sm); color: var(--mute); text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 
 #view { min-height: 0; overflow-y: auto; }

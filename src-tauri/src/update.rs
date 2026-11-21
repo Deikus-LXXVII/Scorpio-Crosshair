@@ -12,6 +12,8 @@ use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_updater::{Update, UpdaterExt};
 
 const FIRST_CHECK: Duration = Duration::from_secs(30);
+/// Right after installing: the installer may be older than the newest release.
+const FIRST_START_CHECK: Duration = Duration::from_secs(3);
 const EVERY: Duration = Duration::from_secs(6 * 60 * 60);
 /// How long no game must be in front before an automatic install.
 const QUIET: Duration = Duration::from_secs(3 * 60);
@@ -233,14 +235,24 @@ pub fn on_focus(handle: &AppHandle, game_in_front: bool, manual: bool) {
 }
 
 /// Starts the background checks on a thread of their own that sleeps
-/// between them.
-pub fn start(handle: &AppHandle) {
+/// between them. On the first start after installing, the first check comes
+/// at once and a newer version installs straight away, unless a game is in
+/// front: whoever installs from an older installer ends up on the newest.
+pub fn start(handle: &AppHandle, first_start: bool) {
     if !supported() {
         return;
     }
     let handle = handle.clone();
     let spawned = std::thread::Builder::new().name("scorpio-updates".into()).spawn(move || {
-        std::thread::sleep(FIRST_CHECK);
+        std::thread::sleep(if first_start { FIRST_START_CHECK } else { FIRST_CHECK });
+        if first_start && !crate::settings_snapshot(&handle).update_manually {
+            tauri::async_runtime::block_on(exclusive(&handle, async {
+                if matches!(check(&handle).await, UpdateState::Available { .. }) && !crate::game_in_front(&handle) {
+                    log::info!("first start: installing the newest version");
+                    download_and_install(&handle).await;
+                }
+            }));
+        }
         loop {
             let manual = crate::settings_snapshot(&handle).update_manually;
             let already = handle.state::<Updates>().found.lock().unwrap().is_some();

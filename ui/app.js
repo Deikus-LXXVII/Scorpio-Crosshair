@@ -300,6 +300,19 @@ const paintStatus = () => {
 
 }
 
+/* A newer version, shown as an arrow in the title bar */
+
+const paintUpdate = () => {
+
+	const button = document.getElementById( 'update' )
+	const u = S.update || {}
+	const pending = [ 'available', 'downloading', 'installing' ].includes( u.state )
+
+	button.hidden = !pending
+	if ( pending ) button.title = t( 'Scorpio {version} is out.', { version: u.version } )
+
+}
+
 /* Tabs */
 
 const crosshairTab = () => {
@@ -1053,6 +1066,7 @@ const start = async () => {
 	document.getElementById( 'minimize' ).onclick = () => win.minimize()
 	document.getElementById( 'maximize' ).onclick = () => win.toggleMaximize()
 	document.getElementById( 'close' ).onclick = () => win.close()
+	document.getElementById( 'update' ).onclick = () => go( 'system' )
 
 	const tabs = Array.from( document.querySelectorAll( '.tabs [role="tab"]' ) )
 
@@ -1090,6 +1104,7 @@ const start = async () => {
 	await tauri.event.listen( 'update', ( { payload } ) => {
 
 		S.update = payload
+		paintUpdate()
 		if ( S.tab === 'system' ) render()
 
 	} )
@@ -1103,6 +1118,7 @@ const start = async () => {
 
 	} )
 
+	paintUpdate()
 	render()
 
 }
