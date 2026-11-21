@@ -12,7 +12,13 @@ Facts to get right:
 - 13 pro player crosshairs, seen in matches. The players did not provide or endorse them.
 - A game is a window the player added (two of four checks match: program name, program path, window title, window class), a fullscreen window, or a game from a launcher: Steam, Epic Games, GOG, Ubisoft Connect, EA, Battle.net, Riot and Xbox on Windows; Steam, Heroic and Lutris on Linux.
 - Also: a crosshair per game, saved crosshairs, exact centring on the game's monitor, hide while aiming (raw input), global shortcuts, an opt-in OBS Browser source at `http://127.0.0.1:47117/obs`, and signed automatic updates that install only after no game has been in front for 3 minutes.
-- Weight on Windows 11: 6.9 MB of private memory and 0 ms of CPU over 10 s while idle. `scorpio.exe` is 3.7 MB.
+- Weight, measured on a Windows 11 gaming PC on 2026-11-21 (each program idle with its crosshair shown, no settings window open, three runs, measured 25 s after start, CPU time counted over the next 30 s, private memory and CPU summed over all of a program's processes):
+  - Scorpio 0.1.1: 1 process, 10.3 / 10.4 / 10.3 MB private memory, 16 / 31 / 31 ms CPU. Installer 2.1 MB, installed 5.6 MB.
+  - Simple Crosshair Overlay 1.2.1: 1 process, 6.4 MB, 625 / 438 / 516 ms CPU (it redraws constantly). A single 1.5 MB executable.
+  - Crosshair Y 4.2: 5 processes, 249.8 / 250.5 / 251.7 MB, 16 / 0 / 16 ms CPU. Zip 142 MB, unpacked 351 MB.
+  - CrossOver 3.4.11: 6 processes, 358.1 / 359.1 / 360.0 MB, 47 / 31 / 47 ms CPU. Installer 101.7 MB, installed 179 MB.
+  - Scorpio is the one that is low on both memory and CPU. Simple Crosshair Overlay uses less memory but about 15 to 40 times the CPU.
+- Frame rate: not measured. With about 10 MB of memory, one process and nothing loaded into the game, an effect on FPS is unlikely, but it is not guaranteed.
 - Anti-cheat: Scorpio never opens another process, reads or writes its memory, injects code, installs hooks, sends synthetic input, loads a driver, or draws into the game's frames. No anti-cheat vendor has approved it directly, but it crosses none of their lines: it never touches the game or the anti-cheat. The exception is a game whose own rules forbid crosshair overlays. Do not call it approved, whitelisted or guaranteed safe.
 - "Hide from screen capture" (Windows only, off by default) is not risk-free: cheat overlays use the same Windows call.
 - Not tested yet: inside a real game, inside OBS, the full app on a Linux desktop, and automatic updates against a published release.

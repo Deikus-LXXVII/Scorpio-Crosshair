@@ -118,7 +118,7 @@
 					"name": "Does Scorpio lower my frame rate?",
 					"acceptedAnswer": {
 						"@type": "Answer",
-						"text": "It does not touch the game or its input. Its effect on the frame rate has not been measured yet."
+						"text": "Most likely not, though frame rates have not been measured. On Windows it runs as one process with about 10 MB of memory, uses tens of milliseconds of processor time every 30 seconds while idle, and loads nothing into the game."
 					}
 				},
 				{
@@ -126,7 +126,7 @@
 					"name": "Does Scorpio collect data?",
 					"acceptedAnswer": {
 						"@type": "Answer",
-						"text": "No. It has no telemetry and no account, and goes online only for updates from GitHub."
+						"text": "No. It sends no usage data, has no account, and goes online only for updates from GitHub."
 					}
 				}
 			]
@@ -138,7 +138,7 @@
 <style>
 @font-face{font-family:"Forum";font-style:normal;font-weight:400;font-display:swap;src:url("fonts/forum-latin.woff2") format("woff2")}
 @font-face{font-family:"Inter";font-style:normal;font-weight:300 500;font-display:swap;src:url("fonts/inter-latin.woff2") format("woff2")}
-:root{color-scheme:dark;--cut:#060605;--basalt:#0b0a09;--stone:#141311;--raised:#1c1a17;--lit:#fff8ec;--marble:#ebe5da;--mute:#8a837a;--rest:#7d766c;--faint:#4a4640;--line:rgba(235,229,218,.10);--line-hi:rgba(235,229,218,.22);--line-ctl:rgba(235,229,218,.40);--porphyry-hi:#c8435a;--cramp-1:#6b5a40;--cramp-2:#3f3426;--cramp-3:#2c241a;--rivet:#a08a63;--rivet-lo:#3a2f22;--lit-glow-display:0 0 3px rgba(255,240,215,.75),0 0 18px rgba(250,234,206,.55),0 0 46px rgba(244,226,196,.35),0 0 110px rgba(244,226,196,.18);--shadow-slab:0 30px 60px rgba(0,0,0,.75),0 10px 22px rgba(0,0,0,.6);--display:"Forum","Times New Roman",serif;--text:"Inter",system-ui,sans-serif;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--fs-hero:clamp(96px,15.5vw,236px);--fs-h1:clamp(48px,5vw,78px);--track-caps:.28em;--ease:cubic-bezier(.2,.7,.15,1);--ease-loop:cubic-bezier(.45,0,.2,1);--gutter:40px}
+:root{color-scheme:dark;--cut:#060605;--basalt:#0b0a09;--stone:#141311;--raised:#1c1a17;--lit:#fff8ec;--marble:#ebe5da;--mute:#8a837a;--rest:#7d766c;--faint:#4a4640;--line:rgba(235,229,218,.10);--line-hi:rgba(235,229,218,.22);--line-ctl:rgba(235,229,218,.40);--porphyry-hi:#c8435a;--cramp-1:#6b5a40;--cramp-2:#3f3426;--cramp-3:#2c241a;--rivet:#a08a63;--rivet-lo:#3a2f22;--lit-glow-display:0 0 3px rgba(255,240,215,.75),0 0 18px rgba(250,234,206,.55),0 0 46px rgba(244,226,196,.35),0 0 110px rgba(244,226,196,.18);--shadow-slab:0 30px 60px rgba(0,0,0,.75),0 10px 22px rgba(0,0,0,.6);--display:"Forum","Times New Roman",serif;--text:"Inter",system-ui,sans-serif;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--fs-hero:clamp(96px,15.5vw,236px);--fs-h1:clamp(48px,5vw,78px);--track-caps:.28em;--ease:cubic-bezier(.2,.7,.15,1);--t-color:.3s;--t-move:.4s;--ease-loop:cubic-bezier(.45,0,.2,1);--gutter:40px}
 *,*::before,*::after{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 html,body{margin:0;background:var(--basalt)}
@@ -203,7 +203,7 @@ html.page::-webkit-scrollbar{display:none}
 .block.wide{display:block}
 .copy>*+*{margin-top:24px}
 .copy p{max-width:46ch;color:var(--mute)}
-.name{font:400 var(--fs-h1)/1 var(--display);letter-spacing:.01em;color:var(--rest);transition:color .9s var(--ease),text-shadow .9s var(--ease)}
+.name{text-wrap:balance;font:400 var(--fs-h1)/1 var(--display);letter-spacing:.01em;color:var(--rest);transition:color .9s var(--ease),text-shadow .9s var(--ease)}
 .block.current .name,.block:has(.go:focus-visible) .name{color:var(--lit);text-shadow:var(--lit-glow-display)}
 .go{display:inline-block;padding:12px 0;font:500 11px/1 var(--text);letter-spacing:var(--track-caps);text-transform:uppercase;color:var(--mute);transition:color .5s var(--ease)}
 .go:hover,.go:focus-visible{color:var(--lit)}
@@ -221,13 +221,33 @@ html.page::-webkit-scrollbar{display:none}
 /* the wide block: lead, the table of calls, the questions */
 .lead{max-width:62ch;margin-top:24px;font-size:17px;color:var(--mute)}
 .obj{margin-top:40px}
-.tbl{width:100%;border-collapse:collapse;font-size:15.5px}
-.tbl th{padding:0 16px 12px 0;text-align:left;font:500 10px/1 var(--text);letter-spacing:.24em;text-transform:uppercase;color:var(--mute);border-bottom:1px solid var(--line-hi)}
-.tbl td{padding:16px 16px 16px 0;border-bottom:1px solid var(--line);color:var(--mute);vertical-align:top}
-.tbl td:first-child{color:var(--marble)}
+.tbl{width:100%;border-collapse:collapse}
+.tbl thead th{padding:0 24px 12px 0;text-align:left;font:500 11px/16px var(--text);letter-spacing:var(--track-caps);text-transform:uppercase;color:var(--mute);border-bottom:1px solid var(--line-hi)}
+.tbl tbody th,.tbl td{padding:16px 24px 16px 0;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+.tbl tbody th{width:28%;font-weight:400;color:var(--marble)}
+.tbl td{color:var(--mute)}
+.tbl .tech{width:30%;padding-right:0;font:400 13px/20px var(--mono);color:var(--mute)}
+.tbl .tech code{font:inherit;color:inherit}
+
+/* the efficiency chart: a table drawn as bars, one row a program, two measures side by side on their own scales */
+.chart table{width:100%;border-collapse:collapse}
+.chart tr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:24px}
+.chart thead td{display:none}
+.chart thead th{padding:0 0 12px;text-align:left;font:400 14px/20px var(--text);color:var(--mute);border-bottom:1px solid var(--line-hi)}
+.chart tbody tr{padding:16px 0;border-bottom:1px solid var(--line)}
+.chart tbody th{grid-column:1/-1;padding-bottom:8px;text-align:left;font:400 16px/24px var(--text);color:var(--marble)}
+.chart tbody th span{color:var(--mute)}
+.chart td{padding:0}
+.chart .v{display:block;font:400 15px/20px var(--text);font-variant-numeric:tabular-nums;color:var(--mute)}
+.chart .track{display:block;margin-top:8px;height:8px;border-bottom:1px solid var(--line)}
+.chart .bar{display:block;min-width:2px;height:7px;border-radius:1px 1px 0 0;background:rgba(235,229,218,.68)}
+.chart .me th{font-weight:500}
+.chart .me .v{color:var(--lit)}
+.chart .me .bar{background:var(--porphyry-hi)}
+.chart figcaption{margin-top:16px;max-width:62ch;color:var(--mute)}
 .faq{max-width:760px}
 .qa{border-bottom:1px solid var(--line)}
-.qa summary{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:24px 0;font:400 21px/1.2 var(--display);color:var(--marble);list-style:none;cursor:pointer;transition:color var(--t-color) var(--ease)}
+.qa summary{text-wrap:balance;display:flex;align-items:center;justify-content:space-between;gap:24px;padding:24px 0;font:400 21px/1.2 var(--display);color:var(--marble);list-style:none;cursor:pointer;transition:color var(--t-color) var(--ease)}
 .qa summary::-webkit-details-marker{display:none}
 .qa summary:hover,.qa[open] summary{color:var(--lit)}
 .qa summary i{position:relative;flex:none;width:12px;height:12px}
@@ -238,6 +258,10 @@ html.page::-webkit-scrollbar{display:none}
 .qa .a p{max-width:52ch;padding-bottom:24px;color:var(--mute)}
 
 footer{max-width:1280px;margin:160px auto 0;padding:0 var(--gutter)}
+.get{max-width:62ch;padding-bottom:112px}
+.get>*+*{margin-top:24px}
+.get p{color:var(--mute)}
+.get .go{margin-top:28px}
 .foot{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:16px 40px;padding:40px 0 56px;border-top:1px solid var(--line)}
 .sig{display:inline-flex;align-items:center;gap:12px;font:400 17px/1 var(--display);letter-spacing:.18em;text-transform:uppercase}
 .sig svg{width:24px;height:24px}
@@ -258,31 +282,48 @@ html.js .rv.in{opacity:1;transform:none}
 	.block,.block.flip{grid-template-columns:minmax(0,1fr);gap:40px;padding-top:72px}
 	.block.flip>.copy{order:0}
 	footer{margin-top:72px}
+	/* a finger needs 44px: the caps links keep their look and grow their box */
+	.go{display:inline-flex;align-items:center;min-height:44px;padding:0}
+	.copy .go,.get .go{margin-top:16px}
+	/* the table's rows stack: what it needs, how, then the call names in the quiet line */
+	.tbl thead{display:none}
+	.tbl,.tbl tbody,.tbl tr,.tbl tbody th,.tbl td{display:block;width:auto}
+	.tbl tr{padding:16px 0;border-bottom:1px solid var(--line)}
+	.tbl tr:first-child{border-top:1px solid var(--line-hi)}
+	.tbl tbody th,.tbl td{padding:0;border:0}
+	.tbl td{margin-top:4px}
+	.tbl .tech{width:auto;margin-top:8px}
 }
 @media (max-width:640px){
 	:root{--fs-hero:clamp(56px,19vw,96px)}
-	.tbl thead{display:none}
-	.tbl,.tbl tbody,.tbl tr,.tbl td{display:block}
-	.tbl tr{padding:16px 0;border-bottom:1px solid var(--line)}
-	.tbl tr:first-child{border-top:1px solid var(--line-hi)}
-	.tbl td{padding:0;border:0}
-	.tbl td+td{margin-top:8px}
-	.tbl td[data-h]::before{content:attr(data-h);display:block;font:500 10px/16px var(--text);letter-spacing:.24em;text-transform:uppercase;color:var(--mute)}
 }
 
-.hero-a{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:72px;align-items:center;justify-items:start;padding:0 var(--kx);text-align:left}
-.ha-copy{display:flex;flex-direction:column;align-items:flex-start}
-.ha-name{font:400 clamp(72px,8.4vw,128px)/.9 var(--display);letter-spacing:.12em;margin-right:-.12em;text-transform:uppercase;color:var(--lit)}
-.ha-copy .caps{margin-top:40px}
-.ha-copy .btn{margin-top:40px}
-.ha-mark{justify-self:center;width:min(100%,560px,max(440px,calc(100vh - 300px)));height:auto;aspect-ratio:1}
+.hero-b{display:block;background:var(--cut);box-shadow:inset 0 0 0 1px var(--line-hi);--vy:42%}
+.hb-view{position:absolute;inset:0}
+/* the hall fades towards the edges, so the eye goes to the far end and the copy stands on a quiet ground */
+.hb-hall{position:absolute;left:calc(50% - 1200px);top:calc(var(--vy) - 900px);width:2400px;height:1800px;-webkit-mask-image:radial-gradient(900px 640px at 50% 50%,#000 25%,rgba(0,0,0,.3) 75%);mask-image:radial-gradient(900px 640px at 50% 50%,#000 25%,rgba(0,0,0,.3) 75%)}
+.hb-x{position:absolute;left:calc(50% - 20px);top:calc(var(--vy) - 20px);width:40px;height:40px}
+.hb-copy{position:absolute;left:var(--kx);bottom:72px;display:flex;flex-direction:column;align-items:flex-start;text-align:left}
+.hb-name{font:400 clamp(64px,8vw,120px)/.9 var(--display);letter-spacing:.12em;margin-right:-.12em;text-transform:uppercase;color:var(--lit);text-shadow:0 0 40px var(--cut),0 0 12px var(--cut)}
+.hb-copy .caps{margin-top:28px;text-shadow:0 0 12px var(--cut),0 0 4px var(--cut)}
+.hb-copy .btn{margin-top:40px}
 @media (max-width:860px){
-	.hero-a{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto;gap:40px;align-content:center;justify-items:center;padding:0 24px 72px;text-align:center}
-	.ha-copy{align-items:center;order:2}
-	.ha-name{font-size:clamp(56px,17vw,96px)}
-	.ha-copy .caps{margin-top:28px;max-width:300px;margin-right:calc(-1 * var(--track-caps))}
-	.ha-copy .btn{margin-top:28px}
-	.ha-mark{width:min(100%,max(220px,calc(100vh - 560px)))}
+	.hero-b{--vy:30%}
+	.hb-hall{transform:scale(.6)}
+	.hb-copy{left:24px;right:24px;bottom:112px}
+	.hb-name{font-size:clamp(56px,17vw,96px)}
+	.hb-copy .caps{max-width:300px}
+	.hb-copy .btn{margin-top:28px}
+}
+/* a phone on its side (proposed; the guide's least height of 620px would push the button below the fold): the tablet
+   still stops short of the fold, and the copy sits low on the left, clear of the cue */
+@media (max-height:500px) and (orientation:landscape){
+	.tablet{min-height:0}
+	.hero-b{--vy:38%}
+	.hb-copy{left:24px;right:auto;bottom:28px}
+	.hb-name{font-size:56px}
+	.hb-copy .caps{margin-top:16px}
+	.hb-copy .btn{margin-top:20px}
 }
 @media (prefers-reduced-motion:reduce){
 	*,*::before,*::after{transition:none!important}
@@ -298,25 +339,14 @@ html.js .rv.in{opacity:1;transform:none}
 
 <div class="wall">
 
-	<header class="tablet hero-a">
-		<div class="ha-copy">
-			<h1 class="ha-name">Scorpio</h1>
+	<header class="tablet hero-b">
+		<div class="hb-view" aria-hidden="true"><svg class="hb-hall" viewBox="-1200 -900 2400 1800" aria-hidden="true"><g fill="none" stroke="#ebe5da" stroke-width="1" vector-effect="non-scaling-stroke"><path d="M-1170.9 631.3L-58.5 31.6" stroke-opacity="0.16"/><path d="M-1170.9 -967.3L-58.5 -48.4" stroke-opacity="0.16"/><path d="M1170.9 631.3L58.5 31.6" stroke-opacity="0.16"/><path d="M1170.9 -967.3L58.5 -48.4" stroke-opacity="0.16"/><path d="M-936.7 631.3L-46.8 31.6" stroke-opacity="0.07"/><path d="M-702.5 631.3L-35.1 31.6" stroke-opacity="0.07"/><path d="M-468.4 631.3L-23.4 31.6" stroke-opacity="0.07"/><path d="M-234.2 631.3L-11.7 31.6" stroke-opacity="0.07"/><path d="M234.2 631.3L11.7 31.6" stroke-opacity="0.07"/><path d="M468.4 631.3L23.4 31.6" stroke-opacity="0.07"/><path d="M702.5 631.3L35.1 31.6" stroke-opacity="0.07"/><path d="M936.7 631.3L46.8 31.6" stroke-opacity="0.07"/><path d="M-644 347.2L644 347.2" stroke-opacity="0.10679999999999999"/><path d="M-644 347.2L-644 -532" stroke-opacity="0.178"/><path d="M-576.8 347.2L-576.8 -532" stroke-opacity="0.178"/><path d="M-660.8 -504L-560 -504" stroke-opacity="0.178"/><path d="M-660.8 324.8L-560 324.8" stroke-opacity="0.178"/><path d="M644 347.2L644 -532" stroke-opacity="0.178"/><path d="M576.8 347.2L576.8 -532" stroke-opacity="0.178"/><path d="M660.8 -504L560 -504" stroke-opacity="0.178"/><path d="M660.8 324.8L560 324.8" stroke-opacity="0.178"/><path d="M-644 -532A644 644 0 0 1 644 -532" stroke-opacity="0.178"/><path d="M-444.1 239.4L444.1 239.4" stroke-opacity="0.1008"/><path d="M-444.1 239.4L-444.1 -366.9" stroke-opacity="0.168"/><path d="M-397.8 239.4L-397.8 -366.9" stroke-opacity="0.168"/><path d="M-455.7 -347.6L-386.2 -347.6" stroke-opacity="0.168"/><path d="M-455.7 224L-386.2 224" stroke-opacity="0.168"/><path d="M444.1 239.4L444.1 -366.9" stroke-opacity="0.168"/><path d="M397.8 239.4L397.8 -366.9" stroke-opacity="0.168"/><path d="M455.7 -347.6L386.2 -347.6" stroke-opacity="0.168"/><path d="M455.7 224L386.2 224" stroke-opacity="0.168"/><path d="M-444.1 -366.9A444.1 444.1 0 0 1 444.1 -366.9" stroke-opacity="0.168"/><path d="M-306.7 165.3L306.7 165.3" stroke-opacity="0.0924"/><path d="M-306.7 165.3L-306.7 -253.3" stroke-opacity="0.154"/><path d="M-274.7 165.3L-274.7 -253.3" stroke-opacity="0.154"/><path d="M-314.7 -240L-266.7 -240" stroke-opacity="0.154"/><path d="M-314.7 154.7L-266.7 154.7" stroke-opacity="0.154"/><path d="M306.7 165.3L306.7 -253.3" stroke-opacity="0.154"/><path d="M274.7 165.3L274.7 -253.3" stroke-opacity="0.154"/><path d="M314.7 -240L266.7 -240" stroke-opacity="0.154"/><path d="M314.7 154.7L266.7 154.7" stroke-opacity="0.154"/><path d="M-306.7 -253.3A306.7 306.7 0 0 1 306.7 -253.3" stroke-opacity="0.154"/><path d="M-211.1 113.8L211.1 113.8" stroke-opacity="0.0798"/><path d="M-211.1 113.8L-211.1 -174.4" stroke-opacity="0.133"/><path d="M-189.1 113.8L-189.1 -174.4" stroke-opacity="0.133"/><path d="M-216.7 -165.2L-183.6 -165.2" stroke-opacity="0.133"/><path d="M-216.7 106.5L-183.6 106.5" stroke-opacity="0.133"/><path d="M211.1 113.8L211.1 -174.4" stroke-opacity="0.133"/><path d="M189.1 113.8L189.1 -174.4" stroke-opacity="0.133"/><path d="M216.7 -165.2L183.6 -165.2" stroke-opacity="0.133"/><path d="M216.7 106.5L183.6 106.5" stroke-opacity="0.133"/><path d="M-211.1 -174.4A211.1 211.1 0 0 1 211.1 -174.4" stroke-opacity="0.133"/><path d="M-146.4 78.9L146.4 78.9" stroke-opacity="0.061799999999999994"/><path d="M-146.4 78.9L-146.4 -120.9" stroke-opacity="0.103"/><path d="M-131.1 78.9L-131.1 -120.9" stroke-opacity="0.103"/><path d="M-150.2 -114.5L-127.3 -114.5" stroke-opacity="0.103"/><path d="M-150.2 73.8L-127.3 73.8" stroke-opacity="0.103"/><path d="M146.4 78.9L146.4 -120.9" stroke-opacity="0.103"/><path d="M131.1 78.9L131.1 -120.9" stroke-opacity="0.103"/><path d="M150.2 -114.5L127.3 -114.5" stroke-opacity="0.103"/><path d="M150.2 73.8L127.3 73.8" stroke-opacity="0.103"/><path d="M-146.4 -120.9A146.4 146.4 0 0 1 146.4 -120.9" stroke-opacity="0.103"/><path d="M-100.6 54.2L100.6 54.2" stroke-opacity="0.035399999999999994"/><path d="M-100.6 54.2L-100.6 -83.1" stroke-opacity="0.059"/><path d="M-90.1 54.2L-90.1 -83.1" stroke-opacity="0.059"/><path d="M-103.2 -78.7L-87.5 -78.7" stroke-opacity="0.059"/><path d="M-103.2 50.7L-87.5 50.7" stroke-opacity="0.059"/><path d="M100.6 54.2L100.6 -83.1" stroke-opacity="0.059"/><path d="M90.1 54.2L90.1 -83.1" stroke-opacity="0.059"/><path d="M103.2 -78.7L87.5 -78.7" stroke-opacity="0.059"/><path d="M103.2 50.7L87.5 50.7" stroke-opacity="0.059"/><path d="M-100.6 -83.1A100.6 100.6 0 0 1 100.6 -83.1" stroke-opacity="0.059"/></g></svg><svg class="hb-x" viewBox="-16 -16 32 32" aria-hidden="true"><g fill="#c8435a" stroke="#060605" stroke-width="1"><rect x="-1.5" y="-13.5" width="3" height="9"/><rect x="-1.5" y="4.5" width="3" height="9"/><rect x="-13.5" y="-1.5" width="9" height="3"/><rect x="4.5" y="-1.5" width="9" height="3"/></g></svg></div>
+		<div class="hb-copy">
+			<h1 class="hb-name">Scorpio</h1>
 			<p class="caps">A crosshair over your game, only while you play</p>
 			<a class="btn" href="https://github.com/Deikus-LXXVII/Scorpio-Crosshair/releases/latest">Download Scorpio</a>
 		</div>
-		<svg class="ha-mark" viewBox="128 128 768 768" aria-hidden="true">
-			<defs>
-				<path id="ha-b" d="M647.8 403.4L896 512L512 680L484.2 667.8L453.5 597.7L512 623.2L766.3 512L678.5 473.6ZM403.4 376.2L512 128L680 512L667.8 539.8L597.7 570.5L623.2 512L512 257.7L473.6 345.5ZM376.2 620.6L128 512L512 344L539.8 356.2L570.5 426.3L512 400.8L257.7 512L345.5 550.4ZM620.6 647.8L512 896L344 512L356.2 484.2L426.3 453.5L400.8 512L512 766.3L550.4 678.5Z"/>
-				<radialGradient id="ha-l" gradientUnits="userSpaceOnUse" cx="330" cy="300" r="520"><stop offset="0" stop-color="#f0e4ce" stop-opacity=".34"/><stop offset=".45" stop-color="#f0e4ce" stop-opacity=".07"/><stop offset=".72" stop-color="#f0e4ce" stop-opacity="0"/></radialGradient>
-			</defs>
-			<use href="#ha-b" transform="translate(0 2.5)" fill="#ebe1cd" fill-opacity=".05"/>
-			<use href="#ha-b" transform="translate(0 -3)" fill="#000" fill-opacity=".7"/>
-			<use href="#ha-b" fill="#060605"/>
-			<use href="#ha-b" fill="url(#ha-l)"/>
-			<path d="M468 512L512 468L556 512L512 556Z" fill="#c8435a"/>
-			<path d="M468 512L512 468L556 512" fill="none" stroke="#e8899a" stroke-opacity=".5" stroke-width="2"/>
-		</svg>
-		<a class="cue" href="#games" aria-label="Go to the first section"><i></i></a>
+		<a class="cue" href="#crosshair" aria-label="Go to the first section"><i></i></a>
 	</header>
 	<div class="tablet-edge"></div>
 	<i class="cramp t l"></i><i class="cramp t r"></i><i class="cramp b l"></i><i class="cramp b r"></i>
@@ -324,31 +354,74 @@ html.js .rv.in{opacity:1;transform:none}
 
 <main id="main">
 
-<section class="block" id="games" aria-labelledby="games-h">
-	<div class="copy rv">
-		<h2 class="name" id="games-h">Only over games</h2>
-		
-		<p>The crosshair shows while a game is the window in front and hides when you switch away. A game is a window <b>you added</b>, any <b>fullscreen</b> window, or a game from a launcher such as Steam, Epic Games or GOG.</p>
-		<p>It can also hide while you aim, and global shortcuts lock, centre and switch it.</p>
-	</div>
-	<figure class="shot"><img src="images/scorpio-game-detection.webp" width="1960" height="1400" loading="lazy" decoding="async" alt="Scorpio Games tab: two added games, one with its own crosshair, and switches for fullscreen windows and games from launchers"></figure>
-</section>
-
-<section class="block flip" id="crosshair" aria-labelledby="crosshair-h">
+<section class="block" id="crosshair" aria-labelledby="crosshair-h">
 	<div class="copy rv">
 		<h2 class="name" id="crosshair-h">The crosshair</h2>
 		
-		<p><b>CS2 crosshair codes work in Scorpio</b>: paste a share code, or copy yours. <b>CS2-based crosshairs</b> come in five static styles, with thickness in half steps and an outline of 1 to 6 pixels.</p>
-		<p>Keep your own crosshairs, pick one of 13 pro players, or give each game its own.</p>
+		<p><b>Make your own crosshair, or bring yours from CS.</b> Scorpio's crosshairs are CS2-based, so CS2 crosshair codes work in Scorpio: paste one, or copy yours.</p>
+		<p>Five static styles, thickness in half steps, an outline of 1 to 6 pixels. Save favourites, try one of 13 pro players', or give each game its own.</p>
 	</div>
 	<figure class="shot"><img src="images/scorpio-saved-and-pro-crosshairs.webp" width="1960" height="1400" loading="lazy" decoding="async" alt="Scorpio Crosshair tab: a green crosshair in the preview at 4x, its share code, four saved crosshairs and pro player crosshairs"></figure>
 </section>
 
-<section class="block" id="obs" aria-labelledby="obs-h">
+<section class="block wide" id="safety" aria-labelledby="safety-h">
+	<h2 class="name" id="safety-h">Outside the game</h2>
+	<p class="lead"><b>Scorpio never touches the game or its anti-cheat.</b> It does not open the game, read or change its memory, slip code or hooks into it, fake your keys or mouse, install a driver, or draw into the game's picture.</p>
+	<table class="tbl obj">
+		<thead><tr><th scope="col">Scorpio needs to</th><th scope="col">How it stays outside</th><th scope="col">Windows · Linux</th></tr></thead>
+		<tbody>
+			<tr><th scope="row">Know which window is in front</th><td>The system tells it when you switch windows.</td><td class="tech"><code>SetWinEventHook</code> · <code>_NET_ACTIVE_WINDOW</code></td></tr>
+			<tr><th scope="row">Recognise a game</th><td>It reads the window’s title and size and the program’s name, without opening it.</td><td class="tech"><code>GetWindowTextW</code>, <code>NtQuerySystemInformation</code> · <code>/proc/&lt;pid&gt;/exe</code></td></tr>
+			<tr><th scope="row">Hide while you aim</th><td>It hears the aim button through its own window, with no hooks.</td><td class="tech">Raw Input · XInput2</td></tr>
+			<tr><th scope="row">Run your shortcuts</th><td>Ordinary system shortcuts, as any app uses.</td><td class="tech"><code>RegisterHotKey</code> · <code>XGrabKey</code></td></tr>
+			<tr><th scope="row">Draw the crosshair</th><td>Its own see-through window on top; clicks pass through.</td><td class="tech">Layered window · override-redirect</td></tr>
+			<tr><th scope="row">Show it in OBS, if asked</th><td>Only on your own computer.</td><td class="tech"><code>127.0.0.1:47117</code></td></tr>
+		</tbody>
+	</table>
+	<div class="faq obj" id="faq">
+		<details class="qa"><summary>Is a crosshair overlay bannable?<i aria-hidden="true"></i></summary><div class="a"><p>No overlay can promise that you will never be banned. Scorpio never reads or changes the game, but a game's own rules can forbid external crosshairs.</p></div></details>
+		<details class="qa"><summary>Does it work with Vanguard, Easy Anti-Cheat, BattlEye or VAC?<i aria-hidden="true"></i></summary><div class="a"><p>None of them has approved it directly. Scorpio crosses none of their lines, since it never touches the game or the anti-cheat. The exception is a game whose own rules forbid crosshair overlays.</p></div></details>
+		<details class="qa"><summary>Does Scorpio lower my frame rate?<i aria-hidden="true"></i></summary><div class="a"><p>Most likely not, though frame rates have not been measured. On Windows it runs as one process with about 10 MB of memory, uses tens of milliseconds of processor time every 30 seconds while idle, and loads nothing into the game.</p></div></details>
+		<details class="qa"><summary>Does Scorpio collect data?<i aria-hidden="true"></i></summary><div class="a"><p>No. It sends no usage data, has no account, and goes online only for updates from GitHub.</p></div></details>
+	</div>
+</section>
+
+<section class="block flip" id="games" aria-labelledby="games-h">
+	<div class="copy rv">
+		<h2 class="name" id="games-h">Only over&nbsp;games</h2>
+		
+		<p>The crosshair shows while a game is in front and hides when you switch away. A game is one <b>you added</b>, any <b>fullscreen</b> window, or a game from a launcher such as Steam, Epic Games or GOG.</p>
+		<p>It can also hide while you aim, and keyboard shortcuts lock, centre and switch it.</p>
+	</div>
+	<figure class="shot"><img src="images/scorpio-game-detection.webp" width="1960" height="1400" loading="lazy" decoding="async" alt="Scorpio Games tab: two added games, one with its own crosshair, and switches for fullscreen windows and games from launchers"></figure>
+</section>
+
+<section class="block" id="efficiency" aria-labelledby="efficiency-h">
+	<div class="copy rv">
+		<h2 class="name" id="efficiency-h">Efficiency</h2>
+		
+		<p><b>Light on memory and idle on the processor.</b> Simple Crosshair Overlay uses less memory, but it redraws all the time and keeps the processor 15 to 40 times busier.</p>
+		<p>The download is 2.1 MB. CrossOver's is 101.7 MB and Crosshair Y's 142 MB; Simple Crosshair Overlay is one 1.5 MB file.</p>
+	</div>
+	<figure class="chart">
+			<table>
+				<thead><tr><td></td><th scope="col">Memory</th><th scope="col">Processor time in 30 s</th></tr></thead>
+				<tbody>
+					<tr class="me"><th scope="row">Scorpio <span>0.1.1</span></th><td><span class="v">10.3 MB</span><span class="track"><span class="bar" style="width:2.87%"></span></span></td><td><span class="v">31 ms</span><span class="track"><span class="bar" style="width:6.01%"></span></span></td></tr>
+					<tr><th scope="row">Simple Crosshair Overlay <span>1.2.1</span></th><td><span class="v">6.4 MB</span><span class="track"><span class="bar" style="width:1.78%"></span></span></td><td><span class="v">516 ms</span><span class="track"><span class="bar" style="width:100.00%"></span></span></td></tr>
+					<tr><th scope="row">Crosshair Y <span>4.2</span></th><td><span class="v">250.5 MB</span><span class="track"><span class="bar" style="width:69.76%"></span></span></td><td><span class="v">16 ms</span><span class="track"><span class="bar" style="width:3.10%"></span></span></td></tr>
+					<tr><th scope="row">CrossOver <span>3.4.11</span></th><td><span class="v">359.1 MB</span><span class="track"><span class="bar" style="width:100.00%"></span></span></td><td><span class="v">47 ms</span><span class="track"><span class="bar" style="width:9.11%"></span></span></td></tr>
+				</tbody>
+			</table>
+			<figcaption>Windows 11 gaming PC, 21 November 2026: each program idle, crosshair shown, all its processes counted. Middle of three runs.</figcaption>
+		</figure>
+</section>
+
+<section class="block flip" id="obs" aria-labelledby="obs-h">
 	<div class="copy rv">
 		<h2 class="name" id="obs-h">On stream</h2>
 		
-		<p>Game Capture records only the game, so add Scorpio as a <b>Browser source</b>.</p>
+		<p>OBS's Game Capture records only the game, so add the crosshair as a <b>Browser source</b>.</p>
 		<ol class="steps">
 			<li>In Scorpio, on the System tab, switch on <b>Show the crosshair in OBS</b>.</li>
 			<li>In OBS, add a Browser source above your game capture.</li>
@@ -358,47 +431,19 @@ html.js .rv.in{opacity:1;transform:none}
 	</div>
 	<figure class="shot"><img src="images/scorpio-obs-browser-source.webp" width="1960" height="1400" loading="lazy" decoding="async" alt="Scorpio System tab: Show the crosshair in OBS is on, with three setup steps and the Browser source address"></figure>
 </section>
-
-<section class="block wide" id="safety" aria-labelledby="safety-h">
-	<h2 class="name" id="safety-h">Outside the game</h2>
-	<p class="lead">Scorpio never opens another process, reads or writes its memory, injects code, installs a hook, sends synthetic input, loads a driver, or draws into the game's frames.</p>
-	<table class="tbl obj">
-		<thead><tr><th scope="col">Need</th><th scope="col">Windows</th><th scope="col">Linux (X11)</th><th scope="col">Why it stays outside the game</th></tr></thead>
-		<tbody>
-			<tr><td>Window in front</td><td data-h="Windows"><code>SetWinEventHook</code>, out of context</td><td data-h="Linux (X11)"><code>_NET_ACTIVE_WINDOW</code> events</td><td>Nothing is loaded into another process</td></tr>
-			<tr><td>Title, class and size</td><td data-h="Windows"><code>GetWindowTextW</code>, <code>GetClassNameW</code>, <code>GetWindowRect</code></td><td data-h="Linux (X11)">Window manager properties</td><td>No process is opened</td></tr>
-			<tr><td>Program path</td><td data-h="Windows"><code>NtQuerySystemInformation</code></td><td data-h="Linux (X11)"><code>/proc/&lt;pid&gt;/exe</code></td><td>No process handle</td></tr>
-			<tr><td>Aim button, hide key</td><td data-h="Windows">Raw Input on its own window</td><td data-h="Linux (X11)">XInput2 raw events</td><td>No hooks</td></tr>
-			<tr><td>Shortcuts</td><td data-h="Windows"><code>RegisterHotKey</code></td><td data-h="Linux (X11)"><code>XGrabKey</code></td><td>The standard shortcut API</td></tr>
-			<tr><td>The crosshair</td><td data-h="Windows">A layered, topmost, click-through window</td><td data-h="Linux (X11)">An override-redirect ARGB window</td><td>Nothing is drawn into the game</td></tr>
-			<tr><td>OBS, opt-in</td><td data-h="Windows">HTTP on <code>127.0.0.1:47117</code></td><td data-h="Linux (X11)">The same</td><td>Your own computer only</td></tr>
-		</tbody>
-	</table>
-	<div class="faq obj" id="faq">
-		<details class="qa"><summary>Is a crosshair overlay bannable?<i aria-hidden="true"></i></summary><div class="a"><p>No overlay can promise that you will never be banned. Scorpio never reads or changes the game, but a game's own rules can forbid external crosshairs.</p></div></details>
-		<details class="qa"><summary>Does it work with Vanguard, Easy Anti-Cheat, BattlEye or VAC?<i aria-hidden="true"></i></summary><div class="a"><p>None of them has approved it directly. Scorpio crosses none of their lines, since it never touches the game or the anti-cheat. The exception is a game whose own rules forbid crosshair overlays.</p></div></details>
-		<details class="qa"><summary>Does Scorpio lower my frame rate?<i aria-hidden="true"></i></summary><div class="a"><p>It does not touch the game or its input. Its effect on the frame rate has not been measured yet.</p></div></details>
-		<details class="qa"><summary>Does Scorpio collect data?<i aria-hidden="true"></i></summary><div class="a"><p>No. It has no telemetry and no account, and goes online only for updates from GitHub.</p></div></details>
-	</div>
-</section>
-
-<section class="block flip" id="download" aria-labelledby="download-h">
-	<div class="copy rv">
-		<h2 class="name" id="download-h">Download</h2>
-		
-		<ol class="steps">
-			<li>On Windows 10 or 11, run the <code>-setup.exe</code>. It needs no administrator rights; it is unsigned, so SmartScreen may warn you the first time.</li>
-			<li>On Linux with X11 or XWayland, run the <code>.AppImage</code>, or <code>sudo apt install ./Scorpio_*.deb</code>.</li>
-			<li>Click the tray icon, paste a share code, and switch to your game.</li>
-		</ol>
-		<p>Free for non-commercial use under the <b>PolyForm Noncommercial 1.0.0</b> licence. The source is on GitHub.</p>
-		<a class="go" href="https://github.com/Deikus-LXXVII/Scorpio-Crosshair/releases/latest">Open the latest release</a>
-	</div>
-	<figure class="shot"><img src="images/scorpio-hide-while-aiming-and-shortcuts.webp" width="1960" height="1400" loading="lazy" decoding="async" alt="Scorpio Controls tab: the hide while aiming switch, the aim button, hold or toggle mode, and the six global shortcuts"></figure>
-</section>
 </main>
 
-<footer>
+<footer id="download" aria-labelledby="download-h">
+	<div class="get">
+		<h2 class="name" id="download-h">Download</h2>
+		<ol class="steps">
+			<li>On Windows 10 or 11, run the <code>-setup.exe</code>. It needs no administrator rights; Windows may warn you once, as it is unsigned.</li>
+			<li>On Linux with X11 or XWayland, run the <code>.AppImage</code> or install the <code>.deb</code>.</li>
+			<li>Click the tray icon, make a crosshair or paste a code, and start your game.</li>
+		</ol>
+		<p>Free for non-commercial use under the PolyForm Noncommercial 1.0.0 licence.</p>
+		<a class="go" href="https://github.com/Deikus-LXXVII/Scorpio-Crosshair/releases/latest">Open the latest release</a>
+	</div>
 	<div class="foot">
 		<span class="sig"><svg viewBox="128 128 768 768" role="img" aria-label="Scorpio"><path fill="#ebe5da" d="M647.8 403.4L896 512L512 680L484.2 667.8L453.5 597.7L512 623.2L766.3 512L678.5 473.6ZM403.4 376.2L512 128L680 512L667.8 539.8L597.7 570.5L623.2 512L512 257.7L473.6 345.5ZM376.2 620.6L128 512L512 344L539.8 356.2L570.5 426.3L512 400.8L257.7 512L345.5 550.4ZM620.6 647.8L512 896L344 512L356.2 484.2L426.3 453.5L400.8 512L512 766.3L550.4 678.5Z"/><path fill="#c8435a" d="M468 512L512 468L556 512L512 556Z"/></svg>Scorpio</span>
 		<nav aria-label="Links">
