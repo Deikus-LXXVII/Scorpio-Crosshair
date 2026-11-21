@@ -42,6 +42,12 @@ struct Shared {
     /// at once can't write an older copy last.
     saving: Mutex<()>,
     obs: obs::Obs,
+    /// The settings were read from the file, or there was none. False when
+    /// defaults stand in for a file that could not be read: then no image
+    /// is removed for this whole run, since the settings naming it are lost.
+    trusted: bool,
+    /// When this run started reading the settings, to find its own copy.
+    started: u64,
 }
 
 fn shared(handle: &AppHandle) -> tauri::State<'_, Shared> {
@@ -99,6 +105,14 @@ fn persist(handle: &AppHandle) -> Settings {
     let state = shared(handle);
     let _saving = state.saving.lock().unwrap();
     let settings = state.app.lock().unwrap().settings.clone();
+    // Defaults stand in for a file that could not be used: never write over
+    // it before a copy of it is kept aside, or what it held is gone.
+    if !state.trusted && state.path.exists() && !store::kept_aside(&state.path, state.started) {
+        if let Err(error) = store::keep_aside(&state.path) {
+            log::error!("settings not saved: the unreadable file could not be kept aside first ({error})");
+            return settings;
+        }
+    }
     if let Err(error) = store::save(&state.path, &settings) {
         log::error!("could not save settings: {error}");
     }
@@ -291,8 +305,12 @@ fn save_settings(handle: AppHandle, settings: Settings) -> Saved {
     sync_autostart(&handle, settings.start_with_system);
     let obs_error = sync_obs(&handle);
     let settings = persist(&handle);
-    // Older than a minute: a file just kept for a setting on its way stays.
-    tidy_images(&state.images, &state.path, &settings, Duration::from_secs(60));
+    if state.trusted {
+        // Under the save lock, which storing an image takes too, and older
+        // than a minute: a file just kept for a setting on its way stays.
+        let _saving = state.saving.lock().unwrap();
+        tidy_images(&state.images, &state.path, &settings, Duration::from_secs(60));
+    }
     finish(&handle, rest);
     load_pictures(&handle);
     Saved { settings, refused, obs_error }
@@ -321,6 +339,7 @@ async fn store_image(handle: AppHandle, request: tauri::ipc::Request<'_>) -> Res
     }
     let state = shared(&handle);
     let keep = |bytes: &[u8], kind: &str| {
+        let _saving = state.saving.lock().unwrap();
         picture::store(&state.images, bytes, kind).map_err(|error| {
             log::error!("image could not be kept: {error}");
             format!("The image could not be kept: {error}")
@@ -480,6 +499,7 @@ fn setup(handle: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     desktop_entry::install();
     let config = handle.path().app_config_dir()?;
     let path = config.join("settings.json");
+    let started = store::now_seconds();
     let (settings, trusted) = store::load(&path);
     let images = picture::folder(&config);
     if trusted {
@@ -502,7 +522,7 @@ fn setup(handle: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(display) = primary_display(handle) {
         app.display = display;
     }
-    handle.manage(Shared { app: Mutex::new(app), platform, path, images, hotkeys: Mutex::new(HashMap::new()), lock_item, saving: Mutex::new(()), obs: obs::Obs::default() });
+    handle.manage(Shared { app: Mutex::new(app), platform, path, images, hotkeys: Mutex::new(HashMap::new()), lock_item, saving: Mutex::new(()), obs: obs::Obs::default(), trusted, started });
 
     TrayIconBuilder::with_id("scorpio")
         .icon(handle.default_window_icon().cloned().ok_or("no icon")?)

@@ -232,13 +232,26 @@ impl Settings {
 /// The flag is false when defaults stand in for a file that exists: then
 /// nothing may be cleaned up on the strength of these settings.
 pub fn load(path: &Path) -> (Settings, bool) {
-    let text = match fs::read_to_string(path) {
+    // A lock by an antivirus or a sync tool at start-up passes: try again.
+    let mut read = fs::read_to_string(path);
+    for _ in 0..5 {
+        match &read {
+            Err(error) if error.kind() != std::io::ErrorKind::NotFound => {
+                std::thread::sleep(std::time::Duration::from_millis(200));
+                read = fs::read_to_string(path);
+            }
+            _ => break,
+        }
+    }
+    let text = match read {
         Ok(text) => text,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return (Settings::default(), true),
         Err(error) => {
             // Unreadable but present: keep a copy before defaults replace it.
             log::warn!("settings could not be read ({error}); starting from defaults");
-            let _ = fs::copy(path, broken_name(path));
+            if let Err(error) = keep_aside(path) {
+                log::warn!("a copy of the settings could not be kept aside yet: {error}");
+            }
             return (Settings::default(), false);
         }
     };
@@ -246,7 +259,9 @@ pub fn load(path: &Path) -> (Settings, bool) {
         Ok(settings) => (settings.validated(), true),
         Err(error) => {
             log::warn!("settings unreadable ({error}); starting from defaults");
-            let _ = fs::rename(path, broken_name(path));
+            if let Err(error) = keep_aside(path) {
+                log::warn!("a copy of the settings could not be kept aside yet: {error}");
+            }
             (Settings::default(), false)
         }
     }
@@ -282,9 +297,31 @@ pub fn images_kept_aside(path: &Path) -> Vec<String> {
     names
 }
 
+/// Copies settings that could not be used to `settings.broken-<time>.json`.
+pub fn keep_aside(path: &Path) -> std::io::Result<u64> {
+    fs::copy(path, broken_name(path))
+}
+
+/// Whether a copy of unusable settings was kept aside at or after `since`
+/// (seconds since 1970), so this run's file is the one copied.
+pub fn kept_aside(path: &Path, since: u64) -> bool {
+    let (Some(folder), Some(stem)) = (path.parent(), path.file_stem().and_then(|stem| stem.to_str())) else { return false };
+    let prefix = format!("{stem}.broken-");
+    let Ok(entries) = fs::read_dir(folder) else { return false };
+    entries.filter_map(Result::ok).any(|entry| {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let seconds = name.strip_prefix(&prefix).and_then(|rest| rest.strip_suffix(".json")).and_then(|n| n.parse::<u64>().ok());
+        seconds.is_some_and(|seconds| seconds >= since)
+    })
+}
+
+/// Seconds since 1970, the stamp in a kept-aside copy's name.
+pub fn now_seconds() -> u64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs())
+}
+
 fn broken_name(path: &Path) -> std::path::PathBuf {
-    let seconds = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs());
-    path.with_extension(format!("broken-{seconds}.json"))
+    path.with_extension(format!("broken-{}.json", now_seconds()))
 }
 
 /// Writes through a temporary file and a rename, so a crash mid-write never
@@ -352,6 +389,18 @@ mod tests {
         assert_eq!(load(&path), (Settings::default(), false), "defaults stand in, not to be trusted");
         let kept = fs::read_dir(&dir).unwrap().filter_map(Result::ok).any(|e| e.file_name().to_string_lossy().starts_with("settings.broken-"));
         assert!(kept);
+    }
+
+    #[test]
+    fn only_a_copy_from_this_run_counts_as_kept_aside() {
+        let dir = folder();
+        let path = dir.join("settings.json");
+        fs::write(dir.join("settings.broken-100.json"), "old").unwrap();
+        assert!(!kept_aside(&path, 200), "an older incident's copy is not this file's");
+        fs::write(&path, "{ unreadable").unwrap();
+        let started = now_seconds();
+        keep_aside(&path).unwrap();
+        assert!(kept_aside(&path, started));
     }
 
     #[test]

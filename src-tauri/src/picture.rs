@@ -141,7 +141,9 @@ pub fn store(folder: &Path, bytes: &[u8], kind: &str) -> std::io::Result<String>
     let path = folder.join(&name);
     if path.exists() {
         // Fresh again, so a cleanup in the next minute leaves it alone.
-        let _ = fs::File::options().append(true).open(&path).and_then(|file| file.set_modified(std::time::SystemTime::now()));
+        if let Err(error) = fs::File::options().append(true).open(&path).and_then(|file| file.set_modified(std::time::SystemTime::now())) {
+            log::warn!("image {name} could not be marked as fresh: {error}");
+        }
     } else {
         let temporary = folder.join(format!("{name}.tmp"));
         fs::write(&temporary, bytes)?;

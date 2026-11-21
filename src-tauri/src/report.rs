@@ -101,7 +101,8 @@ fn replace_ignoring_case(text: &str, from: &str, to: &str, whole_word: bool) -> 
     if needle.is_empty() {
         return text.to_string();
     }
-    let word = |c: Option<char>| c.is_some_and(char::is_alphanumeric);
+    // Letters only: a name followed by digits (lena99, DESKTOP-LENA2) is still taken out.
+    let word = |c: Option<char>| c.is_some_and(char::is_alphabetic);
     let mut out = String::with_capacity(text.len());
     let mut rest = 0;
     for (at, _) in lower.match_indices(&needle) {
@@ -184,6 +185,7 @@ mod tests {
         assert_eq!(linux, "~/.steam and <user>");
         assert_eq!(redact("Bob is a bob", None, Some("Bo")), "Bob is a bob", "short names are left alone");
         assert_eq!(redact("Linux, lin and LIN-2", None, Some("lin")), "Linux, <user> and <user>-2", "only the name as a word of its own");
+        assert_eq!(redact("DESKTOP-LENA2 and lena99@", None, Some("lena")), "DESKTOP-<user>2 and <user>99@", "digits next to the name do not hide it");
         let odd = redact("game İstanbul at c:\\users\\lena\\x", Some(Path::new(r"C:\Users\Lena")), None);
         assert_eq!(odd, "game İstanbul at ~\\x", "a letter that changes length when lower-cased does not stop the match");
     }
