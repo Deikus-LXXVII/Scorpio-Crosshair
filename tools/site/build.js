@@ -42,7 +42,7 @@ const CALLS = [
 	[ 'Show it in OBS, if asked', 'Only on your own computer.', '<code>127.0.0.1:47117</code>' ],
 ]
 
-// Comparison with other crosshair apps, read from each program's code on 2026-11-21: Scorpio 0.1.1 (commit 5a83600),
+// Comparison with other crosshair apps, read from each program's code on 2026-11-21: Scorpio 0.1.2,
 // Simple Crosshair Overlay 1.2.1, Crosshair Y 4.2, CrossOver 3.4.11. None of the four opens, injects into or draws into
 // a game. Crosshair Y's codes are Valorant's; Simple Crosshair Overlay's macOS build is marked untested upstream.
 const CMP_APPS = [ 'Scorpio', 'Simple Crosshair Overlay', 'Crosshair Y', 'CrossOver' ]
@@ -52,7 +52,7 @@ const CMP = [
 	[ 'Crosshair per game', 'Yes', '—', '—', '—' ],
 	[ 'CS2 crosshair codes', 'Yes', '—', '—', '—' ],
 	[ 'Crosshair in OBS', 'Yes', '—', '—', '—' ],
-	[ 'Your own image', 'Next update', 'Yes', 'Yes', 'Yes' ],
+	[ 'Your own image', 'Yes', 'Yes', 'Yes', 'Yes' ],
 	[ 'Reads keys by', 'System shortcuts', 'Checking every key', 'One shortcut', 'Global hooks' ],
 	[ 'Systems', 'Windows, Linux', 'Windows, macOS', 'Windows, Linux', 'Windows, macOS, Linux' ],
 ]
@@ -62,7 +62,9 @@ const CMP = [
 // no settings window, three runs, 25 s after start; private memory and CPU time over the next 30 s, summed over all
 // of a program's processes. The chart shows the middle of the three runs; the runs are kept here as measured.
 const EFF = [
-	{ name: 'Scorpio', ver: '0.1.1', mem: [ 10.3, 10.4, 10.3 ], cpu: [ 16, 31, 31 ], me: true },
+	// Scorpio 0.1.2, release build, three undisturbed runs on the same PC the same day. (Two earlier runs had the
+	// settings window open, which loads WebView2: 11.6 and 9.3 MB. Scorpio 0.1.1 measured 10.3 / 10.4 / 10.3 MB, 16 / 31 / 31 ms.)
+	{ name: 'Scorpio', ver: '0.1.2', mem: [ 7.4, 7.4, 7.4 ], cpu: [ 0, 0, 16 ], me: true },
 	{ name: 'Simple Crosshair Overlay', ver: '1.2.1', mem: [ 6.4, 6.4, 6.4 ], cpu: [ 625, 438, 516 ] },
 	{ name: 'Crosshair Y', ver: '4.2', mem: [ 249.8, 250.5, 251.7 ], cpu: [ 16, 0, 16 ] },
 	{ name: 'CrossOver', ver: '3.4.11', mem: [ 358.1, 359.1, 360.0 ], cpu: [ 47, 31, 47 ] },
