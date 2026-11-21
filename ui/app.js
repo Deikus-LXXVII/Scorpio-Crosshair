@@ -291,10 +291,12 @@ const paintStatus = () => {
 
 	if ( !s.locked ) text = t( 'Position unlocked: drag the crosshair, then lock it' )
 	else if ( s.hidden ) text = t( 'Hidden by shortcut' )
+	else if ( s.exclusive ) text = t( '{game} runs in exclusive fullscreen: switch it to borderless', { game: s.exclusive } )
 	else if ( s.visible ) text = s.game ? t( 'Shown over {game}', { game: s.game } ) : t( 'Shown over a detected game' )
 	else if ( s.always ) text = t( 'Shown over every window' )
 
 	node.textContent = text
+	node.title = text
 
 }
 

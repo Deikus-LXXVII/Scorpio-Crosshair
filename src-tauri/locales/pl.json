@@ -211,6 +211,7 @@
   "Without adding": "Bez dodawania",
   "Your crosshairs": "Twoje celowniki",
   "Your image": "Własny obraz",
+  "{game} runs in exclusive fullscreen: switch it to borderless": "{game} działa w wyłącznym pełnym ekranie: przełącz na okno bez ramki",
   "{name} added.": "Dodano grę {name}.",
   "{name} has its own crosshair": "Gra {name} ma własny celownik",
   "{name} updated.": "Zaktualizowano celownik „{name}”.",

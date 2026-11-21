@@ -19,15 +19,16 @@ mod window;
 pub use process::image as process_image;
 
 use super::{Command, Event, Geometry, Platform, Unsupported};
-use std::cell::{OnceCell, RefCell};
+use std::cell::{Cell, OnceCell, RefCell};
 use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
 use windows::core::{w, PCWSTR};
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::Accessibility::{SetWinEventHook, UnhookWinEvent, HWINEVENTHOOK};
+use windows::Win32::UI::Shell::{SHQueryUserNotificationState, QUNS_RUNNING_D3D_FULL_SCREEN};
 use windows::Win32::UI::HiDpi::{SetThreadDpiAwarenessContext, DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2};
 use windows::Win32::UI::WindowsAndMessaging::{
-    CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetForegroundWindow, GetMessageW, LoadCursorW,
+    CreateWindowExW, DefWindowProcW, KillTimer, SetTimer, WM_TIMER, DestroyWindow, DispatchMessageW, GetForegroundWindow, GetMessageW, LoadCursorW,
     GetWindowThreadProcessId, PostMessageW, PostQuitMessage, RegisterClassW, EVENT_OBJECT_LOCATIONCHANGE, EVENT_SYSTEM_FOREGROUND, HWND_MESSAGE, IDC_ARROW, MSG,
     WINDOW_EX_STYLE, WINDOW_STYLE, WINEVENT_OUTOFCONTEXT, WM_APP, WM_INPUT, WNDCLASSW, WNDPROC,
 };
@@ -42,6 +43,30 @@ struct State {
     sink: HWND,
     listener: RefCell<input::Listener>,
     follow: RefCell<Follow>,
+    /// The next of `EXCLUSIVE_CHECKS` to run.
+    exclusive_check: Cell<usize>,
+}
+
+/// The sink's one timer: asking whether the window in front is in exclusive fullscreen.
+const EXCLUSIVE_TIMER: usize = 1;
+/// When to ask, in ms after the previous ask, from when a fullscreen window came
+/// to the front: a game may switch to exclusive fullscreen while it loads.
+/// Three asks at most, then nothing until the next change of window.
+const EXCLUSIVE_CHECKS: [u32; 3] = [2_000, 8_000, 20_000];
+
+/// Arms the next exclusive-fullscreen check, or stops the checks.
+fn check_exclusive(state: &State, next: Option<usize>) {
+    match next.filter(|next| *next < EXCLUSIVE_CHECKS.len()) {
+        Some(next) => {
+            state.exclusive_check.set(next);
+            // SAFETY: the sink is this thread's own window; the timer posts WM_TIMER to it.
+            unsafe { SetTimer(Some(state.sink), EXCLUSIVE_TIMER, EXCLUSIVE_CHECKS[next], None) };
+        }
+        // SAFETY: as above; killing a timer that is not set does nothing.
+        None => unsafe {
+            let _ = KillTimer(Some(state.sink), EXCLUSIVE_TIMER);
+        },
+    }
 }
 
 /// Following the game window's moves and resizes (Command::Follow).
@@ -128,7 +153,7 @@ fn run(events: Sender<Event>, commands: Receiver<Command>, ready: Sender<Result<
             return;
         }
     };
-    let state = State { events, commands, sink, listener: RefCell::default(), follow: RefCell::default() };
+    let state = State { events, commands, sink, listener: RefCell::default(), follow: RefCell::default(), exclusive_check: Cell::new(0) };
     STATE.with(|cell| cell.set(state).ok());
 
     // Out of context: the system posts the event to this thread's queue. No
@@ -198,6 +223,7 @@ fn report_foreground(hwnd: HWND) {
             if let Some(state) = state.get() {
                 // A window of another process in front becomes the one followed.
                 if let Event::Foreground(Some(info)) = &event {
+                    check_exclusive(state, (info.pid != std::process::id() && info.fullscreen).then_some(0));
                     let mut follow = state.follow.borrow_mut();
                     if info.pid != std::process::id() && follow.target != Some(hwnd) {
                         follow.target = Some(hwnd);
@@ -264,6 +290,14 @@ unsafe extern "system" fn sink_procedure(hwnd: HWND, message: u32, wparam: WPARA
         let Some(state) = state.get() else { return };
         match message {
             WM_WAKE => drain_commands(state),
+            WM_TIMER if wparam.0 == EXCLUSIVE_TIMER => {
+                // The shell's own answer to "may I show a notification now":
+                // nothing here looks at or touches the game.
+                // SAFETY: no arguments; reads the shell's presentation state.
+                let exclusive = unsafe { SHQueryUserNotificationState() }.is_ok_and(|state| state == QUNS_RUNNING_D3D_FULL_SCREEN);
+                let _ = state.events.send(Event::Exclusive(exclusive));
+                check_exclusive(state, (!exclusive).then(|| state.exclusive_check.get() + 1));
+            }
             WM_INPUT => state.listener.borrow_mut().read(lparam, |event| {
                 let _ = state.events.send(event);
             }),

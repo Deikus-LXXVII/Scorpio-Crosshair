@@ -208,6 +208,7 @@
   "Without adding": "追加せずに使う",
   "Your crosshairs": "保存したクロスヘア",
   "Your image": "自分の画像",
+  "{game} runs in exclusive fullscreen: switch it to borderless": "{game} は排他的フルスクリーンです：ボーダーレスに切り替えてください",
   "{name} added.": "{name} を追加しました。",
   "{name} has its own crosshair": "{name} 専用のクロスヘアあり",
   "{name} updated.": "「{name}」を更新しました。",

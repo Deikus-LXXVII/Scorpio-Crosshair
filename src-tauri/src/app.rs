@@ -116,6 +116,9 @@ pub struct App {
     pub front: Option<WindowInfo>,
     /// The last window in front that was not Scorpio's, for "add this game".
     pub last_outside: Option<WindowInfo>,
+    /// The game last found in exclusive fullscreen, where no crosshair can
+    /// show; kept after it leaves the front, so the settings window can say so.
+    pub exclusive: Option<String>,
     pub locked: bool,
     pub hidden: bool,
     aiming: bool,
@@ -141,6 +144,7 @@ impl App {
             focus: FocusState { visible: false, game: None },
             front: None,
             last_outside: None,
+            exclusive: None,
             locked: true,
             hidden: false,
             aiming: false,
@@ -294,6 +298,17 @@ impl App {
                     self.refocus();
                     effects.status_changed = true;
                 }
+            }
+            Event::Exclusive(exclusive) => {
+                let name = self
+                    .focus
+                    .game
+                    .and_then(|index| self.settings.games.get(index))
+                    .map(|game| game.name.clone())
+                    .or_else(|| self.last_outside.as_ref().map(|window| if window.title.is_empty() { window.name.clone() } else { window.title.clone() }));
+                let now = if exclusive { name } else if self.exclusive == name { None } else { self.exclusive.clone() };
+                effects.status_changed = now != self.exclusive;
+                self.exclusive = now;
             }
             Event::Mouse { button, down } => {
                 if MouseButton::from_name(&self.settings.aim.button) == Some(button) {
@@ -631,7 +646,7 @@ impl App {
     pub fn status(&self) -> Status {
         let game = self.focus.game.and_then(|index| self.settings.games.get(index)).map(|game| game.name.clone());
         let front = self.front.as_ref().filter(|window| window.pid != self.own_pid).cloned().or_else(|| self.last_outside.clone());
-        Status { visible: self.focus.visible, always: self.settings.detect.always, game, front, locked: self.locked, hidden: self.hidden }
+        Status { visible: self.focus.visible, always: self.settings.detect.always, game, front, locked: self.locked, hidden: self.hidden, exclusive: self.exclusive.clone() }
     }
 }
 
@@ -665,6 +680,8 @@ pub struct Status {
     pub front: Option<WindowInfo>,
     pub locked: bool,
     pub hidden: bool,
+    /// A game last found in exclusive fullscreen (see `App::exclusive`).
+    pub exclusive: Option<String>,
 }
 
 #[cfg(test)]
@@ -704,6 +721,25 @@ mod tests {
             Command::Hide => Some(false),
             _ => None,
         })
+    }
+
+    #[test]
+    fn a_game_found_in_exclusive_fullscreen_is_remembered_until_it_is_not() {
+        let mut app = app();
+        app.event(Event::Foreground(Some(window(1, "game", true))));
+        assert!(app.event(Event::Exclusive(true)).status_changed);
+        assert_eq!(app.status().exclusive.as_deref(), Some("Game"));
+        // The player switches to the settings window: the game is still named.
+        app.event(Event::Foreground(Some(window(OWN, "scorpio", false))));
+        assert_eq!(app.status().exclusive.as_deref(), Some("Game"));
+        // Another window that is not exclusive leaves it alone.
+        app.event(Event::Foreground(Some(window(2, "other", true))));
+        assert!(!app.event(Event::Exclusive(false)).status_changed);
+        assert_eq!(app.status().exclusive.as_deref(), Some("Game"));
+        // The game back in front and no longer exclusive (borderless now).
+        app.event(Event::Foreground(Some(window(1, "game", true))));
+        assert!(app.event(Event::Exclusive(false)).status_changed);
+        assert_eq!(app.status().exclusive, None);
     }
 
     #[test]

@@ -127,6 +127,7 @@ This table lists every operating system call that Scorpio makes to do its work.
 | Which window is in front | `SetWinEventHook(EVENT_SYSTEM_FOREGROUND, WINEVENT_OUTOFCONTEXT)` | `PropertyNotify` on the root window's `_NET_ACTIVE_WINDOW` | Out of context, so nothing is loaded into another process. An event, not a poll |
 | The window's process id, title, class and size | `GetWindowThreadProcessId`, `GetWindowTextW`, `GetClassNameW`, `GetWindowRect`, `MonitorFromWindow` | `_NET_WM_PID`, `WM_CLASS`, `_NET_WM_NAME`, `_NET_WM_STATE` | Window manager data. No process is opened |
 | The program's path | `NtQuerySystemInformation(SystemProcessIdInformation)` | `/proc/<pid>/exe`, or `cmdline` for Wine | No process handle is opened |
+| Whether a fullscreen game is in exclusive fullscreen, so the settings window can say why the crosshair does not show | `SHQueryUserNotificationState` (`QUNS_RUNNING_D3D_FULL_SCREEN`), asked 2, 10 and 30 seconds after a fullscreen window comes to the front | Not asked | The shell's answer to "may a notification show now". It reads nothing of the game and opens no process |
 | Aim button and hide key | Raw Input with `RIDEV_INPUTSINK` on Scorpio's own hidden window | XInput2 raw events on the root window | The input API that games themselves read. No hooks |
 | Shortcuts | `RegisterHotKey` | `XGrabKey` | The standard API for global shortcuts |
 | The crosshair | A layered, topmost, click-through window | An override-redirect ARGB window with an empty input shape | A separate window. Nothing is drawn into the game |
@@ -237,7 +238,7 @@ Check these in order:
 
 ### The crosshair does not show in fullscreen
 
-The game most likely runs in exclusive fullscreen. In that mode the game sends its picture to the screen past the Windows desktop, and Windows draws no other window over it. No overlay that stays out of the game can show there, Scorpio included. Overlays that do show, like Steam's or Discord's, are loaded into the game, and Scorpio never does that.
+The game most likely runs in exclusive fullscreen. In that mode the game sends its picture to the screen past the Windows desktop, and Windows draws no other window over it. No overlay that stays out of the game can show there, Scorpio included. On Windows, Scorpio notices it and its settings window names the game in the title bar. Overlays that do show, like Steam's or Discord's, are loaded into the game, and Scorpio never does that.
 
 - Switch the game to **borderless** or **windowed fullscreen** in its video settings. This always works.
 - Windows 10 and 11 usually turn a game's exclusive fullscreen into borderless by themselves ("fullscreen optimizations"). If they are switched off, more games run in exclusive fullscreen. Check the game's `.exe`: **Properties → Compatibility → Disable fullscreen optimizations** should be off. Some system tweaks, such as AtlasOS, switch them off for every program through the `__COMPAT_LAYER` variable.

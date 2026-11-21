@@ -211,6 +211,7 @@
   "Without adding": "Без додавання",
   "Your crosshairs": "Ваші приціли",
   "Your image": "Своє зображення",
+  "{game} runs in exclusive fullscreen: switch it to borderless": "{game} в ексклюзивному повному екрані: увімкніть режим без рамки",
   "{name} added.": "Гру {name} додано.",
   "{name} has its own crosshair": "Свій приціл для {name}",
   "{name} updated.": "Приціл «{name}» оновлено.",

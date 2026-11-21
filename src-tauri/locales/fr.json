@@ -210,6 +210,7 @@
   "Without adding": "Sans ajout",
   "Your crosshairs": "Vos réticules",
   "Your image": "Votre image",
+  "{game} runs in exclusive fullscreen: switch it to borderless": "{game} est en plein écran exclusif : passez en mode fenêtré sans bordure",
   "{name} added.": "Jeu {name} ajouté.",
   "{name} has its own crosshair": "Réticule dédié pour {name}",
   "{name} updated.": "Réticule « {name} » mis à jour.",

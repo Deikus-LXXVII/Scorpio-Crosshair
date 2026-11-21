@@ -208,6 +208,7 @@
   "Without adding": "无需添加",
   "Your crosshairs": "你的准星",
   "Your image": "自定义图片",
+  "{game} runs in exclusive fullscreen: switch it to borderless": "{game} 处于独占全屏：请切换为无边框窗口",
   "{name} added.": "已添加 {name}。",
   "{name} has its own crosshair": "{name} 有专属准星",
   "{name} updated.": "已更新“{name}”。",

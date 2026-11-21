@@ -3,7 +3,7 @@
    a step of the scale in grid.md (4, 8, 12, 16, 20, 24, 28, 40). */
 
 html, body { height: 100%; }
-body { display: grid; grid-template-rows: auto auto minmax(0, 1fr); background: var(--basalt); color: var(--marble); font: 300 var(--fs-body-app)/1.5 var(--text); }
+body { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr); background: var(--basalt); color: var(--marble); font: 300 var(--fs-body-app)/1.5 var(--text); }
 
 /* The title bar: the mark and the name on the left, what the crosshair is
    doing in the middle (in words, so it has no dot), the window's controls. */

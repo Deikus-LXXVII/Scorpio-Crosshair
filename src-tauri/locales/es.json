@@ -210,6 +210,7 @@
   "Without adding": "Sin añadir",
   "Your crosshairs": "Tus miras",
   "Your image": "Tu imagen",
+  "{game} runs in exclusive fullscreen: switch it to borderless": "{game} está en pantalla completa exclusiva: cambia a ventana sin bordes",
   "{name} added.": "Juego {name} añadido.",
   "{name} has its own crosshair": "Mira propia para {name}",
   "{name} updated.": "Mira «{name}» actualizada.",

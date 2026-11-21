@@ -217,6 +217,10 @@ pub enum Event {
     Moved { x: i32, y: i32 },
     /// The unlocked overlay's centre button was clicked.
     CenterClicked,
+    /// Whether the fullscreen window in front runs in exclusive fullscreen,
+    /// where Windows shows no other window over it. Windows only: asked of
+    /// the shell a few times after such a window comes to the front.
+    Exclusive(bool),
 }
 
 /// What the app tells the platform thread.
