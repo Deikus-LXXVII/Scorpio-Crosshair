@@ -6,6 +6,8 @@
 
 {
 
+const { t } = window.ui
+
 const TYPES = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif', svg: 'image/svg+xml' }
 const FILE_LIMIT = 5 * 1024 * 1024
 const SIZE_LIMIT = 512
@@ -21,7 +23,7 @@ const kindOf = name => {
 
 }
 
-const unreadable = () => new Error( 'That image could not be read. Choose a PNG, JPG, WebP, GIF or SVG file.' )
+const unreadable = () => new Error( t( 'That image could not be read. Choose a PNG, JPG, WebP, GIF or SVG file.' ) )
 
 const svgRoot = text => {
 
@@ -165,7 +167,7 @@ const rasterise = async ( bytes, kind, size ) => {
 	context.drawImage( img, 0, 0, width, height )
 	const blob = await new Promise( done => canvas.toBlob( done, 'image/png' ) )
 
-	if ( !blob ) throw new Error( 'The image could not be drawn.' )
+	if ( !blob ) throw new Error( t( 'The image could not be drawn.' ) )
 
 	return new Uint8Array( await blob.arrayBuffer() )
 

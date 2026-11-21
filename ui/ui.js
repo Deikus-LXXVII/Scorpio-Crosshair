@@ -6,6 +6,45 @@
 // A block, so these names stay out of the page's global scope.
 {
 
+// Texts. The English is the key; the dictionary for the language in use comes
+// from Scorpio (src-tauri/locales). `{name}` marks are filled from `values`.
+let language = 'en'
+let texts = {}
+
+const fill = ( text, values ) => values ? text.replace( /\{(\w+)\}/g, ( mark, name ) => ( name in values ? String( values[name] ) : mark ) ) : text
+
+const t = ( english, values ) => {
+
+	const text = texts[english]
+
+	return fill( typeof text === 'string' ? text : english, values )
+
+}
+
+// A count: `one` and `other` are the English forms; the dictionary may give
+// one form per plural category of its language (Intl.PluralRules).
+const tn = ( count, one, other, values = {} ) => {
+
+	const forms = texts[other]
+	const category = new Intl.PluralRules( language ).select( count )
+	let text = count === 1 ? one : other
+
+	if ( typeof forms === 'string' ) text = forms
+	else if ( forms && typeof forms === 'object' ) text = forms[category] ?? forms.other ?? text
+	return fill( text, { n: count, ...values } )
+
+}
+
+const useLanguage = ( code, dictionary ) => {
+
+	language = code
+	texts = dictionary || {}
+	document.documentElement.lang = code
+	for ( const node of document.querySelectorAll( '[data-i18n]' ) ) node.textContent = t( node.dataset.i18n )
+	for ( const node of document.querySelectorAll( '[data-i18n-label]' ) ) node.setAttribute( 'aria-label', t( node.dataset.i18nLabel ) )
+
+}
+
 const h = ( tag, props = {}, ...children ) => {
 
 	const [ head, id ] = tag.split( '#' )
@@ -99,7 +138,7 @@ const segmented = ( options, value, onChange, { label } = {} ) => {
 }
 
 // A dropdown: a button and a drawn list, with arrow keys, Enter and Escape.
-const select = ( options, value, onChange, { label, placeholder = 'Choose' } = {} ) => {
+const select = ( options, value, onChange, { label, placeholder = t( 'Choose' ) } = {} ) => {
 
 	const root = h( 'div.select' )
 	const current = () => options.find( o => o[0] === value )
@@ -313,11 +352,11 @@ const colorButton = ( rgb, onChange, { label } = {} ) => {
 		openPopover?.close()
 		const [ hue0, s0, v0 ] = toHsv( color )
 		let [ hue, sat, val ] = [ hue0, s0, v0 ]
-		const sv = h( 'div.sv', { tabindex: '0', 'aria-label': 'Saturation and brightness' }, h( 'i' ) )
-		const hueBar = h( 'div.hue', { tabindex: '0', 'aria-label': 'Hue' }, h( 'i' ) )
-		const field = h( 'input.input', { value: hex( color ), 'aria-label': 'Hex colour', spellcheck: 'false' } )
+		const sv = h( 'div.sv', { tabindex: '0', 'aria-label': t( 'Saturation and brightness' ) }, h( 'i' ) )
+		const hueBar = h( 'div.hue', { tabindex: '0', 'aria-label': t( 'Hue' ) }, h( 'i' ) )
+		const field = h( 'input.input', { value: hex( color ), 'aria-label': t( 'Hex colour' ), spellcheck: 'false' } )
 		const swatches = h( 'div.swatches', {}, SWATCHES.map( s => h( 'button', { type: 'button', style: { '--swatch': hex( s ) }, 'aria-label': hex( s ), 'aria-pressed': String( hex( s ) === hex( color ) ), onclick: () => apply( s ) } ) ) )
-		const pipette = 'EyeDropper' in window ? h( 'button.btn', { type: 'button', text: 'Pick', title: 'Pick a colour anywhere on screen', onclick: async () => {
+		const pipette = 'EyeDropper' in window ? h( 'button.btn', { type: 'button', text: t( 'Pick' ), title: t( 'Pick a colour anywhere on screen' ), onclick: async () => {
 
 			try {
 
@@ -476,6 +515,12 @@ const KEY_NAMES = {
 }
 const SHOWN = { Period: '.', Comma: ',', Slash: '/', Semicolon: ';', Quote: '\'', BracketLeft: '[', BracketRight: ']', Backslash: '\\', Minus: '-', Equal: '=', Backquote: '`', Up: '↑', Down: '↓', Left: '←', Right: '→' }
 
+// Accelerator parts that are words, translated when shown.
+const shownKey = part => ( {
+	Ctrl: () => t( 'Ctrl' ), Shift: () => t( 'Shift' ), Alt: () => t( 'Alt' ), Super: () => t( 'Super' ), Space: () => t( 'Space' ), Enter: () => t( 'Enter' ),
+	Tab: () => t( 'Tab' ), Home: () => t( 'Home' ), End: () => t( 'End' ), PageUp: () => t( 'Page Up' ), PageDown: () => t( 'Page Down' ), Insert: () => t( 'Insert' ), Delete: () => t( 'Delete' ),
+}[part]?.() ?? part )
+
 const keyName = event => {
 
 	const { code } = event
@@ -500,9 +545,9 @@ const keybind = ( accelerator, onChange, { label, error } = {} ) => {
 	const paint = text => {
 
 		node.replaceChildren()
-		if ( listening ) node.append( h( 'span.hint', { text: 'Press the shortcut' } ) )
-		else if ( !text ) node.append( h( 'span.hint', { text: 'Not set' } ) )
-		else node.append( ...text.split( '+' ).map( part => h( 'kbd', { text: SHOWN[part] || part } ) ) )
+		if ( listening ) node.append( h( 'span.hint', { text: t( 'Press the shortcut' ) } ) )
+		else if ( !text ) node.append( h( 'span.hint', { text: t( 'Not set' ) } ) )
+		else node.append( ...text.split( '+' ).map( part => h( 'kbd', { text: SHOWN[part] || shownKey( part ) } ) ) )
 
 	}
 
@@ -578,13 +623,27 @@ const AIM_CODES = [
 	'Insert', 'Delete', 'MetaLeft', 'MetaRight', 'ContextMenu',
 ]
 const AIM_MOUSE = [ 'Mouse1', 'Mouse3', 'Mouse2', 'Mouse4', 'Mouse5' ] // by MouseEvent.button
-const AIM_MOUSE_SHOWN = { Mouse1: 'Left mouse button', Mouse2: 'Right mouse button', Mouse3: 'Middle mouse button', Mouse4: 'Back mouse button', Mouse5: 'Forward mouse button' }
+const AIM_MOUSE_SHOWN = [ 'Mouse1', 'Mouse2', 'Mouse3', 'Mouse4', 'Mouse5' ]
+const aimMouseShown = name => ( {
+	Mouse1: () => t( 'Left mouse button' ), Mouse2: () => t( 'Right mouse button' ), Mouse3: () => t( 'Middle mouse button' ),
+	Mouse4: () => t( 'Back mouse button' ), Mouse5: () => t( 'Forward mouse button' ),
+}[name]?.() )
 const AIM_SHOWN = {
-	ShiftLeft: 'Left Shift', ShiftRight: 'Right Shift', ControlLeft: 'Left Ctrl', ControlRight: 'Right Ctrl', AltLeft: 'Left Alt', AltRight: 'Right Alt',
-	MetaLeft: 'Left Win', MetaRight: 'Right Win', ContextMenu: 'Menu', ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→', Backquote: '`',
+	ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→', Backquote: '`',
 	Minus: '-', Equal: '=', BracketLeft: '[', BracketRight: ']', Backslash: '\\', Semicolon: ';', Quote: '\'', Comma: ',', Period: '.', Slash: '/',
-	IntlBackslash: '< >', NumpadMultiply: 'Num *', NumpadAdd: 'Num +', NumpadSubtract: 'Num −', NumpadDecimal: 'Num .', NumpadDivide: 'Num /', NumpadEnter: 'Num Enter',
+	IntlBackslash: '< >',
 }
+
+// Names of keys that are words, translated when shown.
+const aimWord = code => ( {
+	ShiftLeft: () => t( 'Left Shift' ), ShiftRight: () => t( 'Right Shift' ), ControlLeft: () => t( 'Left Ctrl' ), ControlRight: () => t( 'Right Ctrl' ),
+	AltLeft: () => t( 'Left Alt' ), AltRight: () => t( 'Right Alt' ), MetaLeft: () => t( 'Left Win' ), MetaRight: () => t( 'Right Win' ), ContextMenu: () => t( 'Menu' ),
+	NumpadMultiply: () => t( 'Num {key}', { key: '*' } ), NumpadAdd: () => t( 'Num {key}', { key: '+' } ), NumpadSubtract: () => t( 'Num {key}', { key: '−' } ),
+	NumpadDecimal: () => t( 'Num {key}', { key: '.' } ), NumpadDivide: () => t( 'Num {key}', { key: '/' } ), NumpadEnter: () => t( 'Num Enter' ),
+	Backspace: () => t( 'Backspace' ), Tab: () => t( 'Tab' ), Enter: () => t( 'Enter' ), Space: () => t( 'Space' ), CapsLock: () => t( 'Caps Lock' ),
+	ScrollLock: () => t( 'Scroll Lock' ), NumLock: () => t( 'Num Lock' ), PrintScreen: () => t( 'Print Screen' ), Home: () => t( 'Home' ), End: () => t( 'End' ),
+	PageUp: () => t( 'Page Up' ), PageDown: () => t( 'Page Down' ), Insert: () => t( 'Insert' ), Delete: () => t( 'Delete' ),
+}[code]?.() )
 
 // What the key at this position prints on the player's keyboard, when the
 // web view can tell (Chromium's keyboard map); the position's name otherwise.
@@ -598,7 +657,8 @@ navigator.keyboard?.getLayoutMap?.().then( map => {
 const aimShown = code => {
 
 	if ( AIM_SHOWN[code] ) return AIM_SHOWN[code]
-	if ( /^Numpad\d$/.test( code ) ) return `Num ${code.slice( 6 )}`
+	if ( aimWord( code ) ) return aimWord( code )
+	if ( /^Numpad\d$/.test( code ) ) return t( 'Num {key}', { key: code.slice( 6 ) } )
 	const printed = layout?.get( code )
 
 	if ( printed && /^Key|^Digit/.test( code ) ) return printed.toUpperCase()
@@ -637,8 +697,8 @@ const aimbind = ( name, onChange, { label } = {} ) => {
 	const paint = () => {
 
 		node.replaceChildren()
-		if ( listening ) node.append( h( 'span.hint', { text: 'Press a key or mouse button' } ) )
-		else if ( AIM_MOUSE_SHOWN[name] ) node.append( h( 'span.hint.value', { text: AIM_MOUSE_SHOWN[name] } ) )
+		if ( listening ) node.append( h( 'span.hint', { text: t( 'Press a key or mouse button' ) } ) )
+		else if ( AIM_MOUSE_SHOWN.includes( name ) ) node.append( h( 'span.hint.value', { text: aimMouseShown( name ) } ) )
 		else node.append( h( 'kbd', { text: aimShown( name ) } ) )
 
 	}
@@ -767,6 +827,6 @@ const toast = ( text, { alert = false } = {} ) => {
 
 }
 
-window.ui = { h, setting, toggle, segmented, select, slider, colorButton, keybind, aimbind, dialog, toast, hex }
+window.ui = { t, tn, useLanguage, h, setting, toggle, segmented, select, slider, colorButton, keybind, aimbind, dialog, toast, hex }
 
 }

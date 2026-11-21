@@ -61,9 +61,9 @@ fn set(handle: &AppHandle, state: UpdateState) {
 
 fn plain(error: &str) -> String {
     if error.contains("404") || error.to_lowercase().contains("could not fetch") {
-        "The update server could not be reached. Try again later.".into()
+        crate::i18n::tr("The update server could not be reached. Try again later.", &[])
     } else {
-        format!("The update could not be checked: {error}")
+        crate::i18n::tr("The update could not be checked: {error}", &[("error", error)])
     }
 }
 
@@ -168,7 +168,7 @@ async fn download_and_install(handle: &AppHandle) {
         Ok(bytes) => bytes,
         Err(error) => {
             log::warn!("update {} download failed: {error}", update.version);
-            return set(handle, UpdateState::Failed { message: format!("The download failed: {error}") });
+            return set(handle, UpdateState::Failed { message: crate::i18n::tr("The download failed: {error}", &[("error", &error.to_string())]) });
         }
     };
     log::info!("installing update {}", update.version);
@@ -178,7 +178,7 @@ async fn download_and_install(handle: &AppHandle) {
         Ok(()) => handle.restart(),
         Err(error) => {
             log::error!("update could not be installed: {error}");
-            set(handle, UpdateState::Failed { message: format!("The update could not be installed: {error}") })
+            set(handle, UpdateState::Failed { message: crate::i18n::tr("The update could not be installed: {error}", &[("error", &error.to_string())]) })
         }
     }
 }

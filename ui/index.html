@@ -13,17 +13,17 @@
 	<span class="title" data-tauri-drag-region><img class="mark" src="brand/mark.svg" alt="" data-tauri-drag-region><b>Scorpio</b></span>
 	<span class="status" id="status" data-tauri-drag-region></span>
 	<div class="window-controls">
-		<button type="button" id="minimize" aria-label="Minimize"><svg viewBox="0 0 10 10"><path d="M0 5.5h10"/></svg></button>
-		<button type="button" id="maximize" aria-label="Maximize"><svg viewBox="0 0 10 10"><path d="M.5 .5h9v9h-9z"/></svg></button>
-		<button type="button" id="close" class="close" aria-label="Close"><svg viewBox="0 0 10 10"><path d="M0 0l10 10M10 0L0 10"/></svg></button>
+		<button type="button" id="minimize" aria-label="Minimize" data-i18n-label="Minimize"><svg viewBox="0 0 10 10"><path d="M0 5.5h10"/></svg></button>
+		<button type="button" id="maximize" aria-label="Maximize" data-i18n-label="Maximize"><svg viewBox="0 0 10 10"><path d="M.5 .5h9v9h-9z"/></svg></button>
+		<button type="button" id="close" class="close" aria-label="Close" data-i18n-label="Close"><svg viewBox="0 0 10 10"><path d="M0 0l10 10M10 0L0 10"/></svg></button>
 	</div>
 </header>
 
-<nav class="tabs" role="tablist" aria-label="Settings">
-	<button role="tab" type="button" data-tab="crosshair" aria-selected="true">Crosshair</button>
-	<button role="tab" type="button" data-tab="games" aria-selected="false">Games</button>
-	<button role="tab" type="button" data-tab="controls" aria-selected="false">Controls</button>
-	<button role="tab" type="button" data-tab="system" aria-selected="false">System</button>
+<nav class="tabs" role="tablist" aria-label="Settings" data-i18n-label="Settings">
+	<button role="tab" type="button" data-tab="crosshair" aria-selected="true" data-i18n="Crosshair">Crosshair</button>
+	<button role="tab" type="button" data-tab="games" aria-selected="false" data-i18n="Games">Games</button>
+	<button role="tab" type="button" data-tab="controls" aria-selected="false" data-i18n="Controls">Controls</button>
+	<button role="tab" type="button" data-tab="system" aria-selected="false" data-i18n="System">System</button>
 </nav>
 
 <main id="view"></main>

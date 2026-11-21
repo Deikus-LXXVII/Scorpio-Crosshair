@@ -100,6 +100,7 @@ You can change every shortcut. A shortcut needs Ctrl, Alt or Super unless it is 
 
 ### Stream, updates and weight
 
+- **12 languages.** The settings window and the tray menu speak English, Russian, Ukrainian, German, French, Spanish, Portuguese (Brazil), Polish, Turkish, Simplified Chinese, Japanese and Korean. Scorpio follows the system's language until you choose one in **System → Language**.
 - **OBS.** An opt-in Browser source puts the crosshair into your stream, also when OBS records with Game Capture. See [Show the crosshair in OBS](#show-the-crosshair-in-obs).
 - **Updates between games.** Scorpio checks for a new version 30 seconds after it starts and then every 6 hours. It installs an update only after no game has been in front for 3 minutes, so a restart never lands in a match. Update packages are signed. You can switch automatic updates off and use the **Check for updates** button.
 - **Light.** While it waits in the tray, Scorpio uses 6.9 MB of private memory and 0 ms of CPU time over 10 seconds. Every input is an event, and nothing polls. The settings window exists only while it is open. `scorpio.exe` is 3.7 MB. The figures are in [docs/budget.md](docs/budget.md), and a check fails when one of them grows by more than 25 %.

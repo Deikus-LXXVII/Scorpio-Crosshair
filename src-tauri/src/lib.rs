@@ -1,5 +1,6 @@
 pub mod app;
 pub mod core;
+pub mod i18n;
 pub mod logging;
 #[cfg(target_os = "linux")]
 mod desktop_entry;
@@ -37,7 +38,7 @@ struct Shared {
     images: PathBuf,
     /// Registered shortcut id -> what it does.
     hotkeys: Mutex<HashMap<u32, Hotkey>>,
-    lock_item: MenuItem<tauri::Wry>,
+    tray: Tray,
     /// Held from reading the settings to writing them, so two threads saving
     /// at once can't write an older copy last.
     saving: Mutex<()>,
@@ -75,6 +76,32 @@ fn deliver(state: &Shared, app: &App, effects: Effects) -> Rest {
     Rest { settings_changed: effects.settings_changed, status_changed: effects.status_changed }
 }
 
+/// The tray menu, labelled in the language in use.
+struct Tray {
+    open: MenuItem<tauri::Wry>,
+    lock: MenuItem<tauri::Wry>,
+    quit: MenuItem<tauri::Wry>,
+    /// What the labels say now: locked, and the language.
+    shown: Mutex<(bool, &'static str)>,
+}
+
+impl Tray {
+    /// Relabels only when the lock or the language changed.
+    fn label(&self, locked: bool) {
+        let now = (locked, i18n::current());
+        let mut shown = self.shown.lock().unwrap();
+        if *shown == now {
+            return;
+        }
+        if shown.1 != now.1 {
+            let _ = self.open.set_text(i18n::tr("Settings", &[]));
+            let _ = self.quit.set_text(i18n::tr("Quit Scorpio", &[]));
+        }
+        let _ = self.lock.set_text(if locked { i18n::tr("Unlock position", &[]) } else { i18n::tr("Lock position", &[]) });
+        *shown = now;
+    }
+}
+
 /// Saving and telling the settings window, after the app lock is let go.
 fn finish(handle: &AppHandle, rest: Rest) {
     let state = shared(handle);
@@ -84,7 +111,7 @@ fn finish(handle: &AppHandle, rest: Rest) {
     }
     if rest.status_changed || rest.settings_changed {
         let status = state.app.lock().unwrap().status();
-        let _ = state.lock_item.set_text(if status.locked { "Unlock position" } else { "Lock position" });
+        state.tray.label(status.locked);
         let _ = handle.emit_to(SETTINGS_WINDOW, "status", &status);
     }
 }
@@ -244,6 +271,10 @@ struct View {
     version: &'static str,
     update: update::UpdateState,
     obs_address: String,
+    /// The language in use and its texts (null for English).
+    language: &'static str,
+    texts: serde_json::Value,
+    languages: &'static [(&'static str, &'static str)],
 }
 
 #[tauri::command]
@@ -261,6 +292,9 @@ fn view(handle: AppHandle) -> View {
         version: env!("CARGO_PKG_VERSION"),
         update,
         obs_address: obs::address(),
+        language: i18n::current(),
+        texts: i18n::texts(i18n::current()),
+        languages: &i18n::LANGUAGES,
     }
 }
 
@@ -301,6 +335,7 @@ fn save_settings(handle: AppHandle, settings: Settings) -> Saved {
         let effects = Effects { settings_changed: false, status_changed: true, ..effects };
         (deliver(&state, &app, effects), keys_changed, app.settings.clone())
     };
+    i18n::set(i18n::resolve(&settings.language.0));
     let refused = if keys_changed { register_hotkeys(&handle, &settings) } else { Vec::new() };
     sync_autostart(&handle, settings.start_with_system);
     let obs_error = sync_obs(&handle);
@@ -332,17 +367,17 @@ struct StoredImage {
 /// by decoding it here and shown as soon as the settings point at it.
 #[tauri::command]
 async fn store_image(handle: AppHandle, request: tauri::ipc::Request<'_>) -> Result<StoredImage, String> {
-    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else { return Err("No image was sent.".into()) };
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else { return Err(i18n::tr("No image was sent.", &[])) };
     let kind = request.headers().get("x-image").and_then(|value| value.to_str().ok()).unwrap_or_default().to_string();
     if bytes.len() > picture::FILE_LIMIT {
-        return Err("The file is larger than 5 MB. Choose a smaller one.".into());
+        return Err(i18n::tr("The file is larger than 5 MB. Choose a smaller one.", &[]));
     }
     let state = shared(&handle);
     let keep = |bytes: &[u8], kind: &str| {
         let _saving = state.saving.lock().unwrap();
         picture::store(&state.images, bytes, kind).map_err(|error| {
             log::error!("image could not be kept: {error}");
-            format!("The image could not be kept: {error}")
+            i18n::tr("The image could not be kept: {error}", &[("error", &error.to_string())])
         })
     };
     if kind == "render" {
@@ -353,7 +388,7 @@ async fn store_image(handle: AppHandle, request: tauri::ipc::Request<'_>) -> Res
         step(&handle, |app| app.add_picture(name.clone(), Arc::new(decoded)));
         return Ok(StoredImage { name, width, height });
     }
-    let kind = picture::kind_of(&format!("file.{kind}")).ok_or("Scorpio takes PNG, JPG, WebP, GIF and SVG images.")?;
+    let kind = picture::kind_of(&format!("file.{kind}")).ok_or_else(|| i18n::tr("Scorpio takes PNG, JPG, WebP, GIF and SVG images.", &[]))?;
     let name = keep(bytes, kind)?;
     log::info!("image chosen: {kind}, {} bytes", bytes.len());
     Ok(StoredImage { name, width: 0, height: 0 })
@@ -364,7 +399,7 @@ async fn store_image(handle: AppHandle, request: tauri::ipc::Request<'_>) -> Res
 async fn image_file(handle: AppHandle, name: String) -> Result<tauri::ipc::Response, String> {
     picture::read(&shared(&handle).images, &name)
         .map(tauri::ipc::Response::new)
-        .map_err(|_| "The image file is missing. Choose the image again.".to_string())
+        .map_err(|_| i18n::tr("The image file is missing. Choose the image again.", &[]))
 }
 
 /// The problem report, for the player to read before anything leaves.
@@ -403,9 +438,9 @@ async fn problem_report(handle: AppHandle) -> String {
 #[tauri::command]
 async fn save_report(text: String) -> Result<String, String> {
     if text.len() > report::TEXT_LIMIT {
-        return Err("The report is too long to save.".into());
+        return Err(i18n::tr("The report is too long to save.", &[]));
     }
-    let path = report::save(&text).map_err(|error| format!("The report could not be saved: {error}"))?;
+    let path = report::save(&text).map_err(|error| i18n::tr("The report could not be saved: {error}", &[("error", &error.to_string())]))?;
     log::info!("problem report saved");
     Ok(path.to_string_lossy().into_owned())
 }
@@ -513,16 +548,20 @@ fn setup(handle: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     })?;
     log::info!("platform started");
 
-    let open = MenuItem::with_id(handle, "open", "Settings", true, None::<&str>)?;
-    let lock_item = MenuItem::with_id(handle, "lock", "Unlock position", true, None::<&str>)?;
-    let quit_item = MenuItem::with_id(handle, "quit", "Quit Scorpio", true, None::<&str>)?;
-    let menu = Menu::with_items(handle, &[&open, &lock_item, &quit_item])?;
+    i18n::set(i18n::resolve(&settings.language.0));
+    let tray = Tray {
+        open: MenuItem::with_id(handle, "open", i18n::tr("Settings", &[]), true, None::<&str>)?,
+        lock: MenuItem::with_id(handle, "lock", i18n::tr("Unlock position", &[]), true, None::<&str>)?,
+        quit: MenuItem::with_id(handle, "quit", i18n::tr("Quit Scorpio", &[]), true, None::<&str>)?,
+        shown: Mutex::new((true, i18n::current())),
+    };
+    let menu = Menu::with_items(handle, &[&tray.open, &tray.lock, &tray.quit])?;
 
     let mut app = App::new(settings.clone(), std::process::id());
     if let Some(display) = primary_display(handle) {
         app.display = display;
     }
-    handle.manage(Shared { app: Mutex::new(app), platform, path, images, hotkeys: Mutex::new(HashMap::new()), lock_item, saving: Mutex::new(()), obs: obs::Obs::default(), trusted, started });
+    handle.manage(Shared { app: Mutex::new(app), platform, path, images, hotkeys: Mutex::new(HashMap::new()), tray, saving: Mutex::new(()), obs: obs::Obs::default(), trusted, started });
 
     TrayIconBuilder::with_id("scorpio")
         .icon(handle.default_window_icon().cloned().ok_or("no icon")?)

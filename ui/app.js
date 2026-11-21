@@ -3,7 +3,7 @@
 // validated settings. Changes made elsewhere (shortcuts) arrive as events.
 'use strict'
 
-const { h, setting, toggle, segmented, select, slider, colorButton, keybind, aimbind, dialog, toast } = window.ui
+const { t, tn, useLanguage, h, setting, toggle, segmented, select, slider, colorButton, keybind, aimbind, dialog, toast } = window.ui
 const tauri = window.__TAURI__
 const invoke = ( name, args, options ) => tauri.core.invoke( name, args, options )
 
@@ -38,13 +38,13 @@ const save = ( { now = false } = {} ) => {
 		if ( obsError ) {
 
 			S.settings.obs = false
-			toast( `The OBS source could not start. ${obsError}`, { alert: true } )
+			toast( t( 'The OBS source could not start. {error}', { error: obsError } ), { alert: true } )
 			if ( S.tab === 'system' ) render()
 
 		}
 		if ( refused.length ) {
 
-			toast( 'Those keys are taken, by another program or another shortcut. Choose different keys.', { alert: true } )
+			toast( t( 'Those keys are taken, by another program or another shortcut. Choose different keys.' ), { alert: true } )
 			if ( S.tab === 'controls' ) render()
 
 		}
@@ -202,8 +202,8 @@ const chooseImage = () => {
 		if ( !file ) return
 		const kind = picture.kindOf( file.name )
 
-		if ( !kind ) return toast( 'Scorpio takes PNG, JPG, WebP, GIF and SVG images.', { alert: true } )
-		if ( file.size > picture.FILE_LIMIT ) return toast( 'That file is larger than 5 MB. Choose a smaller one.', { alert: true } )
+		if ( !kind ) return toast( t( 'Scorpio takes PNG, JPG, WebP, GIF and SVG images.' ), { alert: true } )
+		if ( file.size > picture.FILE_LIMIT ) return toast( t( 'That file is larger than 5 MB. Choose a smaller one.' ), { alert: true } )
 		try {
 
 			const bytes = new Uint8Array( await file.arrayBuffer() )
@@ -287,12 +287,12 @@ const paintStatus = () => {
 
 	if ( !node || !s ) return
 	// The words say whether the crosshair is shown, so there is no dot beside them (rules.md R16).
-	let text = 'Hidden until a game is in front'
+	let text = t( 'Hidden until a game is in front' )
 
-	if ( !s.locked ) text = 'Position unlocked: drag the crosshair, then lock it'
-	else if ( s.hidden ) text = 'Hidden by shortcut'
-	else if ( s.visible ) text = s.game ? `Shown over ${s.game}` : 'Shown over a detected game'
-	else if ( s.always ) text = 'Shown over every window'
+	if ( !s.locked ) text = t( 'Position unlocked: drag the crosshair, then lock it' )
+	else if ( s.hidden ) text = t( 'Hidden by shortcut' )
+	else if ( s.visible ) text = s.game ? t( 'Shown over {game}', { game: s.game } ) : t( 'Shown over a detected game' )
+	else if ( s.always ) text = t( 'Shown over every window' )
 
 	node.textContent = text
 
@@ -303,12 +303,12 @@ const paintStatus = () => {
 const crosshairTab = () => {
 
 	const c = editing()
-	const styles = S.view.styles.map( ( [ id, name ] ) => [ id, name ] )
+	const styles = S.view.styles.map( ( [ id, name ] ) => [ id, t( name ) ] )
 	const ownGames = S.settings.games.map( ( g, i ) => [ i, g ] ).filter( ( [ , g ] ) => g.crosshair )
-	const targets = [ [ 'main', 'Main crosshair' ], ...ownGames.map( ( [ i, g ] ) => [ i, `${g.name}'s own crosshair` ] ) ]
+	const targets = [ [ 'main', t( 'Main crosshair' ) ], ...ownGames.map( ( [ i, g ] ) => [ i, t( "{name}'s own crosshair", { name: g.name } ) ] ) ]
 	const outlineOff = c.outline === 0
 
-	const code = h( 'input.input#code', { spellcheck: 'false', 'aria-label': 'Share code', placeholder: 'Paste a CS2 share code' } )
+	const code = h( 'input.input#code', { spellcheck: 'false', 'aria-label': t( 'Share code' ), placeholder: t( 'Paste a CS2 share code' ) } )
 
 	code.addEventListener( 'change', async () => {
 
@@ -317,7 +317,7 @@ const crosshairTab = () => {
 		if ( !read ) {
 
 			code.setAttribute( 'aria-invalid', 'true' )
-			toast( 'That is not a crosshair share code. They start with CSGO- or CS.', { alert: true } )
+			toast( t( 'That is not a crosshair share code. They start with CSGO- or CS.' ), { alert: true } )
 
 			return
 
@@ -328,18 +328,18 @@ const crosshairTab = () => {
 
 		change( target => Object.assign( target, read.crosshair, { outlineWidth: keep } ) )
 		render()
-		toast( read.codeStyle !== read.crosshair.style ? 'Code imported. Its dynamic style is shown at rest.' : 'Code imported.' )
+		toast( read.codeStyle !== read.crosshair.style ? t( 'Code imported. Its dynamic style is shown at rest.' ) : t( 'Code imported.' ) )
 
 	} )
 
-	const copy = h( 'button.btn', { type: 'button', text: 'Copy', onclick: async () => {
+	const copy = h( 'button.btn', { type: 'button', text: t( 'Copy' ), onclick: async () => {
 
 		await navigator.clipboard.writeText( await invoke( 'write_code', { crosshair: editing() } ) )
-		toast( 'Share code copied. Paste it in CS2 or send it to a friend.' )
+		toast( t( 'Share code copied. Paste it in CS2 or send it to a friend.' ) )
 
 	} } )
 
-	const zoom = segmented( [ [ 1, 'Actual size' ], [ 4, '4×' ] ], S.zoom, z => {
+	const zoom = segmented( [ [ 1, t( 'Actual size' ) ], [ 4, '4×' ] ], S.zoom, z => {
 
 		S.zoom = z
 		const shown = document.getElementById( 'preview' ).firstElementChild
@@ -347,11 +347,11 @@ const crosshairTab = () => {
 		if ( shown?.tagName === 'IMG' ) sizeImage( shown, z )
 		else sizeSvg( shown, z )
 
-	}, { label: 'Preview size' } )
+	}, { label: t( 'Preview size' ) } )
 
 	const image = editingImage()
 	const useImage = image.on && Boolean( image.rendered )
-	const kind = segmented( [ [ 'cs2', 'CS2 style' ], [ 'image', 'Your image' ] ], useImage ? 'image' : 'cs2', v => {
+	const kind = segmented( [ [ 'cs2', t( 'Classic' ) ], [ 'image', t( 'Your image' ) ] ], useImage ? 'image' : 'cs2', v => {
 
 		if ( v === 'image' && !image.rendered ) {
 
@@ -365,109 +365,108 @@ const crosshairTab = () => {
 		save()
 		render()
 
-	}, { label: 'Kind of crosshair' } )
+	}, { label: t( 'Kind of crosshair' ) } )
 
 	const left = h( 'section.stage', {},
-		targets.length > 1 ? select( targets, S.target, t => {
+		targets.length > 1 ? select( targets, S.target, x => {
 
-			S.target = t
+			S.target = x
 			render()
 
-		}, { label: 'Crosshair to edit' } ) : null,
+		}, { label: t( 'Crosshair to edit' ) } ) : null,
 		kind,
-		h( 'div.well.cramps#preview', { 'aria-label': 'Crosshair preview' } ),
+		h( 'div.well.cramps#preview', { 'aria-label': t( 'Crosshair preview' ) } ),
 		h( 'div.stage-row', {}, zoom ),
-		useImage ? null : h( 'div.field', {}, h( 'label.field-label', { for: 'code', text: 'Share code' } ), h( 'div.code-row', {}, code, copy ),
-			h( 'div.help', { text: 'Paste a code to import it. Your outline width stays, CS2 codes do not carry it.' } ) ),
+		useImage ? null : h( 'div.field', {}, h( 'label.field-label', { for: 'code', text: t( 'Share code' ) } ), h( 'div.code-row', {}, code, copy ) ),
 	)
 
 	if ( useImage ) return h( 'div.crosshair-tab', {}, left, imageControls( image ) )
 
-	const shape = setting( 'Style', null, select( styles, c.style, v => {
+	const shape = setting( t( 'Style' ), null, select( styles, c.style, v => {
 
-		change( t => {
+		change( x => {
 
-			t.style = v
+			x.style = v
 
 		} )
 		render()
 
-	}, { label: 'Style' } ) )
+	}, { label: t( 'Style' ) } ) )
 
 	const sizes = h( 'div.slab.flush', {},
 		shape,
-		setting( 'Length', null, slider( { min: 0, max: 40, value: c.length, label: 'Length', onInput: v => change( t => {
+		setting( t( 'Length' ), null, slider( { min: 0, max: 40, value: c.length, label: t( 'Length' ), onInput: v => change( x => {
 
-			t.length = v
-
-		} ) } ), { stack: true } ),
-		setting( 'Thickness', 'In half steps, finer than CS2.', slider( { min: 0, max: 10, step: 0.5, value: c.thickness, label: 'Thickness', format: v => v.toFixed( 1 ), onInput: v => change( t => {
-
-			t.thickness = v
+			x.length = v
 
 		} ) } ), { stack: true } ),
-		setting( 'Gap', null, slider( { min: -10, max: 20, value: c.gap, label: 'Gap', onInput: v => change( t => {
+		setting( t( 'Thickness' ), null, slider( { min: 0, max: 10, step: 0.5, value: c.thickness, label: t( 'Thickness' ), format: v => v.toFixed( 1 ), onInput: v => change( x => {
 
-			t.gap = v
+			x.thickness = v
 
 		} ) } ), { stack: true } ),
-		setting( 'Centre dot', null, toggle( c.dot, v => change( t => {
+		setting( t( 'Gap' ), null, slider( { min: -10, max: 20, value: c.gap, label: t( 'Gap' ), onInput: v => change( x => {
 
-			t.dot = v
+			x.gap = v
 
-		} ), { label: 'Centre dot' } ) ),
-		setting( 'T shape', 'Leaves out the top line.', toggle( c.tShape, v => change( t => {
+		} ) } ), { stack: true } ),
+		setting( t( 'Centre dot' ), null, toggle( c.dot, v => change( x => {
 
-			t.tShape = v
+			x.dot = v
 
-		} ), { label: 'T shape' } ) ),
+		} ), { label: t( 'Centre dot' ) } ) ),
+		setting( t( 'T shape' ), null, toggle( c.tShape, v => change( x => {
+
+			x.tShape = v
+
+		} ), { label: t( 'T shape' ) } ) ),
 	)
 
 	const colour = h( 'div.slab.flush', {},
-		setting( 'Colour', null, colorButton( c.color, v => change( t => {
+		setting( t( 'Colour' ), null, colorButton( c.color, v => change( x => {
 
-			t.color = v
+			x.color = v
 
-		} ), { label: 'Crosshair colour' } ) ),
-		setting( 'Opacity', null, slider( { min: 0, max: 255, value: c.alpha, label: 'Opacity', format: v => `${Math.round( v / 2.55 )}%`, onInput: v => change( t => {
+		} ), { label: t( 'Crosshair colour' ) } ) ),
+		setting( t( 'Opacity' ), null, slider( { min: 0, max: 255, value: c.alpha, label: t( 'Opacity' ), format: v => `${Math.round( v / 2.55 )}%`, onInput: v => change( x => {
 
-			t.alpha = v
+			x.alpha = v
 
 		} ) } ), { stack: true } ),
 	)
 
 	const outline = h( 'div.slab.flush', {},
-		setting( 'Outline', null, segmented( [ [ 0, 'None' ], [ 1, 'Full' ], [ 2, 'Top and left' ] ], c.outline, v => {
+		setting( t( 'Outline' ), null, segmented( [ [ 0, t( 'None' ) ], [ 1, t( 'Full' ) ], [ 2, t( 'Top and left' ) ] ], c.outline, v => {
 
-			change( t => {
+			change( x => {
 
-				t.outline = v
+				x.outline = v
 
 			} )
 			render()
 
-		}, { label: 'Outline' } ) ),
-		setting( 'Outline width', 'CS2 draws 1 pixel. Wider outlines stay in Scorpio.', slider( { min: 1, max: 6, value: c.outlineWidth, label: 'Outline width', format: v => `${v} px`, onInput: v => change( t => {
+		}, { label: t( 'Outline' ) } ) ),
+		setting( t( 'Outline width' ), null, slider( { min: 1, max: 6, value: c.outlineWidth, label: t( 'Outline width' ), format: v => `${v} px`, onInput: v => change( x => {
 
-			t.outlineWidth = v
+			x.outlineWidth = v
 
 		} ) } ), { stack: true, off: outlineOff } ),
-		setting( 'Outline colour', null, colorButton( c.outlineColor, v => change( t => {
+		setting( t( 'Outline colour' ), null, colorButton( c.outlineColor, v => change( x => {
 
-			t.outlineColor = v
+			x.outlineColor = v
 
-		} ), { label: 'Outline colour' } ), { off: outlineOff } ),
-		setting( 'Outline opacity', null, slider( { min: 0, max: 255, value: c.outlineAlpha, label: 'Outline opacity', format: v => `${Math.round( v / 2.55 )}%`, onInput: v => change( t => {
+		} ), { label: t( 'Outline colour' ) } ), { off: outlineOff } ),
+		setting( t( 'Outline opacity' ), null, slider( { min: 0, max: 255, value: c.outlineAlpha, label: t( 'Outline opacity' ), format: v => `${Math.round( v / 2.55 )}%`, onInput: v => change( x => {
 
-			t.outlineAlpha = v
+			x.outlineAlpha = v
 
 		} ) } ), { stack: true, off: outlineOff } ),
 	)
 
 	const right = h( 'section.controls', {},
-		h( 'h2.t-h4', { text: 'Shape' } ), sizes,
-		h( 'h2.t-h4', { text: 'Colour' } ), colour,
-		h( 'h2.t-h4', { text: 'Outline' } ), outline,
+		h( 'h2.t-h4', { text: t( 'Shape' ) } ), sizes,
+		h( 'h2.t-h4', { text: t( 'Colour' ) } ), colour,
+		h( 'h2.t-h4', { text: t( 'Outline' ) } ), outline,
 		savedSection(),
 		proSection(),
 	)
@@ -477,11 +476,11 @@ const crosshairTab = () => {
 }
 
 const imageControls = image => h( 'section.controls', {},
-	h( 'h2.t-h4', { text: 'Image' } ),
+	h( 'h2.t-h4', { text: t( 'Image' ) } ),
 	h( 'div.slab.flush', {},
-		setting( 'File', image.name || 'PNG, JPG, WebP, GIF or SVG, up to 5 MB.', h( 'button.btn', { type: 'button', text: 'Choose another', onclick: chooseImage } ) ),
-		setting( 'Size', 'The longer side, in screen pixels. An SVG stays sharp at any size.', slider( { min: picture.SIZE_MIN, max: picture.SIZE_LIMIT, value: image.size, label: 'Size', format: v => `${v} px`, onInput: resizeImage } ), { stack: true } ),
-		setting( 'Opacity', null, slider( { min: 0, max: 255, value: image.opacity, label: 'Opacity', format: v => `${Math.round( v / 2.55 )}%`, onInput: v => {
+		setting( t( 'File' ), image.name || t( 'PNG, JPG, WebP, GIF or SVG, up to 5 MB.' ), h( 'button.btn', { type: 'button', text: t( 'Choose another' ), onclick: chooseImage } ) ),
+		setting( t( 'Size' ), null, slider( { min: picture.SIZE_MIN, max: picture.SIZE_LIMIT, value: image.size, label: t( 'Size' ), format: v => `${v} px`, onInput: resizeImage } ), { stack: true } ),
+		setting( t( 'Opacity' ), null, slider( { min: 0, max: 255, value: image.opacity, label: t( 'Opacity' ), format: v => `${Math.round( v / 2.55 )}%`, onInput: v => {
 
 			image.opacity = v
 			const shown = document.querySelector( '#preview img' )
@@ -506,12 +505,12 @@ const savedSection = () => {
 		tiles.append( h( 'button.tile', {
 			type: 'button',
 			'aria-pressed': String( S.savedPick === index ),
-			title: 'Use this crosshair',
+			title: t( 'Use this crosshair' ),
 			onclick: () => {
 
 				S.savedPick = index
 				editingImage().on = false
-				change( t => Object.assign( t, clone( entry.crosshair ) ) )
+				change( x => Object.assign( x, clone( entry.crosshair ) ) )
 				render()
 
 			},
@@ -519,9 +518,9 @@ const savedSection = () => {
 
 	} )
 
-	const add = h( 'button.btn', { type: 'button', text: 'Save this crosshair', onclick: () => {
+	const add = h( 'button.btn', { type: 'button', text: t( 'Save this crosshair' ), onclick: () => {
 
-		const name = `Crosshair ${saved.length + 1}`
+		const name = t( 'Crosshair {n}', { n: saved.length + 1 } )
 
 		saved.push( { name, crosshair: clone( editing() ) } )
 		S.savedPick = saved.length - 1
@@ -532,21 +531,21 @@ const savedSection = () => {
 
 	const picked = saved[S.savedPick]
 	const edit = picked ? h( 'div.saved-edit', {},
-		h( 'input.input', { value: picked.name, 'aria-label': 'Name', maxlength: '48', oninput: event => {
+		h( 'input.input', { value: picked.name, 'aria-label': t( 'Name' ), maxlength: '48', oninput: event => {
 
 			picked.name = event.target.value
 			save()
 
 		}, onchange: render } ),
-		h( 'button.btn', { type: 'button', text: 'Update', title: 'Replace it with the crosshair shown now', onclick: () => {
+		h( 'button.btn', { type: 'button', text: t( 'Update' ), title: t( 'Replace it with the crosshair shown now' ), onclick: () => {
 
 			picked.crosshair = clone( editing() )
 			save()
 			render()
-			toast( `${picked.name} updated.` )
+			toast( t( '{name} updated.', { name: picked.name } ) )
 
 		} } ),
-		h( 'button.btn.danger', { type: 'button', text: 'Delete', onclick: () => {
+		h( 'button.btn.danger', { type: 'button', text: t( 'Delete' ), onclick: () => {
 
 			saved.splice( S.savedPick, 1 )
 			S.savedPick = null
@@ -557,8 +556,8 @@ const savedSection = () => {
 	) : null
 
 	return h( 'div.saved', {},
-		h( 'div.section-head', {}, h( 'h2.t-h4', { text: 'Your crosshairs' } ), add ),
-		saved.length ? tiles : h( 'p.help', { text: 'Save a crosshair to switch back to it in one click, or with the next and previous shortcuts.' } ),
+		h( 'div.section-head', {}, h( 'h2.t-h4', { text: t( 'Your crosshairs' ) } ), add ),
+		saved.length ? tiles : h( 'p.help', { text: t( 'Save a crosshair to switch back to it in one click, or with the next and previous shortcuts.' ) } ),
 		edit,
 	)
 
@@ -578,22 +577,22 @@ const proSection = () => {
 			if ( read ) thumb( read.crosshair, preview )
 
 		} )
-		tiles.append( h( 'button.tile', { type: 'button', title: pro.team ? `${pro.name}, ${pro.team}` : pro.name, onclick: async () => {
+		tiles.append( h( 'button.tile', { type: 'button', title: pro.team ? t( '{name}, {team}', { name: pro.name, team: pro.team } ) : pro.name, onclick: async () => {
 
 			const read = await invoke( 'read_code', { code: pro.code } )
 
 			if ( !read ) return
 			const keep = editing().outlineWidth
 
-			change( t => Object.assign( t, read.crosshair, { outlineWidth: keep } ) )
+			change( x => Object.assign( x, read.crosshair, { outlineWidth: keep } ) )
 			render()
-			toast( `${pro.name}'s crosshair applied.` )
+			toast( t( "{name}'s crosshair applied.", { name: pro.name } ) )
 
 		} }, preview, h( 'span', { text: pro.name } ) ) )
 
 	}
 
-	return h( 'div.saved', {}, h( 'div.section-head', {}, h( 'h2.t-h4', { text: 'Pro players' } ) ), tiles )
+	return h( 'div.saved', {}, h( 'div.section-head', {}, h( 'h2.t-h4', { text: t( 'Pro players' ) } ) ), tiles )
 
 }
 
@@ -608,7 +607,7 @@ const gamesTab = () => {
 
 		return h( 'div.game-row', {},
 			h( 'div.game-name', {},
-				h( 'input.input.inline', { value: game.name, 'aria-label': 'Game name', maxlength: '48', oninput: event => {
+				h( 'input.input.inline', { value: game.name, 'aria-label': t( 'Game name' ), maxlength: '48', oninput: event => {
 
 					game.name = event.target.value
 					save()
@@ -617,7 +616,7 @@ const gamesTab = () => {
 				h( 'div.help.path', { text: where, title: where } ),
 			),
 			h( 'div.game-own', {},
-				h( 'span.setting-name', { text: 'Own crosshair' } ),
+				h( 'span.setting-name', { text: t( 'Own crosshair' ) } ),
 				toggle( Boolean( game.crosshair ), on => {
 
 					game.crosshair = on ? clone( S.settings.crosshair ) : null
@@ -626,16 +625,16 @@ const gamesTab = () => {
 					save()
 					render()
 
-				}, { label: `${game.name} has its own crosshair` } ),
+				}, { label: t( '{name} has its own crosshair', { name: game.name } ) } ),
 			),
 			h( 'div.game-actions', {},
-				game.crosshair ? h( 'button.btn', { type: 'button', text: 'Edit crosshair', onclick: () => {
+				game.crosshair ? h( 'button.btn', { type: 'button', text: t( 'Edit crosshair' ), onclick: () => {
 
 					S.target = index
 					go( 'crosshair' )
 
 				} } ) : null,
-				h( 'button.btn.quiet', { type: 'button', text: 'Remove', onclick: () => {
+				h( 'button.btn.quiet', { type: 'button', text: t( 'Remove' ), onclick: () => {
 
 					games.splice( index, 1 )
 					if ( S.target === index ) S.target = 'main'
@@ -649,37 +648,37 @@ const gamesTab = () => {
 
 	} )
 
-	const add = h( 'button.btn.primary', { type: 'button', text: 'Add a game', onclick: pickWindow } )
+	const add = h( 'button.btn.primary', { type: 'button', text: t( 'Add a game' ), onclick: pickWindow } )
 	const list = games.length
 		? h( 'div.slab.flush.games', {}, rows )
-		: h( 'div.empty', {}, h( 'h3', { text: 'No games added yet' } ), h( 'p', { text: 'Add a game so the crosshair shows only while it is in front, with its own crosshair if you like.' } ) )
+		: h( 'div.empty', {}, h( 'h3', { text: t( 'No games added yet' ) } ), h( 'p', { text: t( 'Add a game so the crosshair shows only while it is in front, with its own crosshair if you like.' ) } ) )
 
 	return h( 'div.page', {},
-		h( 'div.section-head', {}, h( 'h2.t-h1-app', { text: 'Games' } ), add ),
-		shortcut ? h( 'p.help.lede', { text: `Or press ${shortcut.replaceAll( '+', ' + ' )} while the game is in front.` } ) : null,
+		h( 'div.section-head', {}, h( 'h2.t-h1-app', { text: t( 'Games' ) } ), add ),
+		shortcut ? h( 'p.help.lede', { text: t( 'Or press {keys} while the game is in front.', { keys: shortcut.replaceAll( '+', ' + ' ) } ) } ) : null,
 		list,
-		h( 'h2.t-h4', { text: 'Without adding' } ),
+		h( 'h2.t-h4', { text: t( 'Without adding' ) } ),
 		h( 'div.slab.flush', {},
-			setting( 'Fullscreen windows', 'Show the crosshair over any fullscreen or borderless window, except the desktop.', toggle( S.settings.detect.fullscreen, v => {
+			setting( t( 'Fullscreen windows' ), t( 'Show the crosshair over any fullscreen or borderless window, except the desktop.' ), toggle( S.settings.detect.fullscreen, v => {
 
 				S.settings.detect.fullscreen = v
 				save()
 
-			}, { label: 'Fullscreen windows' } ) ),
-			setting( 'Games from launchers', S.view.installed
-				? `Show the crosshair over the ${S.view.installed} games Steam, Epic, GOG and other launchers installed.`
-				: 'Show the crosshair over games Steam, Epic, GOG and other launchers installed.', toggle( S.settings.detect.launchers, v => {
+			}, { label: t( 'Fullscreen windows' ) } ) ),
+			setting( t( 'Games from launchers' ), S.view.installed
+				? tn( S.view.installed, 'Show the crosshair over the {n} game Steam, Epic, GOG and other launchers installed.', 'Show the crosshair over the {n} games Steam, Epic, GOG and other launchers installed.' )
+				: t( 'Show the crosshair over games Steam, Epic, GOG and other launchers installed.' ), toggle( S.settings.detect.launchers, v => {
 
 				S.settings.detect.launchers = v
 				save()
 
-			}, { label: 'Games from launchers' } ) ),
-			setting( 'Always show', 'Over every window and the desktop. Hide while aiming and the hide shortcut still work.', toggle( S.settings.detect.always, v => {
+			}, { label: t( 'Games from launchers' ) } ) ),
+			setting( t( 'Always show' ), t( 'Over every window and the desktop.' ), toggle( S.settings.detect.always, v => {
 
 				S.settings.detect.always = v
 				save()
 
-			}, { label: 'Always show' } ) ),
+			}, { label: t( 'Always show' ) } ) ),
 		),
 	)
 
@@ -691,7 +690,7 @@ const pickWindow = async () => {
 	const list = h( 'div.window-list' )
 	let close = () => {}
 
-	if ( !windows.length ) list.append( h( 'p.help', { text: 'No windows found. Start the game, then try again.' } ) )
+	if ( !windows.length ) list.append( h( 'p.help', { text: t( 'No windows found. Start the game, then try again.' ) } ) )
 	for ( const w of windows ) {
 
 		list.append( h( 'button.window-item', { type: 'button', onclick: async () => {
@@ -706,11 +705,11 @@ const pickWindow = async () => {
 				S.settings = fresh.settings
 				lastSaved = JSON.stringify( fresh.settings )
 				render()
-				toast( `${w.name || w.title} added.` )
+				toast( t( '{name} added.', { name: w.name || w.title } ) )
 
 			} else {
 
-				toast( 'That game is already added.' )
+				toast( t( 'That game is already added.' ) )
 
 			}
 
@@ -718,17 +717,17 @@ const pickWindow = async () => {
 
 	}
 
-	close = dialog( 'Add a game', list, [ h( 'button.btn', { type: 'button', text: 'Cancel', onclick: () => close() } ) ] )
+	close = dialog( t( 'Add a game' ), list, [ h( 'button.btn', { type: 'button', text: t( 'Cancel' ), onclick: () => close() } ) ] )
 
 }
 
-const SHORTCUTS = [
-	[ 'lock', 'Unlock or lock position', 'Unlocked, drag the crosshair anywhere.' ],
-	[ 'center', 'Centre exactly', 'Puts the crosshair back on the exact centre of the screen.' ],
-	[ 'hide', 'Hide or show', null ],
-	[ 'next', 'Next saved crosshair', null ],
-	[ 'previous', 'Previous saved crosshair', null ],
-	[ 'addGame', 'Add the game in front', null ],
+const shortcuts = () => [
+	[ 'lock', t( 'Unlock or lock position' ), null ],
+	[ 'center', t( 'Centre exactly' ), null ],
+	[ 'hide', t( 'Hide or show' ), null ],
+	[ 'next', t( 'Next saved crosshair' ), null ],
+	[ 'previous', t( 'Previous saved crosshair' ), null ],
+	[ 'addGame', t( 'Add the game in front' ), null ],
 ]
 
 const controlsTab = () => {
@@ -737,36 +736,36 @@ const controlsTab = () => {
 	const off = !aim.hide
 
 	return h( 'div.page', {},
-		h( 'h2.t-h1-app', { text: 'Controls' } ),
-		h( 'h2.t-h4', { text: 'Aiming' } ),
+		h( 'h2.t-h1-app', { text: t( 'Controls' ) } ),
+		h( 'h2.t-h4', { text: t( 'Aiming' ) } ),
 		h( 'div.slab.flush', {},
-			setting( 'Hide while aiming', 'For scoped weapons. Scorpio reads the button or key the way every game does and sends nothing to the game.', toggle( aim.hide, v => {
+			setting( t( 'Hide while aiming' ), null, toggle( aim.hide, v => {
 
 				aim.hide = v
 				save()
 				render()
 
-			}, { label: 'Hide while aiming' } ) ),
-			setting( 'Aim button', 'Click, then press any key or mouse button. Escape cancels.', aimbind( aim.button, v => {
+			}, { label: t( 'Hide while aiming' ) } ) ),
+			setting( t( 'Aim button' ), null, aimbind( aim.button, v => {
 
 				aim.button = v
 				save()
 
-			}, { label: 'Aim button' } ), { off } ),
-			setting( 'When pressed', null, segmented( [ [ 'hold', 'Hide while held' ], [ 'toggle', 'Each press hides or shows' ] ], aim.mode, v => {
+			}, { label: t( 'Aim button' ) } ), { off } ),
+			setting( t( 'When pressed' ), null, segmented( [ [ 'hold', t( 'Hide while held' ) ], [ 'toggle', t( 'Each press hides or shows' ) ] ], aim.mode, v => {
 
 				aim.mode = v
 				save()
 
-			}, { label: 'Aim mode' } ), { off } ),
+			}, { label: t( 'Aim mode' ) } ), { off } ),
 		),
-		h( 'h2.t-h4', { text: 'Shortcuts' } ),
-		h( 'p.help.lede', { text: 'Click a shortcut, then press the keys. Escape cancels, Backspace clears.' } ),
-		h( 'div.slab.flush', {}, SHORTCUTS.map( ( [ id, name, help ] ) => {
+		h( 'h2.t-h4', { text: t( 'Shortcuts' ) } ),
+		h( 'p.help.lede', { text: t( 'Escape cancels, Backspace clears.' ) } ),
+		h( 'div.slab.flush', {}, shortcuts().map( ( [ id, name, help ] ) => {
 
 			const refused = S.refused.includes( id )
 
-			return setting( name, refused ? 'Taken, by another program or another shortcut.' : help, keybind( S.settings.keys[id], v => {
+			return setting( name, refused ? t( 'Taken, by another program or another shortcut.' ) : help, keybind( S.settings.keys[id], v => {
 
 				S.settings.keys[id] = v
 				S.refused = S.refused.filter( r => r !== id )
@@ -779,6 +778,16 @@ const controlsTab = () => {
 
 }
 
+const offsetText = ( dx, dy ) => {
+
+	const values = { x: Math.abs( dx ), y: Math.abs( dy ) }
+
+	if ( dx < 0 ) return dy < 0 ? t( '{x} px left and {y} px up from the centre.', values ) : t( '{x} px left and {y} px down from the centre.', values )
+
+	return dy < 0 ? t( '{x} px right and {y} px up from the centre.', values ) : t( '{x} px right and {y} px down from the centre.', values )
+
+}
+
 const systemTab = () => {
 
 	const s = S.settings
@@ -787,16 +796,16 @@ const systemTab = () => {
 	const centred = dx === 0 && dy === 0
 
 	return h( 'div.page', {},
-		h( 'h2.t-h1-app', { text: 'System' } ),
-		h( 'h2.t-h4', { text: 'Position' } ),
+		h( 'h2.t-h1-app', { text: t( 'System' ) } ),
+		h( 'h2.t-h4', { text: t( 'Position' ) } ),
 		h( 'div.slab.flush', {},
-			setting( 'Position', centred ? 'Exactly centred.' : `${Math.abs( dx )} px ${dx < 0 ? 'left' : 'right'} and ${Math.abs( dy )} px ${dy < 0 ? 'up' : 'down'} from the centre.`, h( 'div.inline-actions', {},
-				h( 'button.btn', { type: 'button', text: S.status?.locked === false ? 'Lock' : 'Unlock', onclick: async () => {
+			setting( t( 'Position' ), centred ? t( 'Exactly centred.' ) : offsetText( dx, dy ), h( 'div.inline-actions', {},
+				h( 'button.btn', { type: 'button', text: S.status?.locked === false ? t( 'Lock' ) : t( 'Unlock' ), onclick: async () => {
 
 					await invoke( 'set_locked', { locked: S.status?.locked === false } )
 
 				} } ),
-				h( 'button.btn', { type: 'button', text: 'Centre exactly', disabled: centred, onclick: () => {
+				h( 'button.btn', { type: 'button', text: t( 'Centre exactly' ), disabled: centred, onclick: () => {
 
 					s.offset = [ 0, 0 ]
 					save()
@@ -804,44 +813,63 @@ const systemTab = () => {
 
 				} } ),
 			) ),
-			setting( 'Centre on the game window', 'For windowed games: the crosshair follows the middle of the game window.', toggle( s.centreOnWindow, v => {
+			setting( t( 'Centre on the game window' ), null, toggle( s.centreOnWindow, v => {
 
 				s.centreOnWindow = v
 				save()
 
-			}, { label: 'Centre on the game window' } ) ),
+			}, { label: t( 'Centre on the game window' ) } ) ),
 		),
-		h( 'h2.t-h4', { text: 'Scorpio' } ),
+		h( 'h2.t-h4', { text: t( 'Scorpio' ) } ),
 		h( 'div.slab.flush', {},
-			setting( 'Start with the system', 'Scorpio waits in the tray and costs nothing until a game is in front.', toggle( s.startWithSystem, v => {
+			setting( t( 'Language' ), null, select( [ [ 'auto', t( 'Same as the system' ) ], ...S.view.languages ], s.language, async v => {
+
+				const before = s.language
+
+				s.language = v
+				try {
+
+					await save( { now: true } )
+					location.reload()
+
+				} catch ( error ) {
+
+					s.language = before
+					failed( error )
+					render()
+
+				}
+
+			}, { label: t( 'Language' ) } ) ),
+			setting( t( 'Start with the system' ), null, toggle( s.startWithSystem, v => {
 
 				s.startWithSystem = v
 				save()
 
-			}, { label: 'Start with the system' } ) ),
-			setting( 'Hide from screen capture', windows
-				? 'Screenshots, recordings and streams show the game without the crosshair. Cheat overlays hide from anti-cheat screenshots the same way, so an anti-cheat could take a closer look at Scorpio. Leave it off unless you need it.'
-				: 'Not available on Linux: X11 has no way to keep a window out of captures.', toggle( s.hideFromCapture, v => {
+			}, { label: t( 'Start with the system' ) } ) ),
+			setting( t( 'Hide from screen capture' ), windows
+				? t( 'Screenshots, recordings and streams show the game without the crosshair. Cheat overlays hide from anti-cheat screenshots the same way, so an anti-cheat could take a closer look at Scorpio. Leave it off unless you need it.' )
+				: t( 'Not available on Linux: X11 has no way to keep a window out of captures.' ), toggle( s.hideFromCapture, v => {
 
 				s.hideFromCapture = v
 				save()
 
-			}, { label: 'Hide from screen capture', disabled: !windows } ), { off: !windows } ),
+			}, { label: t( 'Hide from screen capture' ), disabled: !windows } ), { off: !windows } ),
 		),
-		h( 'h2.t-h4', { text: 'Stream' } ),
+		h( 'h2.t-h4', { text: t( 'Stream' ) } ),
 		obsBlock(),
-		h( 'h2.t-h4', { text: 'Updates' } ),
+		h( 'h2.t-h4', { text: t( 'Updates' ) } ),
 		updatesBlock(),
-		h( 'h2.t-h4', { text: 'Help' } ),
+		h( 'h2.t-h4', { text: t( 'Help' ) } ),
 		h( 'div.slab.flush', {},
-			setting( 'Report a problem', 'You read all of it first. Nothing leaves this computer by itself.', h( 'button.btn', { type: 'button', text: 'Show the report', onclick: showReport } ) ),
+			setting( t( 'Report a problem' ), null, h( 'button.btn', { type: 'button', text: t( 'Show the report' ), onclick: showReport } ) ),
 		),
 		h( 'div.about', {},
 			h( 'img.lockup', { src: 'brand/lockup.svg', alt: 'Scorpio' } ),
-			h( 'p.t-h3', { text: `Version ${S.view.version}` } ),
-			h( 'p.help', { text: 'A crosshair overlay. It draws its own window over the game and never opens, reads or changes the game or its anti-cheat.' } ),
-			h( 'p.help', { text: 'Free for non-commercial use under the PolyForm Noncommercial licence 1.0.0. Made by LXXVII.' } ),
-			h( 'button.btn.danger', { type: 'button', text: 'Quit Scorpio', onclick: () => invoke( 'quit_app' ) } ),
+			h( 'p.t-h3', { text: t( 'Version {version}', { version: S.view.version } ) } ),
+			h( 'p.help', { text: t( 'A crosshair overlay. It draws its own window over the game and never opens, reads or changes the game or its anti-cheat.' ) } ),
+			h( 'p.help', { text: t( 'Free for non-commercial use under the PolyForm Noncommercial licence 1.0.0. Made by LXXVII.' ) } ),
+			h( 'button.btn.danger', { type: 'button', text: t( 'Quit Scorpio' ), onclick: () => invoke( 'quit_app' ) } ),
 		),
 	)
 
@@ -854,29 +882,29 @@ const obsBlock = () => {
 	const on = S.settings.obs
 	const address = S.view.obsAddress
 	const rows = [
-		setting( 'Show the crosshair in OBS', 'For Game Capture, which never includes the crosshair window. Scorpio serves the crosshair to OBS on this computer only; it shows and hides with yours.', toggle( on, v => {
+		setting( t( 'Show the crosshair in OBS' ), null, toggle( on, v => {
 
 			S.settings.obs = v
 			save( { now: true } ).then( render )
 
-		}, { label: 'Show the crosshair in OBS' } ) ),
+		}, { label: t( 'Show the crosshair in OBS' ) } ) ),
 	]
 
 	if ( on ) {
 
 		rows.push( h( 'div.setting.stack', {},
-			h( 'div.setting-name', { text: 'In OBS' } ),
+			h( 'div.setting-name', { text: t( 'In OBS' ) } ),
 			h( 'ol.obs-steps', {},
-				h( 'li', { text: 'Add a Browser source above your game capture.' } ),
-				h( 'li', {}, 'Set its URL to the address below, and its width and height to your canvas size (Settings, Video, Base resolution).' ),
-				h( 'li', { text: 'Keep it filling the whole canvas, untransformed.' } ),
+				h( 'li', { text: t( 'Add a Browser source above your game capture.' ) } ),
+				h( 'li', {}, t( 'Set its URL to the address below, and its width and height to your canvas size (Settings, Video, Base resolution).' ) ),
+				h( 'li', { text: t( 'Keep it filling the whole canvas, untransformed.' ) } ),
 			),
 			h( 'div.code-row', {},
-				h( 'input.input', { value: address, readonly: true, 'aria-label': 'Address for OBS', onfocus: event => event.target.select() } ),
-				h( 'button.btn', { type: 'button', text: 'Copy', onclick: async () => {
+				h( 'input.input', { value: address, readonly: true, 'aria-label': t( 'Address for OBS' ), onfocus: event => event.target.select() } ),
+				h( 'button.btn', { type: 'button', text: t( 'Copy' ), onclick: async () => {
 
 					await navigator.clipboard.writeText( address )
-					toast( 'Address copied. Paste it into the Browser source in OBS.' )
+					toast( t( 'Address copied. Paste it into the Browser source in OBS.' ) )
 
 				} } ),
 			),
@@ -888,15 +916,15 @@ const obsBlock = () => {
 
 }
 
-const UPDATE_TEXT = {
-	idle: () => 'Not checked yet.',
-	checking: () => 'Checking for a new version.',
-	upToDate: () => `Scorpio ${S.view.version} is the newest version.`,
-	available: u => `Scorpio ${u.version} is out.`,
-	downloading: u => `Downloading Scorpio ${u.version}: ${u.percent}%.`,
-	installing: u => `Installing Scorpio ${u.version}. Scorpio restarts in a moment.`,
+const updateText = {
+	idle: () => t( 'Not checked yet.' ),
+	checking: () => t( 'Checking for a new version.' ),
+	upToDate: () => t( 'Scorpio {version} is the newest version.', { version: S.view.version } ),
+	available: u => t( 'Scorpio {version} is out.', { version: u.version } ),
+	downloading: u => t( 'Downloading Scorpio {version}: {percent}%.', { version: u.version, percent: u.percent } ),
+	installing: u => t( 'Installing Scorpio {version}. Scorpio restarts in a moment.', { version: u.version } ),
 	failed: u => u.message,
-	unsupported: () => 'This copy is updated by your package manager.',
+	unsupported: () => t( 'This copy is updated by your package manager.' ),
 }
 
 const updatesBlock = () => {
@@ -907,7 +935,7 @@ const updatesBlock = () => {
 	const offer = u.state === 'available'
 	const button = h( `button.btn${offer ? '.primary' : ''}`, {
 		type: 'button',
-		text: offer ? 'Install and restart' : 'Check for updates',
+		text: offer ? t( 'Install and restart' ) : t( 'Check for updates' ),
 		disabled: busy || unsupported,
 		onclick: async () => {
 
@@ -919,13 +947,13 @@ const updatesBlock = () => {
 	} )
 
 	return h( 'div.slab.flush', {},
-		setting( 'Install updates automatically', unsupported ? null : 'Scorpio checks every few hours. An update installs after no game has been in front for three minutes, then Scorpio restarts.', toggle( !S.settings.updateManually, v => {
+		setting( t( 'Install updates automatically' ), null, toggle( !S.settings.updateManually, v => {
 
 			S.settings.updateManually = !v
 			save()
 
-		}, { label: 'Install updates automatically', disabled: unsupported } ), { off: unsupported } ),
-		setting( 'Version', ( UPDATE_TEXT[u.state] || UPDATE_TEXT.idle )( u ), button ),
+		}, { label: t( 'Install updates automatically' ), disabled: unsupported } ), { off: unsupported } ),
+		setting( t( 'Version' ), ( updateText[u.state] || updateText.idle )( u ), button ),
 	)
 
 }
@@ -936,7 +964,7 @@ const updatesBlock = () => {
 const showReport = async () => {
 
 	const text = await invoke( 'problem_report' )
-	const area = h( 'textarea.textarea.report', { readonly: true, spellcheck: 'false', 'aria-label': 'The report' } )
+	const area = h( 'textarea.textarea.report', { readonly: true, spellcheck: 'false', 'aria-label': t( 'The report' ) } )
 	let saved = null
 
 	area.value = text
@@ -949,22 +977,22 @@ const showReport = async () => {
 	}
 
 	const body = h( 'div.report-body', {},
-		h( 'p', { text: 'Version, system, settings and the end of the log. Your user folder and name are taken out.' } ),
+		h( 'p', { text: t( 'Version, system, settings and the end of the log. Your user folder and name are taken out.' ) } ),
 		area,
 	)
-	const close = dialog( 'Report a problem', body, [
-		h( 'button.btn.quiet', { type: 'button', text: 'Close', onclick: () => close() } ),
-		h( 'button.btn', { type: 'button', text: 'Copy', onclick: async () => {
+	const close = dialog( t( 'Report a problem' ), body, [
+		h( 'button.btn.quiet', { type: 'button', text: t( 'Close' ), onclick: () => close() } ),
+		h( 'button.btn', { type: 'button', text: t( 'Copy' ), onclick: async () => {
 
 			await navigator.clipboard.writeText( text )
-			toast( 'Report copied.' )
+			toast( t( 'Report copied.' ) )
 
 		} } ),
-		h( 'button.btn', { type: 'button', text: 'Save as file', onclick: async () => {
+		h( 'button.btn', { type: 'button', text: t( 'Save as file' ), onclick: async () => {
 
 			try {
 
-				toast( `Saved to ${await saveFile()}.` )
+				toast( t( 'Saved to {path}.', { path: await saveFile() } ) )
 
 			} catch ( error ) {
 
@@ -973,14 +1001,14 @@ const showReport = async () => {
 			}
 
 		} } ),
-		h( 'button.btn.primary', { type: 'button', text: 'Report on GitHub', onclick: async () => {
+		h( 'button.btn.primary', { type: 'button', text: t( 'Report on GitHub' ), onclick: async () => {
 
 			try {
 
 				const path = await saveFile()
 
 				await invoke( 'open_issue', { file: path } )
-				toast( `Saved to ${path}. Attach that file to the issue.` )
+				toast( t( 'Saved to {path}. Attach that file to the issue.', { path } ) )
 
 			} catch ( error ) {
 
@@ -1040,6 +1068,7 @@ const start = async () => {
 	} )
 
 	S.view = await invoke( 'view' )
+	useLanguage( S.view.language, S.view.texts )
 	S.settings = S.view.settings
 	S.status = S.view.status
 	S.update = S.view.update

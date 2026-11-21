@@ -204,6 +204,18 @@ pub struct Settings {
     pub obs: bool,
     /// Off by default: updates install by themselves, between games.
     pub update_manually: bool,
+    pub language: Language,
+}
+
+/// "auto" (the system's, the default) or a code from `i18n::LANGUAGES`.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct Language(pub String);
+
+impl Default for Language {
+    fn default() -> Self {
+        Language(crate::i18n::AUTO.into())
+    }
 }
 
 fn clean_name(name: &str, fallback: &str) -> String {
@@ -215,6 +227,9 @@ impl Settings {
     /// Every value in range, names tidy, lists bounded. Idempotent.
     pub fn validated(mut self) -> Settings {
         self.crosshair = self.crosshair.normalized();
+        if !crate::i18n::is_setting(&self.language.0) {
+            self.language = Language::default();
+        }
         if !crate::platform::is_key_name(&self.aim.button) {
             self.aim.button = DEFAULT_AIM.into();
         }
@@ -477,5 +492,15 @@ mod tests {
         assert!(!image.name.contains('/') && !image.name.contains('\\'));
         let fine = Image { on: true, source: "0123456789abcdef.webp".into(), rendered: "fedcba9876543210.png".into(), ..Image::default() };
         assert_eq!(fine.clone().validated(), fine);
+    }
+
+    #[test]
+    fn a_new_player_follows_the_system_language() {
+        assert_eq!(Settings::default().language.0, "auto");
+        assert_eq!(load(&folder().join("no-language.json")).0.language.0, "auto");
+        let old: Settings = serde_json::from_str("{}").unwrap();
+        assert_eq!(old.language.0, "auto", "settings from before languages");
+        let wrong: Settings = serde_json::from_str(r#"{"language":"xx"}"#).unwrap();
+        assert_eq!(wrong.validated().language.0, "auto");
     }
 }
