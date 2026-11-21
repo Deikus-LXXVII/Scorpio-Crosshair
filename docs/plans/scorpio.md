@@ -54,6 +54,7 @@ scorpio (Rust, Tauri 2)
 | Hotkeys | `RegisterHotKey` | `XGrabKey` | Standard. |
 | Overlay | Layered, topmost, click-through window (`WS_EX_LAYERED|TRANSPARENT|TOOLWINDOW|NOACTIVATE`) | Override-redirect ARGB window, empty input shape | A separate window over the game, like Discord's or Steam's. Never drawn into the game. |
 | Colour pipette | One screen grab when the player asks | Same | Only on request. |
+| Hide from screen capture (owner's exception, 2026-11-21) | `SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE)` on the overlay | Not available | **Not risk-free**: cheat overlays use the same call to hide from anti-cheat screenshots. Off by default; the switch says so. Kept at the owner's request. |
 
 Banned outright: `OpenProcess` on other processes, `ReadProcessMemory`,
 `WriteProcessMemory`, DLL injection, `SetWindowsHookEx` of any kind,

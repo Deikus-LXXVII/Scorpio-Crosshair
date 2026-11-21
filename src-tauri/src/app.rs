@@ -90,6 +90,7 @@ pub struct App {
     listening: Option<Vec<MouseButton>>,
     /// The window in front changed since the overlay was last raised.
     raise: bool,
+    capture_hidden: Option<bool>,
     saved_index: Option<usize>,
 }
 
@@ -109,6 +110,7 @@ impl App {
             shown: Shown::Hidden,
             listening: None,
             raise: false,
+            capture_hidden: None,
             saved_index: None,
         }
     }
@@ -366,6 +368,11 @@ impl App {
             effects.commands.push(Command::Raise);
         }
 
+        if self.capture_hidden != Some(self.settings.hide_from_capture) {
+            effects.commands.push(Command::ExcludeFromCapture(self.settings.hide_from_capture));
+            self.capture_hidden = Some(self.settings.hide_from_capture);
+        }
+
         let listen = if self.settings.aim.hide && self.focus.visible && self.locked { vec![self.settings.aim.button] } else { Vec::new() };
         if self.listening.as_ref() != Some(&listen) {
             effects.commands.push(Command::ListenTo { mouse: listen.clone(), keys: Vec::new() });
@@ -433,6 +440,7 @@ mod tests {
         settings.detect.launchers = false;
         settings.games.push(Game { name: "Game".into(), fingerprint: focus::fingerprint(&window(1, "game", false)), crosshair: None });
         let mut app = App::new(settings, OWN);
+        app.capture_hidden = Some(false);
         app.listening = Some(Vec::new());
         app
     }

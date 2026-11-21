@@ -17,9 +17,9 @@ use windows::Win32::Graphics::Gdi::{
 };
 use windows::Win32::UI::Input::KeyboardAndMouse::{ReleaseCapture, SetCapture};
 use windows::Win32::UI::WindowsAndMessaging::{
-    DefWindowProcW, DestroyWindow, GetCursorPos, GetWindowLongPtrW, GetWindowRect, IsWindowVisible,
+    DefWindowProcW, DestroyWindow, GetCursorPos, GetWindowLongPtrW, GetWindowRect, IsWindowVisible, SetWindowDisplayAffinity,
     SetWindowLongPtrW, SetWindowPos, ShowWindow, UpdateLayeredWindow, GWL_EXSTYLE, HWND_TOPMOST, MA_NOACTIVATE,
-    SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SWP_SHOWWINDOW, SW_HIDE, ULW_ALPHA,
+    SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SWP_SHOWWINDOW, SW_HIDE, ULW_ALPHA, WDA_EXCLUDEFROMCAPTURE, WDA_NONE,
     GetForegroundWindow, WM_DISPLAYCHANGE, WM_CAPTURECHANGED, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MOUSEACTIVATE, WM_MOUSEMOVE, WS_EX_LAYERED,
     WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_EX_TRANSPARENT, WS_POPUP,
 };
@@ -88,6 +88,17 @@ pub fn hide() {
         overlay.stop_drag();
         // SAFETY: `hwnd` is this thread's window.
         let _ = unsafe { ShowWindow(overlay.hwnd, SW_HIDE) };
+    });
+}
+
+/// The owner's exception to the anti-cheat rules (docs/plans/scorpio.md).
+pub fn exclude_from_capture(exclude: bool) {
+    with(|overlay| {
+        let affinity = if exclude { WDA_EXCLUDEFROMCAPTURE } else { WDA_NONE };
+        // SAFETY: `hwnd` is this thread's window.
+        if let Err(error) = unsafe { SetWindowDisplayAffinity(overlay.hwnd, affinity) } {
+            log::warn!("capture exclusion ({exclude}) failed: {error}");
+        }
     });
 }
 

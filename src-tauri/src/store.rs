@@ -127,6 +127,8 @@ pub struct Settings {
     /// pixels. (0, 0) is exactly centred.
     pub offset: (i32, i32),
     pub start_with_system: bool,
+    /// Windows only; off by default (see the plan's anti-cheat table).
+    pub hide_from_capture: bool,
     /// Off by default: updates install by themselves, between games.
     pub update_manually: bool,
 }

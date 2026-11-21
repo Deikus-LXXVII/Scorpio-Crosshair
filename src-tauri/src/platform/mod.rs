@@ -63,6 +63,9 @@ pub enum Command {
     /// Put the shown overlay back above every other window; sent when the
     /// window in front changes, since a newly active window may go above it.
     Raise,
+    /// Keep the overlay out of screenshots and recordings where the OS allows
+    /// it (Windows 10 2004+). Off unless the player turns it on.
+    ExcludeFromCapture(bool),
     /// Mouse buttons and keys to report; nothing is listened to otherwise.
     ListenTo { mouse: Vec<MouseButton>, keys: Vec<String> },
     Quit,

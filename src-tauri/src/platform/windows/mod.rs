@@ -184,6 +184,7 @@ fn drain_commands(state: &State) {
             Ok(Command::Show { bitmap, x, y, unlocked, button }) => overlay::show(&bitmap, x, y, unlocked, button),
             Ok(Command::Hide) => overlay::hide(),
             Ok(Command::Raise) => overlay::raise(),
+            Ok(Command::ExcludeFromCapture(exclude)) => overlay::exclude_from_capture(exclude),
             Ok(Command::ListenTo { mouse, keys }) => state.listener.borrow_mut().listen(state.sink, mouse, keys),
             // SAFETY: no pointers; ends this thread's message loop.
             Ok(Command::Quit) | Err(TryRecvError::Disconnected) => return unsafe { PostQuitMessage(0) },

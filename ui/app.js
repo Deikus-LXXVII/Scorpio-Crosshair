@@ -596,6 +596,7 @@ const controlsTab = () => {
 const systemTab = () => {
 
 	const s = S.settings
+	const windows = S.view.platform === 'windows'
 	const [ dx, dy ] = s.offset
 	const centred = dx === 0 && dy === 0
 
@@ -626,6 +627,14 @@ const systemTab = () => {
 				save()
 
 			}, { label: 'Start with the system' } ) ),
+			setting( 'Hide from screen capture', windows
+				? 'Screenshots, recordings and streams show the game without the crosshair. Cheat overlays hide from anti-cheat screenshots the same way, so an anti-cheat could take a closer look at Scorpio. Leave it off unless you need it.'
+				: 'Not available on Linux: X11 has no way to keep a window out of captures.', toggle( s.hideFromCapture, v => {
+
+				s.hideFromCapture = v
+				save()
+
+			}, { label: 'Hide from screen capture', disabled: !windows } ), { off: !windows } ),
 		),
 		h( 'h2.t-h4', { text: 'Updates' } ),
 		updatesBlock(),

@@ -108,7 +108,8 @@ impl State {
                 Ok(())
             }
             Command::Raise => self.overlay.raise(&self.conn),
-            Command::Quit => Ok(()),
+            // X11 has no way to keep a window out of captures.
+            Command::ExcludeFromCapture(_) | Command::Quit => Ok(()),
         };
         if let Err(e) = result {
             log::warn!("overlay command failed: {e}");
