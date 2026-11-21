@@ -70,6 +70,8 @@ const EFF = [
 	{ name: 'Crosshair Y', ver: '4.2', mem: [ 249.8, 250.5, 251.7 ], cpu: [ 16, 0, 16 ] },
 	{ name: 'CrossOver', ver: '3.4.11', mem: [ 358.1, 359.1, 360.0 ], cpu: [ 47, 31, 47 ] },
 ]
+// The PC the efficiency runs were measured on, read from it on 2026-11-21.
+const RIG = [ 'Intel Core Ultra 7 265K', 'NVIDIA GeForce RTX 5080', '128 GB DDR5-5600', 'Windows 11 Pro 25H2' ]
 const mid = a => [ ...a ].sort( ( x, y ) => x - y )[ 1 ]
 const chart = () => {
 	const maxM = Math.max( ...EFF.map( p => mid( p.mem ) ) ), maxC = Math.max( ...EFF.map( p => mid( p.cpu ) ) )
@@ -81,7 +83,7 @@ const chart = () => {
 ${EFF.map( p => `\t\t\t\t\t<tr${p.me ? ' class="me"' : ''}><th scope="row">${p.name} <span>${p.ver}</span></th>${cell( mid( p.mem ), maxM, 'MB' )}${cell( mid( p.cpu ), maxC, 'ms' )}</tr>` ).join( '\n' )}
 				</tbody>
 			</table>
-			<figcaption>Windows 11 gaming PC, 21 November 2026: each program idle, crosshair shown, all its processes counted. Middle of three runs.</figcaption>
+			<figcaption><span class="rig" tabindex="0" aria-describedby="rig">Windows 11 gaming PC<span class="tip" role="tooltip" id="rig">${RIG.join( '<br>' )}</span></span>, 21 November 2026: each program idle, crosshair shown, all its processes counted. Middle of three runs.</figcaption>
 		</figure>`
 }
 
@@ -412,6 +414,11 @@ html.page::-webkit-scrollbar{display:none}
 .chart .me .v{color:var(--lit)}
 .chart .me .bar{background:var(--porphyry-hi)}
 .chart figcaption{margin-top:16px;max-width:62ch;color:var(--mute)}
+.rig{position:relative;color:var(--marble);text-decoration:underline dotted var(--line-ctl);text-underline-offset:4px;cursor:help;outline-offset:2px}
+.rig .tip{position:absolute;left:0;bottom:calc(100% + 10px);z-index:2;width:max-content;max-width:min(300px,calc(100vw - 32px));padding:14px 18px;font:400 14px/1.7 var(--text);color:var(--marble);background:var(--raised);border:1px solid var(--line-hi);border-radius:2px;box-shadow:var(--shadow-slab);opacity:0;visibility:hidden;transition:opacity var(--t-color) var(--ease),visibility 0s linear var(--t-color)}
+.rig:hover,.rig:focus-visible,.rig:focus{color:var(--lit)}
+.rig:hover .tip,.rig:focus .tip{opacity:1;visibility:visible;transition:opacity var(--t-color) var(--ease)}
+@media (prefers-reduced-motion:reduce){.rig .tip{transition:none}}
 .faq{max-width:760px}
 .qa{border-bottom:1px solid var(--line)}
 .qa summary{text-wrap:balance;display:flex;align-items:center;justify-content:space-between;gap:24px;padding:24px 0;font:400 21px/1.2 var(--display);color:var(--marble);list-style:none;cursor:pointer;transition:color var(--t-color) var(--ease)}
