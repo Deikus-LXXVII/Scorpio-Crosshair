@@ -1,6 +1,4 @@
-# Scorpio crosshair overlay: https://deikus-lxxvii.github.io/Scorpio-Crosshair/
-# Every crawler may read every page, search engines and AI assistants alike.
 User-agent: *
 Allow: /
 
-Sitemap: https://deikus-lxxvii.github.io/Scorpio-Crosshair/sitemap.xml
+Sitemap: https://scorpio.lxxvll.com/sitemap.xml

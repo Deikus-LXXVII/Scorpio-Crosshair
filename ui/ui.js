@@ -38,8 +38,9 @@ const h = ( tag, props = {}, ...children ) => {
 }
 
 // A setting row: name and help on the left, one control on the right.
+// A row with no help line is `.solo`: its name is centred on the control.
 const setting = ( name, help, control, { stack = false, off = false } = {} ) => h(
-	`div.setting${stack ? '.stack' : ''}${off ? '.off' : ''}`, {},
+	`div.setting${stack ? '.stack' : ''}${off ? '.off' : ''}${help ? '' : '.solo'}`, {},
 	h( 'div.setting-name', { text: name } ),
 	help ? h( 'div.setting-help', { text: help } ) : null,
 	control,
@@ -159,7 +160,7 @@ const select = ( options, value, onChange, { label, placeholder = 'Choose' } = {
 		} ) ) )
 		const below = window.innerHeight - button.getBoundingClientRect().bottom
 
-		root.classList.toggle( 'up', below < Math.min( 290, options.length * 34 + 16 ) )
+		root.classList.toggle( 'up', below < Math.min( 288, options.length * 34 + 8 ) )
 		root.classList.add( 'open' )
 		button.setAttribute( 'aria-expanded', 'true' )
 		mark( Math.max( 0, options.findIndex( o => o[0] === value ) ) )
@@ -416,7 +417,7 @@ const colorButton = ( rgb, onChange, { label } = {} ) => {
 		const place = () => {
 
 			const r = button.getBoundingClientRect()
-			const top = r.bottom + 6 + 300 > window.innerHeight ? Math.max( 8, r.top - 6 - pop.offsetHeight ) : r.bottom + 6
+			const top = r.bottom + 4 + pop.offsetHeight > window.innerHeight ? Math.max( 8, r.top - 4 - pop.offsetHeight ) : r.bottom + 4
 
 			Object.assign( pop.style, { position: 'fixed', left: `${Math.min( r.left, window.innerWidth - 252 )}px`, top: `${top}px` } )
 
@@ -499,8 +500,8 @@ const keybind = ( accelerator, onChange, { label, error } = {} ) => {
 	const paint = text => {
 
 		node.replaceChildren()
-		if ( listening ) node.append( h( 'span.hint', { text: 'Press the keys' } ) )
-		else if ( !text ) node.append( h( 'span.hint', { text: 'None' } ) )
+		if ( listening ) node.append( h( 'span.hint', { text: 'Press the shortcut' } ) )
+		else if ( !text ) node.append( h( 'span.hint', { text: 'Not set' } ) )
 		else node.append( ...text.split( '+' ).map( part => h( 'kbd', { text: SHOWN[part] || part } ) ) )
 
 	}

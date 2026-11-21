@@ -1,45 +1,53 @@
-// Scratch generator for docs/site/index.html. The FAQ is written once here and
-// printed twice: as visible HTML and as FAQPage JSON-LD, so the two always match.
+// Generator for docs/site/index.html. Run: node tools/site/build.js
+// The page follows the lxxvii style (~/.claude/skills/lxxvii-style, rules R1 to R17).
+// The FAQ is written once here and printed twice: as visible HTML and as FAQPage JSON-LD, so the two always match.
 const fs = require( 'fs' )
 const OUT = require( 'path' ).join( __dirname, '../../docs/site/index.html' )
-const SITE = 'https://deikus-lxxvii.github.io/Scorpio-Crosshair/'
+const SITE = 'https://scorpio.lxxvll.com/'
 const REPO = 'https://github.com/Deikus-LXXVII/Scorpio-Crosshair'
 const DOWNLOAD = REPO + '/releases/latest'
 const VERSION = '0.1.0'
 const DATE = '2026-11-21'
 
 const TITLE = 'Scorpio: crosshair overlay for Windows and Linux'
+// The definition sentence. It lives in the meta description and the JSON-LD; the hero carries only the short line.
 const DESC = 'Free crosshair overlay for Windows and Linux. Scorpio draws a CS2-based crosshair over your game only while you play, and never touches the game or its anti-cheat.'
+const LINE = 'A crosshair over your game, only while you play'
 
 const BANDS = 'M647.8 403.4L896 512L512 680L484.2 667.8L453.5 597.7L512 623.2L766.3 512L678.5 473.6ZM403.4 376.2L512 128L680 512L667.8 539.8L597.7 570.5L623.2 512L512 257.7L473.6 345.5ZM376.2 620.6L128 512L512 344L539.8 356.2L570.5 426.3L512 400.8L257.7 512L345.5 550.4ZM620.6 647.8L512 896L344 512L356.2 484.2L426.3 453.5L400.8 512L512 766.3L550.4 678.5Z'
-const mark = ( cls, label ) => `<svg class="${cls}" viewBox="128 128 768 768" ${label ? `role="img" aria-label="${label}"` : 'aria-hidden="true"'}><path fill="#ebe5da" d="${BANDS}"/><path fill="#c8435a" d="M468 512L512 468L556 512L512 556Z"/></svg>`
+const mark = label => `<svg viewBox="128 128 768 768" role="img" aria-label="${label}"><path fill="#ebe5da" d="${BANDS}"/><path fill="#c8435a" d="M468 512L512 468L556 512L512 556Z"/></svg>`
 
-// [question, answer as HTML]. Keep the answers plain: links and <b> only.
+// [question, answer as HTML]. Three sentences at most; links and <b> only.
 const FAQ = [
 	[ 'Is a crosshair overlay bannable?',
 		`No overlay can promise that you will never be banned. Scorpio never reads or changes the game, but no anti-cheat vendor has approved it, and a game's rules can forbid external crosshairs.` ],
-	[ 'Does Scorpio work with Vanguard, Easy Anti-Cheat, BattlEye or VAC?',
+	[ 'Does it work with Vanguard, Easy Anti-Cheat, BattlEye or VAC?',
 		`Nobody has tested it against them yet, and none of these vendors has approved it.` ],
-	[ 'Do CS2 crosshair codes work in Scorpio?',
-		`Yes. Paste the code into <b>Share code</b> on the <b>Crosshair</b> tab, and <b>Copy</b> gives you a code back. A dynamic crosshair shows in its static resting style.` ],
-	[ 'Does Scorpio work on Linux?',
-		`Yes, with X11 or XWayland, but it is less tested there than on Windows. Native Wayland windows are not supported.` ],
-	[ 'Does the crosshair show on my stream?',
-		`With OBS Display Capture, yes. With Game Capture, follow <a class="link" href="#obs">the OBS steps</a> on this page.` ],
-	[ 'Why does the crosshair not show over my game?',
-		`If the title bar says "Hidden by shortcut", press the hide shortcut again. Otherwise add the game on the <b>Games</b> tab, or switch the game from exclusive fullscreen to borderless.` ],
-	[ 'Does Scorpio lower my frame rate or add input lag?',
-		`Scorpio does not touch the game or its input. Its effect on the frame rate has not been measured yet.` ],
+	[ 'Does Scorpio lower my frame rate?',
+		`It does not touch the game or its input. Its effect on the frame rate has not been measured yet.` ],
 	[ 'Does Scorpio collect data?',
-		`No. It has no telemetry and no account, and it goes online only to check for and download updates from GitHub.` ],
+		`No. It has no telemetry and no account, and goes online only for updates from GitHub.` ],
 ]
 const plain = html => html.replace( /<[^>]+>/g, '' )
+
+// Every operating system call Scorpio makes: [need, Windows, Linux (X11), why it stays outside the game].
+// On a phone the rows stack; only the two system columns keep a label there (data-h), the reason reads as one.
+const HEAD = [ 'Need', 'Windows', 'Linux (X11)', 'Why it stays outside the game' ]
+const CALLS = [
+	[ 'Window in front', '<code>SetWinEventHook</code>, out of context', '<code>_NET_ACTIVE_WINDOW</code> events', 'Nothing is loaded into another process' ],
+	[ 'Title, class and size', '<code>GetWindowTextW</code>, <code>GetClassNameW</code>, <code>GetWindowRect</code>', 'Window manager properties', 'No process is opened' ],
+	[ 'Program path', '<code>NtQuerySystemInformation</code>', '<code>/proc/&lt;pid&gt;/exe</code>', 'No process handle' ],
+	[ 'Aim button, hide key', 'Raw Input on its own window', 'XInput2 raw events', 'No hooks' ],
+	[ 'Shortcuts', '<code>RegisterHotKey</code>', '<code>XGrabKey</code>', 'The standard shortcut API' ],
+	[ 'The crosshair', 'A layered, topmost, click-through window', 'An override-redirect ARGB window', 'Nothing is drawn into the game' ],
+	[ 'OBS, opt-in', 'HTTP on <code>127.0.0.1:47117</code>', 'The same', 'Your own computer only' ],
+]
 
 const SHOTS = {
 	games: [ 'scorpio-game-detection.webp', 'Scorpio Games tab: two added games, one with its own crosshair, and switches for fullscreen windows and games from launchers' ],
 	editor: [ 'scorpio-saved-and-pro-crosshairs.webp', 'Scorpio Crosshair tab: a green crosshair in the preview at 4x, its share code, four saved crosshairs and pro player crosshairs' ],
-	controls: [ 'scorpio-hide-while-aiming-and-shortcuts.webp', 'Scorpio Controls tab: the hide while aiming switch, the aim button, hold or toggle mode, and the six global shortcuts' ],
 	obs: [ 'scorpio-obs-browser-source.webp', 'Scorpio System tab: Show the crosshair in OBS is on, with three setup steps and the Browser source address' ],
+	controls: [ 'scorpio-hide-while-aiming-and-shortcuts.webp', 'Scorpio Controls tab: the hide while aiming switch, the aim button, hold or toggle mode, and the six global shortcuts' ],
 }
 const shot = key => `<figure class="shot"><img src="images/${SHOTS[key][0]}" width="1960" height="1400" loading="lazy" decoding="async" alt="${SHOTS[key][1]}"></figure>`
 
@@ -73,7 +81,7 @@ const ld = {
 				'Shows the crosshair only while a game is the window in front',
 				'Detects games you added, fullscreen windows, and games installed by Steam, Epic Games, GOG, Ubisoft Connect, EA, Battle.net, Riot, Xbox, Heroic and Lutris',
 				'CS2-based crosshairs with five static styles',
-				'CS2 crosshair codes work in Scorpio, in and out',
+				'CS2 crosshair codes work in Scorpio',
 				'Thickness in half steps and an outline of 1 to 6 pixels',
 				'13 pro player crosshairs',
 				'A crosshair per game and saved crosshairs',
@@ -93,154 +101,164 @@ const ld = {
 	],
 }
 
+// Tokens and components are taken from the lxxvii starter (tokens.css, components.css); only what the page uses.
 const css = `
 @font-face{font-family:"Forum";font-style:normal;font-weight:400;font-display:swap;src:url("fonts/forum-latin.woff2") format("woff2")}
 @font-face{font-family:"Inter";font-style:normal;font-weight:300 500;font-display:swap;src:url("fonts/inter-latin.woff2") format("woff2")}
-:root{color-scheme:dark;--cut:#060605;--basalt:#0b0a09;--stone:#141311;--raised:#1c1a17;--lit:#fff8ec;--marble:#ebe5da;--mute:#8a837a;--faint:#4a4640;--line:rgba(235,229,218,.10);--line-hi:rgba(235,229,218,.22);--line-ctl:rgba(235,229,218,.40);--porphyry-hi:#c8435a;--porphyry-ink:#d16174;--cramp-1:#6b5a40;--cramp-2:#3f3426;--cramp-3:#2c241a;--rivet:#a08a63;--rivet-lo:#3a2f22;--display:"Forum","Times New Roman",serif;--text:"Inter",system-ui,sans-serif;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--ease:cubic-bezier(.2,.7,.15,1);--gutter:40px}
+:root{color-scheme:dark;--cut:#060605;--basalt:#0b0a09;--stone:#141311;--raised:#1c1a17;--lit:#fff8ec;--marble:#ebe5da;--mute:#8a837a;--rest:#7d766c;--faint:#4a4640;--line:rgba(235,229,218,.10);--line-hi:rgba(235,229,218,.22);--line-ctl:rgba(235,229,218,.40);--porphyry-hi:#c8435a;--cramp-1:#6b5a40;--cramp-2:#3f3426;--cramp-3:#2c241a;--rivet:#a08a63;--rivet-lo:#3a2f22;--lit-glow-display:0 0 3px rgba(255,240,215,.75),0 0 18px rgba(250,234,206,.55),0 0 46px rgba(244,226,196,.35),0 0 110px rgba(244,226,196,.18);--shadow-slab:0 30px 60px rgba(0,0,0,.75),0 10px 22px rgba(0,0,0,.6);--display:"Forum","Times New Roman",serif;--text:"Inter",system-ui,sans-serif;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--fs-hero:clamp(96px,15.5vw,236px);--fs-h1:clamp(48px,5vw,78px);--track-caps:.28em;--ease:cubic-bezier(.2,.7,.15,1);--ease-loop:cubic-bezier(.45,0,.2,1);--gutter:40px}
 *,*::before,*::after{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+html{-webkit-text-size-adjust:100%}
 html,body{margin:0;background:var(--basalt)}
 body{color:var(--marble);font:300 16px/1.6 var(--text);-webkit-font-smoothing:antialiased}
-h1,h2,h3,p,ul,ol,dl,dd,figure{margin:0}
-ul,ol{padding:0;list-style:none}
+h1,h2,p,ol,dl,dd,figure{margin:0}
+ol{padding:0;list-style:none}
 a{color:inherit;text-decoration:none}
 img{display:block;max-width:100%;height:auto}
+b{font-weight:400;color:var(--marble)}
+code{font:400 14px/1 var(--mono);color:#cfc7ba}
 ::selection{background:rgba(235,229,218,.22)}
 :focus{outline:none}
 :focus-visible{outline:1px solid var(--marble);outline-offset:3px}
-.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-.skip{position:absolute;left:var(--gutter);top:-60px;z-index:10;padding:8px 12px;background:var(--raised);font-size:13px}
-.skip:focus{top:8px}
-.wrap{max-width:1280px;margin:0 auto;padding:0 var(--gutter)}
-.link{color:var(--marble);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:4px;text-decoration-color:var(--line-ctl);transition:text-decoration-color .3s var(--ease)}
-.link:hover{text-decoration-color:var(--marble)}
-b{font-weight:400;color:var(--marble)}
-code{font:400 .86em/1 var(--mono);color:#cfc7ba}
-kbd{display:inline-block;padding:1px 6px;font:400 12px/1.5 var(--text);letter-spacing:.04em;color:var(--marble);background:var(--cut);border-radius:1px;box-shadow:inset 0 0 0 1px var(--line-hi)}
 
-/* hero: one tablet on the wall */
-.wall{padding:28px 28px 0}
-.tablet{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:max(620px,calc(100vh - 100px));padding:72px 24px 64px;text-align:center;background:var(--stone);border-radius:2px 2px 0 0;box-shadow:inset 0 0 0 1px rgba(235,229,218,.06),inset 0 1px 0 rgba(235,229,218,.10)}
-.tablet-edge{height:16px;background:linear-gradient(#100f0d,#080706);border-top:1px solid rgba(235,229,218,.14);box-shadow:0 1px 0 rgba(0,0,0,.8),0 30px 60px rgba(0,0,0,.75),0 10px 22px rgba(0,0,0,.6)}
-.cramps::before,.cramps::after{content:"";position:absolute;left:7%;right:7%;height:14px;pointer-events:none;--r:radial-gradient(circle at 35% 35%,var(--rivet),var(--rivet-lo) 2.5px,transparent 3px);--i:linear-gradient(var(--cramp-1),var(--cramp-2) 60%,var(--cramp-3));background:var(--r) left 1.5px top 0/14px 14px no-repeat,var(--r) left 26.5px top 0/14px 14px no-repeat,var(--r) right 1.5px top 0/14px 14px no-repeat,var(--r) right 26.5px top 0/14px 14px no-repeat,var(--i) left top/42px 14px no-repeat,var(--i) right top/42px 14px no-repeat;filter:drop-shadow(0 2px 2px rgba(0,0,0,.6))}
-.cramps::before{top:-7px}
-.cramps::after{display:none}
-.hero-mark{width:clamp(84px,9vw,128px);height:auto;margin-bottom:36px}
-.hero-h{display:flex;flex-direction:column;align-items:center;font-weight:400}
-/* the carved name, static form: the cut, its lit far wall, and light pooled in the cut */
-.inscr{position:relative;display:inline-block;font:400 clamp(58px,15.5vw,236px)/.9 var(--display);letter-spacing:.06em;margin-right:-.06em;text-transform:uppercase;white-space:nowrap;user-select:none;color:var(--cut);text-shadow:0 2px 0 rgba(235,225,205,.03),0 -2.4px 1px rgba(0,0,0,.7),0 0 1px rgba(0,0,0,.6)}
-.inscr::before,.inscr::after{content:attr(data-t);position:absolute;inset:0;color:transparent;pointer-events:none}
-.inscr::before{text-shadow:0 2px 0 rgba(240,228,206,.28);-webkit-mask-image:radial-gradient(110% 260% at 42% 30%,#000,rgba(0,0,0,.17) 45%,transparent 72%);mask-image:radial-gradient(110% 260% at 42% 30%,#000,rgba(0,0,0,.17) 45%,transparent 72%)}
-.inscr::after{text-shadow:none;background:radial-gradient(110% 260% at 42% 30%,rgba(240,228,206,.72),rgba(240,228,206,.12) 45%,transparent 72%);-webkit-background-clip:text;background-clip:text}
-.lede{max-width:56ch;margin:28px auto 0;font-size:17px;color:var(--mute)}
-.cta{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:12px 32px;margin-top:40px}
+/* the page's own scrollbar is hidden (R8); it still scrolls by wheel, touch and keys */
+html.page{scrollbar-width:none;scroll-behavior:smooth}
+html.page::-webkit-scrollbar{display:none}
+@media (forced-colors:active),(prefers-contrast:more){html.page{scrollbar-width:thin}html.page::-webkit-scrollbar{display:block}}
+
+.skip{position:absolute;left:var(--gutter);top:-60px;z-index:10;padding:8px 16px;font:400 13px/18px var(--text);background:var(--raised);border-radius:2px}
+.skip:focus{top:8px}
+
+/* the hero: one tablet on a wall, 56px of the page below show (R3, R7) */
+.wall{position:relative;padding:28px 28px 0}
+.tablet{position:relative;display:grid;place-items:center;height:calc(100vh - 100px);min-height:620px;overflow:hidden;text-align:center;background:var(--stone);border-radius:2px 2px 0 0;box-shadow:inset 0 0 0 1px rgba(235,229,218,.06),inset 0 1px 0 rgba(235,229,218,.10)}
+.tablet-edge{position:relative;z-index:1;height:16px;border-radius:0 0 2px 2px;background:linear-gradient(#100f0d,#080706);border-top:1px solid rgba(235,229,218,.14);box-shadow:0 1px 0 rgba(0,0,0,.8),var(--shadow-slab)}
+.cramp{position:absolute;z-index:3;width:42px;height:14px;border-radius:2px;background:linear-gradient(180deg,var(--cramp-1),var(--cramp-2) 60%,var(--cramp-3));border:1px solid rgba(0,0,0,.7);box-shadow:inset 0 1px 0 rgba(255,236,200,.18),0 2px 4px rgba(0,0,0,.6);pointer-events:none}
+.cramp::before,.cramp::after{content:"";position:absolute;top:4px;width:5px;height:5px;border-radius:50%;background:radial-gradient(circle at 35% 35%,var(--rivet),var(--rivet-lo) 70%)}
+.cramp::before{left:6px}
+.cramp::after{right:6px}
+.cramp.t{top:21px}
+.cramp.b{bottom:9px}
+.cramp.l{left:calc(28px + 7%)}
+.cramp.r{right:calc(28px + 7%)}
+.hero-lines{display:flex;flex-direction:column;align-items:center;padding:0 24px}
+.hero-lines h1{font-weight:400}
+.t-hero{font:400 var(--fs-hero)/.9 var(--display);letter-spacing:.06em;margin-right:-.06em;text-transform:uppercase}
+/* the carved name, static form: darker than the stone, its light placed once (motifs.md) */
+.carved{color:var(--cut);text-shadow:0 2px 0 rgba(235,225,205,.03),0 -2.4px 1px rgba(0,0,0,.7),0 0 1px rgba(0,0,0,.6);user-select:none;white-space:nowrap}
+.carved[data-t]{position:relative;display:inline-block}
+.carved[data-t]::before,.carved[data-t]::after{content:attr(data-t);position:absolute;inset:0;color:transparent;pointer-events:none}
+.carved[data-t]::before{text-shadow:0 2px 0 rgba(240,228,206,.28);-webkit-mask-image:radial-gradient(60% 200% at 35% 30%,#000,rgba(0,0,0,.17) 45%,transparent 72%);mask-image:radial-gradient(60% 200% at 35% 30%,#000,rgba(0,0,0,.17) 45%,transparent 72%)}
+.carved[data-t]::after{text-shadow:none;background:radial-gradient(60% 200% at 35% 30%,rgba(240,228,206,.72),rgba(240,228,206,.12) 45%,transparent 72%);-webkit-background-clip:text;background-clip:text}
+.caps{font:500 11px/16px var(--text);letter-spacing:var(--track-caps);text-transform:uppercase;color:var(--mute)}
+.hero-lines .caps{margin:56px calc(-1 * var(--track-caps)) 0 0}
+.hero-lines .btn{margin-top:40px}
 .btn{display:inline-flex;align-items:center;justify-content:center;height:52px;padding:0 28px;font:500 14px/1 var(--text);white-space:nowrap;color:var(--basalt);background:var(--marble);border:1px solid var(--marble);border-radius:2px;transition:transform .4s var(--ease),background-color .3s var(--ease),border-color .3s var(--ease)}
 .btn:hover{background:var(--lit);border-color:var(--lit);transform:scale(1.03)}
 .btn:active{transform:scale(.98)}
-.go{display:inline-block;padding:10px 0;font:500 11px/1 var(--text);letter-spacing:.28em;text-transform:uppercase;color:var(--mute);transition:color .5s var(--ease)}
+/* the scroll cue: a line and a travelling mark, a link with no words; it scrolls away with the tablet (R4, R7) */
+.cue{position:absolute;left:50%;bottom:28px;z-index:2;display:flex;padding:12px 24px;transform:translateX(-50%)}
+.cue i{position:relative;width:1px;height:46px;background:linear-gradient(rgba(235,229,218,.32),rgba(235,229,218,0))}
+.cue i::after{content:"";position:absolute;left:-1px;top:0;width:3px;height:9px;border-radius:1px;background:rgba(235,229,218,.75);animation:cue 2.8s var(--ease-loop) infinite}
+@keyframes cue{0%{transform:translateY(0);opacity:0}20%{opacity:1}80%{opacity:.8}100%{transform:translateY(40px);opacity:0}}
+
+/* a landing block: copy and one figure, changing sides; about one screen (R13) */
+.block{position:relative;display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:72px;align-items:center;max-width:1280px;margin:0 auto;padding:160px var(--gutter) 28px}
+.block.flip{grid-template-columns:minmax(0,7fr) minmax(0,5fr)}
+.block.flip>.copy{order:2}
+.block.wide{display:block}
+.copy>*+*{margin-top:24px}
+.copy p{max-width:46ch;color:var(--mute)}
+.name{font:400 var(--fs-h1)/1 var(--display);letter-spacing:.01em;color:var(--rest);transition:color .9s var(--ease),text-shadow .9s var(--ease)}
+.block.current .name,.block:has(.go:focus-visible) .name{color:var(--lit);text-shadow:var(--lit-glow-display)}
+.go{display:inline-block;padding:12px 0;font:500 11px/1 var(--text);letter-spacing:var(--track-caps);text-transform:uppercase;color:var(--mute);transition:color .5s var(--ease)}
 .go:hover,.go:focus-visible{color:var(--lit)}
-.fine{margin-top:18px;font-size:12px;color:var(--mute)}
-
-/* the row of facts under the hero */
-.meta{display:grid;grid-template-columns:repeat(4,1fr);margin-top:72px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-.meta>div{padding:18px 20px 18px 0}
-.meta>div+div{padding-left:20px;border-left:1px solid var(--line)}
-.meta dt{font:500 10px/1 var(--text);letter-spacing:.26em;text-transform:uppercase;color:var(--mute)}
-.meta dd{margin-top:10px;font-size:14px;color:var(--marble)}
-
-/* contents */
-.toc{display:flex;flex-wrap:wrap;gap:6px 34px;margin-top:40px;padding-bottom:22px;border-bottom:1px solid var(--line)}
-.toc a{display:inline-flex;gap:10px;align-items:baseline;padding:6px 0;font-size:14px;color:var(--marble);transition:color .3s var(--ease)}
-.toc a:hover,.toc a:focus-visible{color:var(--lit)}
-
-/* two-column blocks: copy 5, figure 7, alternating */
-.block{display:grid;grid-template-columns:5fr 7fr;gap:72px;align-items:center;padding-top:130px}
-.block.flip{grid-template-columns:7fr 5fr}
-.block.flip .copy{order:2}
-.copy h2{margin-top:22px;font:400 clamp(36px,3.4vw,50px)/1.05 var(--display)}
-.copy p{max-width:46ch;margin-top:24px;color:var(--mute)}
-.copy p+p{margin-top:14px}
-.copy .facts{margin-top:30px}
-.shot{border-radius:2px;box-shadow:0 0 0 1px var(--line)}
+.go:focus-visible{outline:none;text-decoration:underline;text-underline-offset:8px;text-decoration-thickness:1px}
+.copy .go{margin-top:28px}
+.shot{border-radius:2px;box-shadow:0 0 0 1px var(--line-hi)}
 .shot img{width:100%;border-radius:2px}
 
-/* document sections */
-.sec{padding-top:150px}
-.sec h2{margin-top:14px;font:400 clamp(36px,3.4vw,50px)/1.05 var(--display)}
-.sec .lead{max-width:62ch;margin-top:22px;font-size:17px;color:var(--mute)}
-.sec .lead+.lead{margin-top:14px}
-.obj{margin-top:42px}
-.scroll{overflow-x:auto;scrollbar-width:thin;scrollbar-color:var(--raised) transparent}
-.scroll::-webkit-scrollbar{height:10px;background:transparent}
-.scroll::-webkit-scrollbar-thumb{background:var(--raised);border:3px solid var(--basalt);border-radius:0}
-.scroll .tbl{min-width:var(--tbl-min,0)}
-.tbl{width:100%;border-collapse:collapse;font-size:15.5px}
-.tbl th{padding:0 16px 14px 0;text-align:left;font:500 10px/1 var(--text);letter-spacing:.24em;text-transform:uppercase;color:var(--mute);border-bottom:1px solid var(--line-hi)}
-.tbl td{padding:15px 16px 15px 0;border-bottom:1px solid var(--line);color:var(--mute);vertical-align:top}
-.tbl td:first-child{color:var(--marble)}
-.rows>li{position:relative;padding:13px 0 13px 19px;border-bottom:1px solid var(--line);color:var(--mute)}
-.rows>li::before{content:"";position:absolute;left:0;top:25px;width:5px;height:5px;border-radius:50%;background:var(--faint)}
-.notice{max-width:78ch;padding:16px 20px;font-size:15px;line-height:1.6;color:var(--mute);background:var(--raised);box-shadow:inset 2px 0 0 var(--porphyry-hi);border-radius:2px}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-.stats>div{padding:24px 20px 24px 0}
-.stats>div+div{padding-left:20px;border-left:1px solid var(--line)}
-.stats b{display:block;font:400 40px/1 var(--display);font-variant-numeric:tabular-nums;color:var(--marble)}
-.stats span{display:block;margin-top:10px;font-size:13px;color:var(--mute)}
-.cells{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);border:1px solid var(--line)}
-.cell{padding:26px 28px;background:var(--basalt)}
-.cell h3{font:400 21px/1.2 var(--display)}
-.cell p,.cell li{margin-top:10px;font-size:14.5px;color:var(--mute)}
-.cell ol{counter-reset:step}
-.cell ol li{position:relative;padding-left:26px;counter-increment:step}
-.cell ol li::before{content:counter(step);position:absolute;left:0;font:400 15px/1.6 var(--display);color:var(--marble)}
-.steps{max-width:78ch;counter-reset:step}
-.steps li{position:relative;padding:13px 0 13px 40px;border-bottom:1px solid var(--line);color:var(--mute);counter-increment:step}
-.steps li::before{content:counter(step);position:absolute;left:0;top:10px;font:400 21px/1.4 var(--display);color:var(--marble)}
-.faq{max-width:860px}
-.faq>div{padding:26px 0;border-bottom:1px solid var(--line)}
-.faq>div:first-child{border-top:1px solid var(--line)}
-.faq h3{font:400 21px/1.25 var(--display)}
-.faq p{max-width:70ch;margin-top:10px;color:var(--mute)}
+/* steps: rows parted by hairlines, a Roman numeral as the ordinal */
+.steps{counter-reset:step}
+.steps li{position:relative;padding:12px 0 12px 40px;border-bottom:1px solid var(--line);color:var(--mute);counter-increment:step}
+.steps li:first-child{border-top:1px solid var(--line)}
+.steps li::before{content:counter(step,upper-roman);position:absolute;left:0;top:12px;font:400 15px/1.6 var(--display);letter-spacing:.1em;color:var(--marble)}
 
-footer{margin-top:160px;border-top:1px solid var(--line)}
-.foot{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:16px 40px;padding-top:40px;padding-bottom:56px}
+/* the wide block: lead, the table of calls, the questions */
+.lead{max-width:62ch;margin-top:24px;font-size:17px;color:var(--mute)}
+.obj{margin-top:40px}
+.tbl{width:100%;border-collapse:collapse;font-size:15.5px}
+.tbl th{padding:0 16px 12px 0;text-align:left;font:500 10px/1 var(--text);letter-spacing:.24em;text-transform:uppercase;color:var(--mute);border-bottom:1px solid var(--line-hi)}
+.tbl td{padding:16px 16px 16px 0;border-bottom:1px solid var(--line);color:var(--mute);vertical-align:top}
+.tbl td:first-child{color:var(--marble)}
+.faq{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 72px}
+.faq>div{padding:24px 0;border-bottom:1px solid var(--line)}
+.faq dt{font:400 21px/1.2 var(--display);color:var(--marble)}
+.faq dd{max-width:52ch;margin-top:8px;color:var(--mute)}
+
+footer{max-width:1280px;margin:160px auto 0;padding:0 var(--gutter)}
+.foot{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:16px 40px;padding:40px 0 56px;border-top:1px solid var(--line)}
 .sig{display:inline-flex;align-items:center;gap:12px;font:400 17px/1 var(--display);letter-spacing:.18em;text-transform:uppercase}
-.sig svg{width:22px;height:22px}
-.foot nav{display:flex;flex-wrap:wrap;gap:6px 28px}
+.sig svg{width:24px;height:24px}
+.foot nav{display:flex;flex-wrap:wrap;gap:4px 28px}
 .year{font:400 15px/1 var(--display);letter-spacing:.2em;color:var(--mute)}
 
-@media (max-width:900px){
-	.block,.block.flip{grid-template-columns:1fr;gap:36px;padding-top:96px}
-	.block .copy,.block.flip .copy{order:2}
-	.meta,.stats{grid-template-columns:repeat(2,1fr)}
-	.meta>div:nth-child(3),.stats>div:nth-child(3){padding-left:0;border-left:0}
-	.meta>div:nth-child(n+3),.stats>div:nth-child(n+3){border-top:1px solid var(--line)}
-	.sec{padding-top:110px}
+/* reveal, once: the copy column of a block, only when the script is there to show it (R5) */
+html.js .rv{opacity:0;transform:translateY(28px);transition:opacity 1.1s var(--ease),transform 1.1s var(--ease)}
+html.js .rv.in{opacity:1;transform:none}
+@media print{html.js .rv{opacity:1;transform:none}}
+
+/* narrow screens (proposed in the guide: the live site has none) */
+@media (max-width:860px){
+	:root{--gutter:20px}
+	.wall{padding:12px 12px 0}
+	.cramp.l{left:calc(12px + 7%)}
+	.cramp.r{right:calc(12px + 7%)}
+	.block,.block.flip{grid-template-columns:minmax(0,1fr);gap:40px;padding-top:72px}
+	.block.flip>.copy{order:0}
+	.faq{grid-template-columns:minmax(0,1fr)}
+	footer{margin-top:72px}
 }
 @media (max-width:640px){
-	:root{--gutter:20px}
-	.wall{padding:14px 14px 0}
-	.tablet{min-height:560px;padding:56px 16px 48px}
-	.cramps::before{left:10%;right:10%}
-	.cells{grid-template-columns:1fr}
-	.meta{margin-top:56px}
-	.sec{padding-top:88px}
-	footer{margin-top:110px}
+	:root{--fs-hero:clamp(56px,19vw,96px)}
+	.tbl thead{display:none}
+	.tbl,.tbl tbody,.tbl tr,.tbl td{display:block}
+	.tbl tr{padding:16px 0;border-bottom:1px solid var(--line)}
+	.tbl tr:first-child{border-top:1px solid var(--line-hi)}
+	.tbl td{padding:0;border:0}
+	.tbl td+td{margin-top:8px}
+	.tbl td[data-h]::before{content:attr(data-h);display:block;font:500 10px/16px var(--text);letter-spacing:.24em;text-transform:uppercase;color:var(--mute)}
 }
 @media (prefers-reduced-motion:reduce){
-	html{scroll-behavior:auto}
 	*,*::before,*::after{transition:none!important}
+	html.page{scroll-behavior:auto}
+	html.js .rv{opacity:1;transform:none}
+	.cue i::after{animation:none;top:18px;opacity:1}
+	.btn:hover,.btn:active{transform:none}
 }
 `
 
-const sec = ( n, id, title, body ) => `
-<section class="sec wrap" id="${id}" aria-labelledby="${id}-h">
-	<h2 id="${id}-h">${title}</h2>
-	${body}
+// reveal once, and light the name of the block in the middle of the screen. Both start a change; neither follows the scroll.
+const js = `
+(() => {
+	if (!('IntersectionObserver' in window)) { document.querySelectorAll('.rv').forEach((el) => el.classList.add('in')); return }
+	const rv = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); rv.unobserve(e.target) } }), { threshold: .15 })
+	document.querySelectorAll('.rv').forEach((el) => rv.observe(el))
+	const lit = new IntersectionObserver((es) => es.forEach((e) => e.target.classList.toggle('current', e.isIntersecting)), { rootMargin: '-40% 0px -40% 0px' })
+	document.querySelectorAll('.block').forEach((el) => lit.observe(el))
+})()
+`
+
+const block = ( id, name, copy, figure, flip ) => `
+<section class="block${flip ? ' flip' : ''}" id="${id}" aria-labelledby="${id}-h">
+	<div class="copy rv">
+		<h2 class="name" id="${id}-h">${name}</h2>
+		${copy}
+	</div>
+	${figure}
 </section>`
 
 const html = `<!doctype html>
-<html lang="en">
+<html lang="en" class="page">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -276,163 +294,69 @@ const html = `<!doctype html>
 <script type="application/ld+json">
 ${JSON.stringify( ld, null, '\t' ).replace( /</g, '\\u003c' )}
 </script>
+<script>document.documentElement.classList.add('js')</script>
 <style>${css}</style>
 </head>
 <body>
 <a class="skip" href="#main">Skip to the content</a>
 
-<header class="wall">
-	<div class="tablet cramps">
-		${mark( 'hero-mark' )}
-		<h1 class="hero-h">
-			<span class="inscr" data-t="Scorpio">Scorpio</span>
-		</h1>
-		<p class="lede">Scorpio draws a <b>CS2-based crosshair</b> in its own window over your game. It shows the crosshair only while a game is in front, and it never opens, reads, hooks or injects into the game or its anti-cheat.</p>
-		<div class="cta">
+<div class="wall">
+	<header class="tablet">
+		<div class="hero-lines">
+			<h1 aria-label="Scorpio"><span class="t-hero carved" data-t="Scorpio" aria-hidden="true">Scorpio</span></h1>
+			<p class="caps">${LINE}</p>
 			<a class="btn" href="${DOWNLOAD}">Download Scorpio</a>
-			<a class="go" href="${REPO}">Read the source on GitHub</a>
 		</div>
-		<p class="fine">Version ${VERSION} · Windows installer, Linux AppImage and .deb · Free for non-commercial use</p>
-	</div>
+		<a class="cue" href="#games" aria-label="Go to the first section"><i></i></a>
+	</header>
 	<div class="tablet-edge"></div>
-</header>
-
-<main id="main">
-
-<div class="wrap">
-	<dl class="meta">
-		<div><dt>Systems</dt><dd>Windows 10 and 11. Linux with X11 or XWayland</dd></div>
-		<div><dt>Crosshair</dt><dd>CS2-based crosshairs in five static styles. CS2 crosshair codes work</dd></div>
-		<div><dt>While it waits</dt><dd>6.9 MB of memory, 0 ms of CPU over 10 s</dd></div>
-		<div><dt>Licence</dt><dd>PolyForm Noncommercial 1.0.0, source-available</dd></div>
-	</dl>
-	<nav class="toc" aria-label="Contents">
-		<a href="#games">Only over games</a>
-		<a href="#crosshair">The crosshair</a>
-		<a href="#controls">Controls</a>
-		<a href="#obs">OBS</a>
-		<a href="#safety">Anti-cheat safety</a>
-		<a href="#weight">Weight</a>
-		<a href="#install">Install</a>
-		<a href="#faq">Questions</a>
-		<a href="#status">What is tested</a>
-	</nav>
+	<i class="cramp t l"></i><i class="cramp t r"></i><i class="cramp b l"></i><i class="cramp b r"></i>
 </div>
 
-<section class="block wrap" id="games" aria-labelledby="games-h">
-	<div class="copy">
-		<h2 id="games-h">Only while a game is in front</h2>
-		<p>The crosshair appears when a game is the window in front and disappears when you switch away. A game is a window <b>you added</b>, any <b>fullscreen</b> window, or a game from a launcher such as Steam, Epic Games or GOG.</p>
-	</div>
-	${shot( 'games' )}
-</section>
-
-<section class="block flip wrap" id="crosshair" aria-labelledby="crosshair-h">
-	<div class="copy">
-		<h2 id="crosshair-h">CS2 crosshair codes work in Scorpio</h2>
-		<p>Paste a share code to import a crosshair, and <b>Copy</b> to export yours. You get five static styles, thickness in half steps, an outline of 1 to 6 pixels, 13 pro player crosshairs and a crosshair per game.</p>
-	</div>
-	${shot( 'editor' )}
-</section>
-
-<section class="block wrap" id="controls" aria-labelledby="controls-h">
-	<div class="copy">
-		<h2 id="controls-h">Hide while aiming, and six shortcuts</h2>
-		<p>Scorpio hides the crosshair while you hold the aim button, or on each press. It reads the button through raw input and sends nothing to the game. Global shortcuts lock, centre, hide and switch the crosshair, and add the game in front.</p>
-	</div>
-	${shot( 'controls' )}
-</section>
-
-<section class="block flip wrap" id="obs" aria-labelledby="obs-h">
-	<div class="copy">
-		<h2 id="obs-h">The crosshair in OBS, also with Game Capture</h2>
-		<p>Game Capture records only the game, so add Scorpio to OBS as a <b>Browser source</b>.</p>
+<main id="main">
+${block( 'games', 'Only over games', `
+		<p>The crosshair shows while a game is the window in front and hides when you switch away. A game is a window <b>you added</b>, any <b>fullscreen</b> window, or a game from a launcher such as Steam, Epic Games or GOG.</p>
+		<p>It can also hide while you aim, and global shortcuts lock, centre and switch it.</p>`, shot( 'games' ) )}
+${block( 'crosshair', 'The crosshair', `
+		<p><b>CS2 crosshair codes work in Scorpio</b>: paste a share code, or copy yours. <b>CS2-based crosshairs</b> come in five static styles, with thickness in half steps and an outline of 1 to 6 pixels.</p>
+		<p>Keep your own crosshairs, pick one of 13 pro players, or give each game its own.</p>`, shot( 'editor' ), true )}
+${block( 'obs', 'On stream', `
+		<p>Game Capture records only the game, so add Scorpio as a <b>Browser source</b>.</p>
 		<ol class="steps">
-			<li>In Scorpio, open the System tab and switch on <b>Show the crosshair in OBS</b>.</li>
+			<li>In Scorpio, on the System tab, switch on <b>Show the crosshair in OBS</b>.</li>
 			<li>In OBS, add a Browser source above your game capture.</li>
 			<li>Set its URL to <code>http://127.0.0.1:47117/obs</code>.</li>
-			<li>Set its width and height to your canvas size.</li>
-			<li>Keep it filling the whole canvas, with no transform.</li>
-		</ol>
-	</div>
-	${shot( 'obs' )}
-</section>
-${sec( '05', 'safety', 'It never touches the game or its anti-cheat', `
-	<p class="lead">Scorpio never opens another process, reads or writes its memory, injects code, installs a hook, sends synthetic input, loads a driver, or draws into the game's frames. No anti-cheat vendor has reviewed or approved it. The table lists every system call it makes.</p>
-	<div class="obj scroll" style="--tbl-min:820px" tabindex="0" role="region" aria-label="Operating system calls that Scorpio makes">
-		<table class="tbl">
-			<thead><tr><th scope="col">Need</th><th scope="col">Windows</th><th scope="col">Linux (X11)</th><th scope="col">Why it stays outside the game</th></tr></thead>
-			<tbody>
-				<tr><td>Which window is in front</td><td><code>SetWinEventHook</code>, out of context</td><td><code>_NET_ACTIVE_WINDOW</code> events</td><td>Nothing is loaded into another process</td></tr>
-				<tr><td>Title, class and size of the window</td><td><code>GetWindowTextW</code>, <code>GetClassNameW</code>, <code>GetWindowRect</code></td><td>Window manager properties</td><td>No process is opened</td></tr>
-				<tr><td>Path of the program</td><td><code>NtQuerySystemInformation</code></td><td><code>/proc/&lt;pid&gt;/exe</code></td><td>No process handle is opened</td></tr>
-				<tr><td>Aim button and hide key</td><td>Raw Input on Scorpio's own window</td><td>XInput2 raw events</td><td>No hooks</td></tr>
-				<tr><td>Shortcuts</td><td><code>RegisterHotKey</code></td><td><code>XGrabKey</code></td><td>The standard shortcut API</td></tr>
-				<tr><td>The crosshair</td><td>A layered, topmost, click-through window</td><td>An override-redirect ARGB window</td><td>Nothing is drawn into the game</td></tr>
-				<tr><td>Crosshair in OBS, opt-in</td><td>HTTP server on <code>127.0.0.1:47117</code></td><td>The same</td><td>Your own computer only</td></tr>
-			</tbody>
-		</table>
-	</div>
-	<p class="notice obj"><b>Leave Hide from screen capture off.</b> Cheat overlays use the same Windows call, so an anti-cheat could take a closer look at Scorpio.</p>` )}
-${sec( '06', 'weight', 'About 7 MB of memory and no CPU while it waits', `
-	<p class="lead">Measured on Windows 11 with a release build. A check fails if a figure grows by more than 25 %.</p>
-	<div class="obj stats">
-		<div><b>6.9 MB</b><span>Private memory, idle in the tray</span></div>
-		<div><b>0 ms</b><span>CPU time over 10 s idle</span></div>
-		<div><b>0</b><span>Web view processes with the settings window closed</span></div>
-		<div><b>3.7 MB</b><span>Size of scorpio.exe</span></div>
-	</div>` )}
-${sec( '07', 'install', 'Install Scorpio on Windows or Linux', `
-	<p class="lead">Get the files from the <a class="link" href="${DOWNLOAD}">latest release</a>.</p>
-	<div class="obj cells">
-		<div class="cell">
-			<h3>Windows 10 and 11</h3>
-			<ol>
-				<li>Download the <code>-setup.exe</code> file.</li>
-				<li>Run it. It needs no administrator rights.</li>
-				<li>Click the tray icon, paste a share code, and switch to your game.</li>
-			</ol>
-			<p>The installer is unsigned, so SmartScreen may warn you the first time.</p>
-		</div>
-		<div class="cell">
-			<h3>Linux with X11 or XWayland</h3>
-			<ol>
-				<li>Download the <code>.AppImage</code>, or the <code>.deb</code> for Debian and Ubuntu.</li>
-				<li>Make the AppImage executable and run it, or run <code>sudo apt install ./Scorpio_*.deb</code>.</li>
-				<li>Click the tray icon, paste a share code, and switch to your game.</li>
-			</ol>
-			<p>Native Wayland windows are not supported.</p>
-		</div>
-	</div>` )}
-${sec( '08', 'faq', 'Questions', `
-	<div class="obj faq">
-${FAQ.map( ( [ q, a ] ) => `\t\t<div><h3>${q}</h3><p>${a}</p></div>` ).join( '\n' )}
-	</div>` )}
-${sec( '09', 'status', 'What is tested and what is not', `
-	<p class="lead">Version ${VERSION} on 21 November 2026. The screenshots show the real settings window with sample data.</p>
-	<div class="obj scroll" style="--tbl-min:480px" tabindex="0" role="region" aria-label="What is tested">
-		<table class="tbl">
-			<thead><tr><th scope="col">Area</th><th scope="col">State</th></tr></thead>
-			<tbody>
-				<tr><td>Crosshair maths, share codes, game matching</td><td>Unit tests</td></tr>
-				<tr><td>Windows build</td><td>Run and measured on Windows 11</td></tr>
-				<tr><td>Inside a real game</td><td>Not tested yet</td></tr>
-				<tr><td>Linux</td><td>Virtual X server only</td></tr>
-				<tr><td>OBS</td><td>Local server tested, OBS not yet</td></tr>
-				<tr><td>Automatic updates</td><td>Not yet run against a release</td></tr>
-				<tr><td>Any anti-cheat</td><td>Not tested</td></tr>
-			</tbody>
-		</table>
-	</div>` )}
+			<li>Make it the size of your canvas, with no transform.</li>
+		</ol>`, shot( 'obs' ) )}
 
+<section class="block wide" id="safety" aria-labelledby="safety-h">
+	<h2 class="name" id="safety-h">Outside the game</h2>
+	<p class="lead">Scorpio never opens another process, reads or writes its memory, injects code, installs a hook, sends synthetic input, loads a driver, or draws into the game's frames. No anti-cheat vendor has approved it. Leave <b>Hide from screen capture</b> off: cheat overlays use the same Windows call.</p>
+	<table class="tbl obj">
+		<thead><tr>${HEAD.map( h => `<th scope="col">${h}</th>` ).join( '' )}</tr></thead>
+		<tbody>
+${CALLS.map( r => `\t\t\t<tr>${r.map( ( c, i ) => `<td${i === 1 || i === 2 ? ` data-h="${HEAD[ i ]}"` : ''}>${c}</td>` ).join( '' )}</tr>` ).join( '\n' )}
+		</tbody>
+	</table>
+	<dl class="faq obj" id="faq">
+${FAQ.map( ( [ q, a ] ) => `\t\t<div><dt>${q}</dt><dd>${a}</dd></div>` ).join( '\n' )}
+	</dl>
+</section>
+${block( 'download', 'Download', `
+		<ol class="steps">
+			<li>On Windows 10 or 11, run the <code>-setup.exe</code>. It needs no administrator rights; it is unsigned, so SmartScreen may warn you the first time.</li>
+			<li>On Linux with X11 or XWayland, run the <code>.AppImage</code>, or <code>sudo apt install ./Scorpio_*.deb</code>.</li>
+			<li>Click the tray icon, paste a share code, and switch to your game.</li>
+		</ol>
+		<p>Free for non-commercial use under the <b>PolyForm Noncommercial 1.0.0</b> licence. The source is on GitHub.</p>
+		<a class="go" href="${DOWNLOAD}">Open the latest release</a>`, shot( 'controls' ), true )}
 </main>
 
 <footer>
-	<div class="wrap foot">
-		<span class="sig">${mark( '', 'Scorpio' )}Scorpio</span>
+	<div class="foot">
+		<span class="sig">${mark( 'Scorpio' )}Scorpio</span>
 		<nav aria-label="Links">
 			<a class="go" href="${REPO}">GitHub</a>
-			<a class="go" href="${DOWNLOAD}">Releases</a>
 			<a class="go" href="${REPO}/blob/main/LICENSE">Licence</a>
 			<a class="go" href="${REPO}/blob/main/README.ru.md" hreflang="ru" lang="ru">Русский</a>
 			<a class="go" href="https://lxxvll.com">LXXVII</a>
@@ -440,6 +364,7 @@ ${sec( '09', 'status', 'What is tested and what is not', `
 		<span class="year" title="2026">MMXXVI</span>
 	</div>
 </footer>
+<script>${js}</script>
 </body>
 </html>
 `

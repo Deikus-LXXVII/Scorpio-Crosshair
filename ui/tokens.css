@@ -102,7 +102,7 @@
 	--radius: 2px;      /* the one corner radius for every control and container */
 	--radius-sm: 1px;   /* proposed. Parts under 20px on their short side: thumbs, swatches, key caps */
 	--hair: 1px;        /* every border and rule */
-	--mark: 2px;        /* the accent mark on the current item; the slider track */
+	--mark: 2px;        /* the slider track and the progress bar. Never a bar down the side of a block */
 
 	/* ---------- space (px). Measured anchors: 2 seam, 28 app gutter, 40 page gutter, 72 column gap ---------- */
 	--seam: 2px;
@@ -116,13 +116,20 @@
 	--s-8: 40px;
 	--s-9: 56px;
 	--s-10: 72px;
-	--s-11: 110px;
+	--s-11: 112px;   /* the site measures 110 after a document section */
 	--s-12: 160px;
 
-	/* ---------- control metrics ---------- */
-	--ctl-h: 34px;       /* measured (app). Buttons, fields, dropdowns, segmented controls */
+	/* ---------- the three heights of a one-line box, and the padding that goes with each (grid.md) ---------- */
+	--h-sm: 24px;        /* measured (app chip). Chip, key cap, tooltip, a button inside a toast */
+	--ctl-h: 34px;       /* measured (app). Buttons, fields, dropdowns, segmented controls, options, toasts, notices */
 	--ctl-h-lg: 52px;    /* measured (site). The one call to action on a web page */
-	--ctl-pad: 12px;     /* measured. Inner side padding of fields; buttons use 16px */
+	--pad-sm: 8px;       /* side padding at 24px */
+	--ctl-pad: 12px;     /* measured. Side padding at 34px of a well: field, dropdown, option, key field */
+	--pad-slab: 16px;    /* measured. Side padding at 34px of a slab: button, segment, toast, notice */
+	--pad-lg: 28px;      /* measured. Side padding at 52px */
+	--bar-h: 40px;       /* measured (app). A bar that spans a window edge: the title bar */
+	--lh-sm: 16px;       /* the line box of 12px text inside a box: 16 + 2 x 4 = 24 */
+	--lh-ui: 18px;       /* the line box of 13px text inside a box: 18 + 2 x 8 = 34; two lines make 52 */
 
 	/* ---------- shadows: only things that float cast one ---------- */
 	--shadow-pop: 0 18px 40px rgba(0, 0, 0, .55);                              /* measured (app). Dropdown lists, popovers, tooltips */
@@ -134,7 +141,8 @@
 	--t-fast: .2s;     /* measured. Window-control hover, small fades */
 	--t-color: .3s;    /* measured. Colour, border and background changes */
 	--t-move: .4s;     /* measured. Transforms: thumbs, underlines, button scale */
-	--t-lit: .5s;      /* measured. A name lighting up; .9s for display names on a page */
+	--t-lit: .5s;      /* measured. A name lighting up */
+	--t-lit-display: .9s;   /* measured (site, home). The name of a landing block lighting as the block reaches the middle of the screen */
 	--t-reveal: 1.1s;  /* measured. Content entering the viewport, once */
 
 	/* ---------- z-order ---------- */

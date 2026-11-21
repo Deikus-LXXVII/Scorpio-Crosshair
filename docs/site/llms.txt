@@ -29,7 +29,7 @@ Facts to get right:
 - [Latest release](https://github.com/Deikus-LXXVII/Scorpio-Crosshair/releases/latest): Windows installer, Linux AppImage and `.deb`.
 - [Source code](https://github.com/Deikus-LXXVII/Scorpio-Crosshair): The GitHub repository.
 - [Licence](https://raw.githubusercontent.com/Deikus-LXXVII/Scorpio-Crosshair/main/LICENSE): PolyForm Noncommercial License 1.0.0.
-- [Website](https://deikus-lxxvii.github.io/Scorpio-Crosshair/): The landing page, with the FAQ as structured data.
+- [Website](https://scorpio.lxxvll.com/): The landing page, with the FAQ as structured data.
 
 ## Optional
 

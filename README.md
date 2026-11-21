@@ -176,7 +176,7 @@ Two things differ from Windows. **Hide from screen capture** is disabled, becaus
 
 1. Click the tray icon. The settings window opens on the **Crosshair** tab.
 2. Paste a CS2 share code into **Share code**, or set the crosshair with the sliders.
-3. Open the **Games** tab and click **Add a running game**. You can skip this step for a fullscreen game or a game from a launcher.
+3. Open the **Games** tab and click **Add a game**. You can skip this step for a fullscreen game or a game from a launcher.
 4. Switch to the game. The crosshair shows. The line in the title bar of the settings window says what the overlay does now, for example "Hidden until a game is in front".
 
 ## Show the crosshair in OBS

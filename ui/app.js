@@ -143,27 +143,14 @@ const paintStatus = () => {
 	const s = S.status
 
 	if ( !node || !s ) return
+	// The words say whether the crosshair is shown, so there is no dot beside them (rules.md R16).
 	let text = 'Hidden until a game is in front'
-	let on = false
 
-	if ( !s.locked ) {
+	if ( !s.locked ) text = 'Position unlocked: drag the crosshair, then lock it'
+	else if ( s.hidden ) text = 'Hidden by shortcut'
+	else if ( s.visible ) text = s.game ? `Shown over ${s.game}` : 'Shown over a detected game'
 
-		text = 'Position unlocked: drag the crosshair, then lock it'
-		on = true
-
-	} else if ( s.hidden ) {
-
-		text = 'Hidden by shortcut'
-
-	} else if ( s.visible ) {
-
-		text = s.game ? `Shown over ${s.game}` : 'Shown over a detected game'
-		on = true
-
-	}
-
-	node.querySelector( '.dot' ).className = `dot${on ? ' on' : ''}`
-	node.querySelector( 'span' ).textContent = text
+	node.textContent = text
 
 }
 
@@ -475,7 +462,7 @@ const gamesTab = () => {
 
 	} )
 
-	const add = h( 'button.btn.primary', { type: 'button', text: 'Add a running game', onclick: pickWindow } )
+	const add = h( 'button.btn.primary', { type: 'button', text: 'Add a game', onclick: pickWindow } )
 	const list = games.length
 		? h( 'div.slab.flush.games', {}, rows )
 		: h( 'div.empty', {}, h( 'h3', { text: 'No games added yet' } ), h( 'p', { text: 'Add a game so the crosshair shows only while it is in front, with its own crosshair if you like.' } ) )
@@ -538,7 +525,7 @@ const pickWindow = async () => {
 
 	}
 
-	close = dialog( 'Add a running game', list, [ h( 'button.btn', { type: 'button', text: 'Cancel', onclick: () => close() } ) ] )
+	close = dialog( 'Add a game', list, [ h( 'button.btn', { type: 'button', text: 'Cancel', onclick: () => close() } ) ] )
 
 }
 
