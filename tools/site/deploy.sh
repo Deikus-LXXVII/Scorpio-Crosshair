@@ -6,5 +6,7 @@ set -eu
 : "${SCORPIO_SITE_HOST:?set SCORPIO_SITE_HOST to the ssh host of the web server}"
 cd "$(dirname "$0")/../.."
 node tools/site/build.js
-rsync -rlt --delete --chmod=D755,F644 --exclude '._*' --exclude '.DS_Store' docs/site/ "$SCORPIO_SITE_HOST:/var/www/scorpio/"
+# tar over ssh: works with any rsync (or none) on either side.
+COPYFILE_DISABLE=1 tar --no-xattrs -C docs/site --exclude '._*' --exclude '.DS_Store' -czf - . |
+	ssh "$SCORPIO_SITE_HOST" 'set -e; new=$(mktemp -d /var/www/.scorpio-XXXXXX); tar -xzf - -C "$new"; chmod -R u=rwX,go=rX "$new"; rm -rf /var/www/scorpio.old; mv /var/www/scorpio /var/www/scorpio.old; mv "$new" /var/www/scorpio; rm -rf /var/www/scorpio.old'
 echo "deployed to https://scorpio.lxxvll.com/"
