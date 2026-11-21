@@ -1,9 +1,7 @@
 //! Counter-Strike 2's crosshair: its settings, its share codes, and its shapes
 //! in physical pixels for the player's screen.
 //!
-//! Reference behaviour: `reference/js/crosshair.js` and its tests in
-//! `reference/test/unit/crosshair.test.js`. Share code byte layouts are the
-//! ones documented by akiver/csgo-sharecode (doc/code_layout.md, MIT).
+//! Share code byte layouts are the ones documented by akiver/csgo-sharecode (doc/code_layout.md, MIT).
 
 use serde::{Deserialize, Serialize};
 

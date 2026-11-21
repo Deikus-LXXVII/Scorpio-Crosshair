@@ -648,7 +648,8 @@ const systemTab = () => {
 		h( 'h2.t-h4', { text: 'Updates' } ),
 		updatesBlock(),
 		h( 'div.about', {},
-			h( 'p.t-h3', { text: `Scorpio ${S.view.version}` } ),
+			h( 'img.lockup', { src: 'brand/lockup.svg', alt: 'Scorpio' } ),
+			h( 'p.t-h3', { text: `Version ${S.view.version}` } ),
 			h( 'p.help', { text: 'A crosshair overlay. It draws its own window over the game and never opens, reads or changes the game or its anti-cheat.' } ),
 			h( 'p.help', { text: 'Free for non-commercial use under the PolyForm Noncommercial licence 1.0.0. Made by LXXVII.' } ),
 			h( 'button.btn.danger', { type: 'button', text: 'Quit Scorpio', onclick: () => invoke( 'quit_app' ) } ),
@@ -735,7 +736,7 @@ const updatesBlock = () => {
 			save()
 
 		}, { label: 'Install updates automatically', disabled: unsupported } ), { off: unsupported } ),
-		setting( 'Version', UPDATE_TEXT[u.state]( u ), button ),
+		setting( 'Version', ( UPDATE_TEXT[u.state] || UPDATE_TEXT.idle )( u ), button ),
 	)
 
 }

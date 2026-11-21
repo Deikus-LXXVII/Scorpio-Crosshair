@@ -1,5 +1,4 @@
-//! Deciding whether the window in front is a game. Reference behaviour:
-//! `reference/js/focus/match.js` and `reference/test/unit/focus.test.js`.
+//! Deciding whether the window in front is a game.
 
 use serde::{Deserialize, Serialize};
 

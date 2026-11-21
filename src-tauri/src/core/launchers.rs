@@ -1,5 +1,4 @@
 //! Games installed through launchers, found in the launchers' own files.
-//! Reference behaviour: `reference/js/launchers.js` and its tests.
 //! Parsers are pure; `scan()` reads the disk (files and, on Windows, `reg.exe query`).
 
 use serde::Serialize;

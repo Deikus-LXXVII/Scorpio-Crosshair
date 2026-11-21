@@ -4,6 +4,10 @@
 html, body { height: 100%; }
 body { display: grid; grid-template-rows: auto auto 1fr; overflow: hidden; background: var(--basalt); color: var(--marble); font: 300 var(--fs-body-app)/1.5 var(--text); }
 
+.titlebar .title { display: flex; align-items: center; gap: 10px; }
+.titlebar .mark { width: 18px; height: 18px; }
+.about .lockup { width: 160px; height: auto; margin-bottom: 12px; }
+
 .titlebar .status { display: flex; flex: 1; align-items: center; justify-content: center; gap: 10px; min-width: 0; padding: 0 16px; font-size: var(--fs-small); color: var(--mute); white-space: nowrap; overflow: hidden; }
 .titlebar .status span { overflow: hidden; text-overflow: ellipsis; }
 

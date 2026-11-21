@@ -1,8 +1,7 @@
 //! Where a window goes so its middle sits on the display's middle, between the
 //! two centre pixels where a game draws its own crosshair.
 //!
-//! Reference behaviour: `reference/js/center.js`. Windows are placed in whole
-//! logical pixels; at 125% or 150% scaling each axis also tries one and two
+//! Windows are placed in whole logical pixels; at 125% or 150% scaling each axis also tries one and two
 //! logical pixels smaller and keeps the size whose middle lands closest.
 
 #[derive(Clone, Copy, Debug, PartialEq)]

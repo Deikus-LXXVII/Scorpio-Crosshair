@@ -42,7 +42,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDBBODJCRjQ0NEVGMTg3NTMKUldSVGgvRk9STCtDQ3ZLdFBnbXdoME12ZDVLVDJIb29xbDlPWmhaVk1rY2xmZTB0aTBKVkFub0MK",
       "endpoints": [
-        "https://github.com/Deikus-LXXVII/scorpio/releases/latest/download/latest.json"
+        "https://github.com/Deikus-LXXVII/Scorpio-Crosshair/releases/latest/download/latest.json"
       ],
       "windows": {
         "installMode": "passive"
