@@ -33,10 +33,20 @@
     "licenseFile": "../LICENSE",
     "windows": {
       "nsis": {
-        "installMode": "currentUser"
+        "installMode": "currentUser",
+        "installerIcon": "icons/icon.ico",
+        "languages": [
+          "English",
+          "Russian"
+        ],
+        "displayLanguageSelector": false
       }
     },
-    "createUpdaterArtifacts": true
+    "createUpdaterArtifacts": true,
+    "publisher": "LXXVII",
+    "copyright": "© 2026 LXXVII. PolyForm Noncommercial 1.0.0.",
+    "homepage": "https://github.com/Deikus-LXXVII/Scorpio-Crosshair",
+    "longDescription": "A light CS2-style crosshair overlay that shows only while your game is in front, and never touches the game or its anti-cheat."
   },
   "plugins": {
     "updater": {
