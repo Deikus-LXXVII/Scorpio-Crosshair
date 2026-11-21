@@ -455,10 +455,13 @@ fn cross_bars(bars: &mut Vec<Bar>, from: f32, base: f32, t: f32, p: &Pixels, t_s
     }
 }
 
-/// A frame around the gap; the quad keeps only its corners.
-fn frame_bars(bars: &mut Vec<Bar>, from: f32, t: f32, p: &Pixels, quad: bool) {
+/// A frame around the gap; the quad keeps only its corners. Its sides are
+/// whole pixels, and it is placed from its own width so it stays centred
+/// like a cross of that width.
+fn frame_bars(bars: &mut Vec<Bar>, c: f32, t: f32, p: &Pixels, quad: bool) {
     let gap = p.gap.max(0) as f32;
     let w = t.round().max(1.0);
+    let from = c - (w / 2.0).floor();
     let inner = from - gap;
     let span = w + 2.0 * gap;
     let outer = span + 2.0 * w;
@@ -506,7 +509,7 @@ pub fn draw(crosshair: &Crosshair, screen_height: u32) -> Drawing {
     let mut bars = Vec::new();
     match shape {
         Shape::Cross if t > 0.0 => cross_bars(&mut bars, from, base, t, &p, s.t_shape),
-        Shape::Square | Shape::Quad if t > 0.0 => frame_bars(&mut bars, from, t, &p, shape == Shape::Quad),
+        Shape::Square | Shape::Quad if t > 0.0 => frame_bars(&mut bars, c, t, &p, shape == Shape::Quad),
         _ => {}
     }
     if s.dot || shape == Shape::Dot {
@@ -521,6 +524,11 @@ pub fn draw(crosshair: &Crosshair, screen_height: u32) -> Drawing {
     pieces.extend(bars.into_iter().map(rect([r, g, b, s.alpha])));
     if shape == Shape::Circle && t > 0.0 {
         let radius = (p.gap as f32 + p.length as f32 / 2.0).max(1.0);
+        // A ring has no top or left edge, so both outline modes draw it whole.
+        if s.outline != 0 {
+            let width = t + 2.0 * p.outline as f32;
+            pieces.insert(0, Piece::Ring { cx: c, cy: c, r: radius, width, rgba: [or, og, ob, s.outline_alpha] });
+        }
         pieces.push(Piece::Ring { cx: c, cy: c, r: radius, width: t, rgba: [r, g, b, s.alpha] });
     }
     Drawing { size: size as u32, pieces, pixels: p }

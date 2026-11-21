@@ -70,15 +70,15 @@ is created when opened and destroyed when closed. Measured and recorded in
 ## Steps
 
 1. [x] Licence, plan, JS reference of the core (to be ported).
-2. [ ] Rust workspace and interfaces (core types, platform traits).
-3. [ ] Core in Rust with tests (crosshair, raster, center, focus, launchers).
-4. [ ] Windows platform layer.
+2. [x] Rust workspace and interfaces (core types, platform traits).
+3. [x] Core in Rust with tests (crosshair, raster, center, focus, launchers).
+4. [x] Windows platform layer (built and probed on the gaming PC).
 5. [ ] Linux platform layer.
-6. [ ] App state machine, store, tray, hotkeys, Tauri commands.
-7. [ ] Settings UI: tabs Crosshair, Games, Actions, Keybinds, System, About;
+6. [x] App state machine, store, tray, hotkeys, Tauri commands.
+7. [x] Settings UI: tabs Crosshair, Games, Controls, System (see the style audit);
        switches, dropdowns, sliders, colour picker, keybind fields; one
        shape language.
-8. [ ] Style and UX audit (`docs/style-audit.md`), applied.
+8. [x] Style and UX audit (`docs/style-audit.md`), applied.
 9. [ ] Windows: build on the gaming PC, run, drive, measure.
 10. [ ] Linux: build on the VPS, run under Xvfb + openbox, drive, measure.
 11. [ ] Independent review, fixes, report.

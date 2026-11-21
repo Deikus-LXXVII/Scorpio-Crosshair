@@ -226,3 +226,39 @@ fn the_svg_draws_the_outline_first_and_rings_as_strokes() {
     let circle = to_svg(&draw(&Crosshair { style: 3, ..Crosshair::default() }, 1080));
     assert!(circle.contains(r#"<circle cx="#) && circle.contains(r#"fill="none""#), "{circle}");
 }
+
+fn frame_centre(crosshair: &Crosshair) -> (f32, f32) {
+    let d = draw(crosshair, 1080);
+    let (mut x0, mut y0, mut x1, mut y1) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
+    for piece in &d.pieces {
+        if let Piece::Rect { x, y, w, h, .. } = piece {
+            (x0, y0, x1, y1) = (x0.min(*x), y0.min(*y), x1.max(x + w), y1.max(y + h));
+        }
+    }
+    ((x0 + x1) / 2.0 - d.size as f32 / 2.0, (y0 + y1) / 2.0 - d.size as f32 / 2.0)
+}
+
+#[test]
+fn square_and_quad_sit_where_a_cross_of_their_width_sits() {
+    for style in [8, 9] {
+        for (thickness, width) in [(1.0, 1.0), (1.5, 2.0), (2.0, 2.0), (2.5, 3.0), (3.0, 3.0)] {
+            let c = Crosshair { style, thickness, length: 6, gap: 4, ..Crosshair::default() };
+            let cross = Crosshair { style: 4, thickness: width, length: 6, gap: 4, ..Crosshair::default() };
+            assert_eq!(frame_centre(&c), frame_centre(&cross), "style {style} thickness {thickness}");
+        }
+    }
+}
+
+#[test]
+fn a_circle_has_an_outline_ring_under_it_as_wide_as_the_outline_asks() {
+    for mode in [1, 2] {
+        let c = Crosshair { style: 3, outline: mode, outline_width: 3, outline_color: [0, 0, 0], ..Crosshair::default() };
+        let d = draw(&c, 1080);
+        let rings: Vec<_> = d.pieces.iter().filter_map(|p| match p { Piece::Ring { width, rgba, .. } => Some((*width, *rgba)), _ => None }).collect();
+        assert_eq!(rings.len(), 2);
+        assert_eq!(rings[0].1[..3], [0, 0, 0]);
+        assert_eq!(rings[0].0, rings[1].0 + 6.0);
+    }
+    let plain = draw(&Crosshair { style: 3, outline: 0, ..Crosshair::default() }, 1080);
+    assert_eq!(plain.pieces.iter().filter(|p| matches!(p, Piece::Ring { .. })).count(), 1);
+}
