@@ -1,5 +1,5 @@
 node_modules/
-dist/
-src/renderer/styles/dist/
+src-tauri/target/
+src-tauri/gen/
 .audit/
 .taste-skill/

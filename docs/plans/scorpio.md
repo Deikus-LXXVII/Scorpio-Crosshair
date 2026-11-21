@@ -1,79 +1,90 @@
 # Scorpio: plan
 
-A crosshair overlay for Windows and Linux, written new with what CrossOver became
-in the `game-focus` branch as a reference for behaviour, keeping its useful parts
-and dropping the rest. Started
+A crosshair overlay for Windows and Linux, written new, with what CrossOver
+became in its `game-focus` branch as a reference for behaviour only. Started
 2026-11-21 as an overnight run while the owner sleeps.
 
-## What the owner asked for
+## What the owner asked for, in priority order
 
-- A new program, **Scorpio**, for **Linux and Windows** only, with CrossOver's
-  functionality.
-- **No crosshair image presets.** The crosshair is CS2's crosshair system only.
-- A deep style audit; remove features that don't earn their place (theme
-  choice "and so on").
-- **No checkboxes** anywhere: switches, dropdowns and the like.
-- **No square shapes next to rounded corners**: one shape language.
-- **Written from scratch.** CrossOver is a reference for behaviour only; none
-  of its code, assets or icons are copied.
-- **Licence: open source, no commercial use.** Anyone may use it, change it
-  and publish their own versions, as long as nobody sells it or uses it
-  commercially.
+1. **Anti-cheat safety first.** Scorpio never touches a game's or an
+   anti-cheat's process: no handles to it, no injection, no reading its memory,
+   no hooks in it, no synthetic input. Anything that could make an anti-cheat
+   look at Scorpio is out.
+2. **Light, fast, stable.** Minimal memory and CPU, nothing polling that
+   doesn't need to.
+3. **UX that is logical and obvious.**
+4. Linux and Windows only. CS2's crosshair system only (no image presets).
+   Remove features that don't earn their place (theme choice and so on).
+5. No checkboxes: switches, dropdowns and the like. No square shapes next to
+   rounded ones: one shape language.
+6. Written from scratch. Licence: open source, no commercial use; anyone may
+   use, change and publish their own versions.
 
-## Decisions
+## Architecture
 
-| Decision | Why |
-| --- | --- |
-| Electron 45 (current) instead of CrossOver's 14 | Security updates, modern Chromium (CSS, `structuredClone`, desktopCapturer in main). CrossOver stayed on 14 for its own history. |
-| Sharp corners everywhere, switches included | The owner's brand (lxxvll.com) is a carved stone tablet; one shape language, as asked. |
-| Own JSON settings store with a schema, not electron-preferences | Its window is gone; the schema also drives the settings UI and validates every value in main. |
-| Pipette by `desktopCapturer` + cursor position | Works on Windows and Linux X11 without a PowerShell helper. |
-| Foreground window: PowerShell helper on Windows, `xprop -spy` on X11 | Same line protocol, so `focus/match.js` stays pure and shared. |
-| Wayland: focus following and global hotkeys say they need X11 | Wayland gives clients neither the active window nor global keys. |
-| Licence: PolyForm Noncommercial 1.0.0 | The standard licence for software whose source is open but whose commercial use is not allowed. Strictly it is "source-available": the OSI definition of open source forbids a no-commercial clause. |
-| No CrossOver code | The owner asked for CrossOver as a reference only. Every module is written new; the share-code test vectors are akiver/csgo-sharecode's (MIT), credited in the fixture. |
+One small native process does everything that runs while you play; the
+settings interface is a web view that exists only while it is open.
 
-## Behaviour taken from CrossOver (as a reference)
+```
+scorpio (Rust, Tauri 2)
+├── core/            pure logic, unit-tested, no OS calls
+│   ├── crosshair    CS2 settings, share codes, shapes in pixels
+│   ├── raster       shapes -> premultiplied RGBA bitmap
+│   ├── center       exact centring
+│   ├── focus        2-of-4 matching, focus state machine
+│   └── launchers    install folders from launcher files
+├── platform/        the only code that talks to the OS
+│   ├── windows      layered overlay window, foreground event hook,
+│   │                Raw Input, process image path without a handle
+│   └── linux        X11 override-redirect overlay, active-window events,
+│                    XInput2 raw events
+├── app              state machine: locked, focus, ADS -> overlay
+├── store            settings file, defaults, validation
+└── ui/              settings web view (HTML, CSS, JS), opened on demand
+```
 
-- Transparent click-through overlay, locked/unlocked; unlocked it sits on a
-  stone slab with one Center button, drag to move.
-- Exact centring on the display's centre pixel; 1 px moves; next display.
-- CS2 crosshair: static styles, length, half-step thickness, gap, outline mode,
-  outline thickness and colour, dot, T style, colour and alpha, made-for screen
-  height; share codes in (four formats) and out (cs2-v1).
-- My crosshairs (saved by name) and pro players' crosshairs.
-- Games: show only while a game is focused; 2-of-4 verification profiles with
-  their own crosshair; launcher detection (Steam, Epic, GOG, Ubisoft, Xbox,
-  Riot, EA, Battle.net on Windows; Steam, Lutris, Heroic on Linux); fullscreen
-  windows; "Not a game".
-- Actions: hide on ADS (hold, toggle, show only while aiming), resize on ADS,
-  hide on a key (hold, toggle, until next aim).
-- Keybinds; start with the system; hide from screen capture; hardware
-  acceleration.
-- One Settings window with its own title bar; tray icon opens it.
+### Anti-cheat review of every OS call
 
-## Dropped
+| Need | Windows | Linux (X11) | Why it is safe |
+| --- | --- | --- | --- |
+| Window in front | `SetWinEventHook(EVENT_SYSTEM_FOREGROUND, WINEVENT_OUTOFCONTEXT)` | `PropertyNotify` on the root's `_NET_ACTIVE_WINDOW` | Out of context: nothing is loaded into any other process. Event driven: no polling. |
+| Its pid, title, class, fullscreen | `GetWindowThreadProcessId`, `GetWindowTextW`, `GetClassNameW`, `GetWindowRect`, `MonitorFromWindow` | `_NET_WM_PID`, `WM_CLASS`, `_NET_WM_NAME`, `_NET_WM_STATE` | Window manager data; no process is opened. |
+| Its executable | `NtQuerySystemInformation(SystemProcessIdInformation)` | `/proc/<pid>/exe`, else `cmdline` for Wine | No process handle is ever opened (`OpenProcess` is banned). |
+| Aim button, hide key | Raw Input, `RIDEV_INPUTSINK`, on Scorpio's own hidden window | XInput2 raw events on the root | No low-level hooks (`WH_*_LL` are banned): the same input every game and Discord read. |
+| Hotkeys | `RegisterHotKey` | `XGrabKey` | Standard. |
+| Overlay | Layered, topmost, click-through window (`WS_EX_LAYERED|TRANSPARENT|TOOLWINDOW|NOACTIVATE`) | Override-redirect ARGB window, empty input shape | A separate window over the game, like Discord's or Steam's. Never drawn into the game. |
+| Colour pipette | One screen grab when the player asks | Same | Only on request. |
 
-Image presets (500+ PNG/SVG), custom images, tint, reticle overlay, SVG
-customisation, theme choice, slab colours, app size, duplicate crosshairs,
-follow mouse, tilt, sounds, update checks, announcements, macOS support,
-portable mode.
+Banned outright: `OpenProcess` on other processes, `ReadProcessMemory`,
+`WriteProcessMemory`, DLL injection, `SetWindowsHookEx` of any kind,
+`SendInput`/`keybd_event`, kernel drivers, DirectX/Vulkan hooks, scanning
+other processes' modules.
 
-## Steps (each ends in a check)
+### Lightness budget
 
-1. [x] Scaffold: package.json, Electron 45, folders, fonts, PolyForm Noncommercial licence.
-2. [ ] Pure core with tests: cs2, look, center, focus match, launchers, schema.
-3. [ ] Main: store, overlay, hotkeys, actions, focus (Win + X11), launchers,
-       pipette, tray, settings IPC.
-4. [ ] Renderer: overlay; settings window with components (switch, select,
-       slider, colour, keybind), tabs Crosshair, Games, Actions, Keybinds,
-       System, About.
-5. [ ] Style audit written down (docs/style-audit.md) and applied.
-6. [ ] Windows: build NSIS on the gaming PC, install beside CrossOver, drive
-       over CDP, screenshots.
-7. [ ] Linux: build on the VPS, run under Xvfb + openbox, drive over CDP.
-8. [ ] Independent review (Grok change-review), fixes, report.
+While playing: one process, target under 20 MB private memory, 0% CPU when
+nothing changes (every input is an event, not a poll). The settings web view
+is created when opened and destroyed when closed. Measured and recorded in
+`docs/budget.md`; a check fails when it grows by more than 25%.
 
-## Progress log
+## Steps
 
-Kept in `.audit/scorpio.tsv` (local), one row per decision with its evidence.
+1. [x] Licence, plan, JS reference of the core (to be ported).
+2. [ ] Rust workspace and interfaces (core types, platform traits).
+3. [ ] Core in Rust with tests (crosshair, raster, center, focus, launchers).
+4. [ ] Windows platform layer.
+5. [ ] Linux platform layer.
+6. [ ] App state machine, store, tray, hotkeys, Tauri commands.
+7. [ ] Settings UI: tabs Crosshair, Games, Actions, Keybinds, System, About;
+       switches, dropdowns, sliders, colour picker, keybind fields; one
+       shape language.
+8. [ ] Style and UX audit (`docs/style-audit.md`), applied.
+9. [ ] Windows: build on the gaming PC, run, drive, measure.
+10. [ ] Linux: build on the VPS, run under Xvfb + openbox, drive, measure.
+11. [ ] Independent review, fixes, report.
+
+## Dropped from CrossOver's feature set
+
+Image presets, custom images, tint, reticle overlay, SVG customisation, theme
+choice, slab colours, app size, duplicate crosshairs, follow mouse, tilt,
+sounds, update checks, announcements, macOS, portable mode.
