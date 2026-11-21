@@ -79,12 +79,25 @@ is created when opened and destroyed when closed. Measured and recorded in
        switches, dropdowns, sliders, colour picker, keybind fields; one
        shape language.
 8. [x] Style and UX audit (`docs/style-audit.md`), applied.
-9. [ ] Windows: build on the gaming PC, run, drive, measure.
+9. [x] Windows: build on the gaming PC, run, drive, measure (idle and settings; not yet in a real game).
 10. [ ] Linux: build on the VPS, run under Xvfb + openbox, drive, measure.
-11. [ ] Independent review, fixes, report.
+11. [x] Independent review (Opus, Grok paused), fixes; open items under Known gaps.
 
 ## Dropped from CrossOver's feature set
 
 Image presets, custom images, tint, reticle overlay, SVG customisation, theme
 choice, slab colours, app size, duplicate crosshairs, follow mouse, tilt,
 sounds, update checks, announcements, macOS, portable mode.
+
+## Known gaps (from the 2026-11-21 review)
+
+- A game that turns borderless fullscreen after it came to the front is
+  seen only at the next focus or display change (Windows watches only
+  foreground and display changes; location events would wake Scorpio on
+  every cursor move).
+- A window that is still invisible when it comes to the front is ignored
+  until the next focus change.
+- One added UWP game (ApplicationFrameHost) matches every UWP app.
+- No log file: failures such as a settings write error are silent.
+- With hide-while-aiming on, raw mouse input wakes the platform thread for
+  every movement packet. Not yet measured; add a figure to `docs/budget.md`.
