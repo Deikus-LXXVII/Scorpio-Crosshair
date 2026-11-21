@@ -1,4 +1,84 @@
 {
-	"updated": "",
-	"players": []
+ "updated": "2026-11-21",
+ "note": "Codes seen in matches, read from ProSettings match history and confirmed by a second site (Total CS or csstats.gg). Not from the players or Valve.",
+ "players": [
+  {
+   "name": "ropz",
+   "team": "Team Vitality",
+   "code": "CSUxjvBKxbaTKG5sfdufqzDvzeAiaTuveQmT6XFOvWmvAc",
+   "seen": "2026-11-13"
+  },
+  {
+   "name": "b1t",
+   "team": "Natus Vincere",
+   "code": "CSiuObDzWBiXvWXr8UJU5TLsmhBNMJMBaH5AjAS63CFNqF",
+   "seen": "2026-11-08"
+  },
+  {
+   "name": "jL",
+   "team": "Team Vitality",
+   "code": "CSrSUSeb4VSYxmNKG64hKYC2nXKyi8mreHXdMYwcyiL5TV",
+   "seen": "2026-10-31"
+  },
+  {
+   "name": "Twistzz",
+   "team": "FaZe Clan",
+   "code": "CSyAqUtN69wWNvDFi89hfa9qHCnj5JURoPsvD99oC8V6wL",
+   "seen": "2026-11-15"
+  },
+  {
+   "name": "XANTARES",
+   "team": "Aurora",
+   "code": "CSbTEaGDR5GhNAifhXfx8dnavVdRCvsLSCeTDvSS8ndJQE",
+   "seen": "2026-11-04"
+  },
+  {
+   "name": "Spinx",
+   "team": "MOUZ",
+   "code": "CSM9yeif5somwBWXz5xPknj5SjSSH6vKEODqo6d4eWmv9A",
+   "seen": "2026-11-14"
+  },
+  {
+   "name": "iM",
+   "team": "Natus Vincere",
+   "code": "CSEQvcDJf3yq59EoObCmL9MYjR5xBUUmqFQdw4dpFMFifH",
+   "seen": "2026-11-08"
+  },
+  {
+   "name": "w0nderful",
+   "team": "Natus Vincere",
+   "code": "CSnBAzYp5uNERqbePBrROJnWAHTV5Lop7nj4yGRzEYpX5R",
+   "seen": "2026-11-08"
+  },
+  {
+   "name": "karrigan",
+   "team": "Falcons Esports",
+   "code": "CSF5QOXSt8HsLzNDdXwUUWkR6JsQokQ6KmJxfNzrPurHwO",
+   "seen": "2026-11-14"
+  },
+  {
+   "name": "apEX",
+   "team": "Team Vitality",
+   "code": "CSLC2GGwsjZOZFWe6UGbx6PDQpACsuk2bpErqvvF7eQNjc",
+   "seen": "2026-11-13"
+  },
+  {
+   "name": "sh1ro",
+   "team": "Team Spirit",
+   "code": "CSqvLJtn4UrvzStpGJP9PjwVCYhsA44tkbwDWbeiLZKGhF",
+   "seen": "2026-11-15"
+  },
+  {
+   "name": "flameZ",
+   "team": "Team Vitality",
+   "code": "CSCTWJSVydL9ecJ292AFNuNd7tj4qfJTDzV34iQqryCjhj",
+   "seen": "2026-11-13"
+  },
+  {
+   "name": "mezii",
+   "team": "Team Vitality",
+   "code": "CSOdVtE9ftvU6w9HKf6VyMMXCL9EAKWutNTNSoYsDeOSrB",
+   "seen": "2026-11-13"
+  }
+ ]
 }
