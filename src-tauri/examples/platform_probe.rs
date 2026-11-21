@@ -2,6 +2,8 @@
 //! outside. Prints every event as `EVENT <debug>`. Commands, one per line:
 //!   show <w> <h> <x> <y> locked|unlocked   (button = the middle third; unlocked draws a slab)
 //!   hide | list | quit
+//!   move <x> <y>                            (the shown bitmap, not drawn again)
+//!   follow on|off                           (report moves of the window in front)
 //!   listen <buttons,comma> <keys,comma>     (e.g. `listen Right,Back H,Shift`)
 //!   inspect <window id>                     (Linux: shapes and override-redirect)
 
@@ -74,6 +76,8 @@ fn main() {
                 });
             }
             Some("hide") => platform.send(Command::Hide),
+            Some("move") => platform.send(Command::Move { x: num(1), y: num(2) }),
+            Some("follow") => platform.send(Command::Follow(words.get(1) == Some(&"on"))),
             Some("listen") => platform.send(Command::ListenTo {
                 mouse: list(words.get(1).copied()).into_iter().filter_map(button).collect(),
                 keys: list(words.get(2).copied()).into_iter().map(String::from).collect(),

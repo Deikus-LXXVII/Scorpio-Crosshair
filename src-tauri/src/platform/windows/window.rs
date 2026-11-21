@@ -6,12 +6,12 @@ use crate::core::focus::WindowInfo;
 use crate::platform::Event;
 use std::ffi::c_void;
 use windows::core::BOOL;
-use windows::Win32::Foundation::{HWND, LPARAM, RECT};
+use windows::Win32::Foundation::{HWND, LPARAM, POINT, RECT};
 use windows::Win32::Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_CLOAKED};
-use windows::Win32::Graphics::Gdi::{GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST};
+use windows::Win32::Graphics::Gdi::{ClientToScreen, GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST};
 use windows::Win32::UI::HiDpi::{SetThreadDpiAwarenessContext, DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2};
 use windows::Win32::UI::WindowsAndMessaging::{
-    EnumWindows, GetAncestor, GetClassNameW, GetWindow, GetWindowLongPtrW, GetWindowRect, GetWindowTextW,
+    EnumWindows, GetAncestor, GetClassNameW, GetClientRect, GetWindow, GetWindowLongPtrW, GetWindowRect, GetWindowTextW,
     GetWindowThreadProcessId, IsWindowVisible, IsZoomed, GA_ROOT, GWL_STYLE, GW_OWNER, WS_CAPTION,
 };
 
@@ -46,6 +46,7 @@ pub fn describe(hwnd: HWND) -> WindowInfo {
     };
     let (name, path) = process::image(pid);
     let (fullscreen, monitor) = placement(hwnd);
+    let client = client_area(hwnd);
     WindowInfo {
         pid,
         name,
@@ -54,7 +55,33 @@ pub fn describe(hwnd: HWND) -> WindowInfo {
         window_class: String::from_utf16_lossy(&class[..class_length.max(0) as usize]),
         fullscreen,
         monitor,
+        client,
     }
+}
+
+pub fn pid_of(hwnd: HWND) -> u32 {
+    let mut pid = 0u32;
+    // SAFETY: `pid` is a valid out-pointer; a stale handle leaves it 0.
+    unsafe { GetWindowThreadProcessId(hwnd, Some(&mut pid)) };
+    pid
+}
+
+/// Where the window is now, for following it: client area, monitor,
+/// fullscreen. Window-manager data only, cheap enough for every move.
+pub fn geometry(hwnd: HWND) -> crate::platform::Geometry {
+    let (fullscreen, monitor) = placement(hwnd);
+    (client_area(hwnd), monitor, fullscreen)
+}
+
+/// The client area (inside the frame and title bar) in screen coordinates.
+/// A minimised window has none.
+fn client_area(hwnd: HWND) -> Option<[i32; 4]> {
+    let mut rect = RECT::default();
+    let mut origin = POINT::default();
+    // SAFETY: both out-structures are valid; the calls only read window-manager state.
+    let measured = unsafe { GetClientRect(hwnd, &mut rect).is_ok() && ClientToScreen(hwnd, &mut origin).as_bool() };
+    let (width, height) = (rect.right - rect.left, rect.bottom - rect.top);
+    (measured && width > 0 && height > 0).then_some([origin.x, origin.y, width, height])
 }
 
 /// Whether the window is fullscreen, and the monitor it is on. Borderless or

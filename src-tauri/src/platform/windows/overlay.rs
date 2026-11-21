@@ -83,6 +83,17 @@ pub fn show(bitmap: &Bitmap, x: i32, y: i32, unlocked: bool, button: Option<(i32
     });
 }
 
+/// Moves the shown window without painting it again.
+pub fn move_to(x: i32, y: i32) {
+    with(|overlay| {
+        let flags = SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE;
+        // SAFETY: `hwnd` is this thread's window.
+        if let Err(error) = unsafe { SetWindowPos(overlay.hwnd, None, x, y, 0, 0, flags) } {
+            log::warn!("overlay could not be moved: {error}");
+        }
+    });
+}
+
 pub fn hide() {
     with(|overlay| {
         overlay.stop_drag();

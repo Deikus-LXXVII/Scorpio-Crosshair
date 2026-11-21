@@ -558,10 +558,10 @@ const keybind = ( accelerator, onChange, { label, error } = {} ) => {
 
 /* Dialog and toast */
 
-const dialog = ( title, body, actions ) => {
+const dialog = ( title, body, actions, { wide = false } = {} ) => {
 
 	const previous = document.activeElement
-	const box = h( 'div.dialog.cramps.lg', { role: 'dialog', 'aria-modal': 'true', 'aria-label': title }, h( 'h2', { text: title } ), body, h( 'div.actions', {}, actions ) )
+	const box = h( `div.dialog.cramps.lg${wide ? '.wide' : ''}`, { role: 'dialog', 'aria-modal': 'true', 'aria-label': title }, h( 'h2', { text: title } ), body, h( 'div.actions', {}, actions ) )
 	const scrim = h( 'div.scrim', {}, box )
 
 	const close = () => {
@@ -590,7 +590,8 @@ const dialog = ( title, body, actions ) => {
 	} )
 	document.addEventListener( 'keydown', escape, true )
 	document.body.append( scrim )
-	box.querySelector( 'button, input' )?.focus()
+	// The thing to read or choose from first, else the first button.
+	box.querySelector( 'textarea, input, .window-item, button' )?.focus()
 
 	return close
 

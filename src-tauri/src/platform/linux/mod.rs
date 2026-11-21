@@ -6,7 +6,7 @@ mod describe;
 mod input;
 mod overlay;
 
-use super::{Command, Event, Platform, Unsupported};
+use super::{Command, Event, Geometry, Platform, Unsupported};
 use crate::core::focus::WindowInfo;
 use describe::Atoms;
 use input::Input;
@@ -29,6 +29,14 @@ struct State {
     active: Option<Window>,
     last: Option<Option<WindowInfo>>,
     events: Sender<Event>,
+    /// Report moves and resizes of `followed` (Command::Follow).
+    following: bool,
+    /// The last window in front that was not Scorpio's: (window, its frame, pid).
+    followed: Option<(Window, Window, u32)>,
+    /// The event masks Scorpio selected on other clients' windows.
+    watched: Vec<(Window, EventMask)>,
+    /// What was last reported for `followed`, to send only changes.
+    geometry: Option<Geometry>,
 }
 
 pub fn start(events: Sender<Event>) -> Result<Platform, Unsupported> {
@@ -71,7 +79,7 @@ fn setup(conn: RustConnection, screen_num: usize, events: Sender<Event>) -> Resu
     // simply not seen.
     let _ = conn.randr_select_input(root, x11rb::protocol::randr::NotifyMask::SCREEN_CHANGE);
     conn.flush()?;
-    Ok(State { conn, atoms, root, overlay, input, active: None, last: None, events })
+    Ok(State { conn, atoms, root, overlay, input, active: None, last: None, events, following: false, followed: None, watched: Vec::new(), geometry: None })
 }
 
 fn run(mut state: State, commands: Receiver<Command>) {
@@ -108,6 +116,17 @@ impl State {
                 Ok(())
             }
             Command::Raise => self.overlay.raise(&self.conn),
+            Command::Move { x, y } => self.overlay.move_to(&self.conn, x, y),
+            Command::Follow(on) => {
+                self.following = on;
+                self.geometry = None;
+                self.rewatch();
+                // Where the window is now: it may have moved while nobody followed it.
+                if on {
+                    self.report_geometry();
+                }
+                Ok(())
+            }
             // X11 has no way to keep a window out of captures.
             Command::ExcludeFromCapture(_) | Command::Quit => Ok(()),
         };
@@ -128,6 +147,13 @@ impl State {
                     && [self.atoms._NET_WM_NAME, self.atoms._NET_WM_STATE, u32::from(AtomEnum::WM_NAME)].contains(&e.atom) =>
             {
                 self.refresh_foreground();
+                None
+            }
+            // The followed window or its frame moved or changed size. Window
+            // managers send a synthetic ConfigureNotify to the client on a
+            // move, and the frame's own reports every change.
+            XEvent::ConfigureNotify(e) if self.followed.is_some_and(|(window, frame, _)| e.window == window || e.window == frame) => {
+                self.report_geometry();
                 None
             }
             XEvent::RandrScreenChangeNotify(_) => {
@@ -157,21 +183,65 @@ impl State {
     fn refresh_foreground(&mut self) {
         // Some window managers name the root when the desktop is in front.
         let active = describe::active_window(&self.conn, &self.atoms, self.root).filter(|&w| w != self.root);
-        if active != self.active {
-            // Watch the window in front for its own property changes only.
-            let watch = |w, mask| self.conn.change_window_attributes(w, &ChangeWindowAttributesAux::new().event_mask(mask)).map(|_| ());
-            if let Some(old) = self.active {
-                let _ = watch(old, EventMask::NO_EVENT);
-            }
-            if let Some(new) = active {
-                let _ = watch(new, EventMask::PROPERTY_CHANGE);
-            }
-            self.active = active;
-        }
         let info = active.and_then(|w| describe::describe(&self.conn, &self.atoms, w));
+        if active != self.active {
+            self.active = active;
+            if let (Some(window), Some(info)) = (active, &info) {
+                // A window without a pid could be anyone's: not followed.
+                if info.pid != 0 && info.pid != std::process::id() && self.followed.map(|(w, ..)| w) != Some(window) {
+                    self.followed = Some((window, describe::frame_of(&self.conn, window), info.pid));
+                    self.geometry = Some((info.client, info.monitor, info.fullscreen));
+                }
+            }
+            self.rewatch();
+        }
         if self.last.as_ref() != Some(&info) {
             self.last = Some(info.clone());
             let _ = self.events.send(Event::Foreground(info));
+        }
+    }
+
+    /// Selects on other clients' windows only what is needed: property
+    /// changes of the window in front, and while following, structure
+    /// changes (moves, resizes) of the followed window and its frame.
+    fn rewatch(&mut self) {
+        let mut wanted: Vec<(Window, EventMask)> = Vec::new();
+        let mut want = |window: Window, mask: EventMask| match wanted.iter_mut().find(|(w, _)| *w == window) {
+            Some((_, existing)) => *existing |= mask,
+            None => wanted.push((window, mask)),
+        };
+        if let Some(active) = self.active {
+            want(active, EventMask::PROPERTY_CHANGE);
+        }
+        if let (true, Some((window, frame, _))) = (self.following, self.followed) {
+            want(window, EventMask::STRUCTURE_NOTIFY);
+            want(frame, EventMask::STRUCTURE_NOTIFY);
+        }
+        let select = |window: Window, mask: EventMask| {
+            let _ = self.conn.change_window_attributes(window, &ChangeWindowAttributesAux::new().event_mask(mask));
+        };
+        for (window, _) in &self.watched {
+            if !wanted.iter().any(|(w, _)| w == window) {
+                select(*window, EventMask::NO_EVENT);
+            }
+        }
+        for (window, mask) in &wanted {
+            if !self.watched.contains(&(*window, *mask)) {
+                select(*window, *mask);
+            }
+        }
+        self.watched = wanted;
+    }
+
+    /// Sends the followed window's place if it changed; a drag that sends
+    /// many ConfigureNotify events for the same place sends one Geometry.
+    fn report_geometry(&mut self) {
+        let Some((window, _, pid)) = self.followed else { return };
+        let now = describe::geometry(&self.conn, &self.atoms, window);
+        if self.geometry != Some(now) {
+            self.geometry = Some(now);
+            let (client, monitor, fullscreen) = now;
+            let _ = self.events.send(Event::Geometry { pid, client, monitor, fullscreen });
         }
     }
 }

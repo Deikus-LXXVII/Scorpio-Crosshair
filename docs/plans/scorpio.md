@@ -14,6 +14,8 @@ became in its `game-focus` branch as a reference for behaviour only. Started
    doesn't need to.
 3. **UX that is logical and obvious.**
 4. Linux and Windows only. CS2's crosshair system only (no image presets).
+   Changed by the owner on 2026-11-21: the player's own image (PNG, JPG,
+   WebP, GIF, SVG) may replace the CS2 crosshair; still no presets.
    Remove features that don't earn their place (theme choice and so on).
 5. No checkboxes: switches, dropdowns and the like. No square shapes next to
    rounded ones: one shape language.
@@ -49,11 +51,16 @@ scorpio (Rust, Tauri 2)
 | --- | --- | --- | --- |
 | Window in front | `SetWinEventHook(EVENT_SYSTEM_FOREGROUND, WINEVENT_OUTOFCONTEXT)` | `PropertyNotify` on the root's `_NET_ACTIVE_WINDOW` | Out of context: nothing is loaded into any other process. Event driven: no polling. |
 | Its pid, title, class, fullscreen | `GetWindowThreadProcessId`, `GetWindowTextW`, `GetClassNameW`, `GetWindowRect`, `MonitorFromWindow` | `_NET_WM_PID`, `WM_CLASS`, `_NET_WM_NAME`, `_NET_WM_STATE` | Window manager data; no process is opened. |
+| Its client area (centre on the game window) | `GetClientRect`, `ClientToScreen` | `GetGeometry`, `TranslateCoordinates`, `QueryTree` (to find the frame) | Window manager data about the window's rectangle; no process is opened. |
+| The game window moved or resized (only while "Centre on the game window" is on and a game is in front) | `SetWinEventHook(EVENT_OBJECT_LOCATIONCHANGE, WINEVENT_OUTOFCONTEXT)` scoped with `idProcess` and `idThread` to the window in front, re-scoped on each foreground change, removed when not needed; the callback keeps only `OBJID_WINDOW` of that window | `StructureNotify` (ConfigureNotify) selected on the window in front and its frame, removed when not needed | Out of context, like the foreground hook: the system posts the event to Scorpio's own thread and nothing is loaded into the game. It reports only window-manager data (where a window is). Scoped to the one window's thread, other programs' moves never wake Scorpio, and a place already reported is not sent again, so a drag sends one event per real change. |
 | Its executable | `NtQuerySystemInformation(SystemProcessIdInformation)` | `/proc/<pid>/exe`, else `cmdline` for Wine | No process handle is ever opened (`OpenProcess` is banned). |
 | Aim button, hide key | Raw Input, `RIDEV_INPUTSINK`, on Scorpio's own hidden window | XInput2 raw events on the root | No low-level hooks (`WH_*_LL` are banned): the same input every game and Discord read. |
 | Hotkeys | `RegisterHotKey` | `XGrabKey` | Standard. |
 | Overlay | Layered, topmost, click-through window (`WS_EX_LAYERED|TRANSPARENT|TOOLWINDOW|NOACTIVATE`) | Override-redirect ARGB window, empty input shape | A separate window over the game, like Discord's or Steam's. Never drawn into the game. |
 | Colour pipette | One screen grab when the player asks | Same | Only on request. |
+| Your image as the crosshair | Nothing new: the settings web view draws the file on a canvas and Scorpio decodes the PNG with the `png` crate into the same overlay window | Same | Files in Scorpio's own config folder; no game involved. |
+| Report a problem: system version, browser for the GitHub issue, console for `--report` | `RtlGetVersion`, `ShellExecuteW("open", <issue address made by Scorpio>)`, `GetStdHandle` and `AttachConsole(ATTACH_PARENT_PROCESS)` | `/etc/os-release`, `/proc/sys/kernel/osrelease`, `xdg-open <issue address>` | About Scorpio's own system and process; only when the player asks; the address is built in Rust, never taken from the web view. Nothing is sent: the player attaches the file. |
+| Log file | Writes to `%LOCALAPPDATA%\com.lxxvii.scorpio\logs` | `~/.local/share/com.lxxvii.scorpio/logs` | Scorpio's own files, capped at 2 MB. |
 | Crosshair in OBS (opt-in) | A local HTTP server on 127.0.0.1:47117 serving a Browser source page and server-sent events | Same | Talks only to OBS on the same computer; no game involved. Off by default; no thread or socket while off. |
 | Hide from screen capture (owner's exception, 2026-11-21) | `SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE)` on the overlay | Not available | **Not risk-free**: cheat overlays use the same call to hide from anti-cheat screenshots. Off by default; the switch says so. Kept at the owner's request. |
 
@@ -84,23 +91,34 @@ is created when opened and destroyed when closed. Measured and recorded in
 9. [x] Windows: build on the gaming PC, run, drive, measure (idle and settings; not yet in a real game).
 10. [x] Linux: .deb and AppImage built on the VPS, run under Xvfb + openbox, measured (settings window not driven yet).
 11. [x] Independent review (Opus, Grok paused), fixes; open items under Known gaps.
+12. [x] Always show; your own image as the crosshair; a log file and "Report a problem" (with `scorpio --report`); centring on the game window, following it by events.
 
 ## Dropped from CrossOver's feature set
 
-Image presets, custom images, tint, reticle overlay, SVG customisation, theme
+Image presets, tint, reticle overlay, SVG customisation, theme
 choice, slab colours, app size, duplicate crosshairs, follow mouse, tilt,
 sounds, update checks, announcements, macOS, portable mode.
 
 ## Known gaps (from the 2026-11-21 review)
 
 - A game that turns borderless fullscreen after it came to the front is
-  seen only at the next focus or display change (Windows watches only
-  foreground and display changes; location events would wake Scorpio on
-  every cursor move).
+  seen only at the next focus or display change, unless "Centre on the
+  game window" is on and the game is already shown (then its location
+  events say so).
+- Whether the system delivers cursor location events to a hook scoped to
+  a game's process and thread is not proven: an 8 s run on Windows saw
+  none, but the mouse may not have moved. The callback drops them either
+  way; each would still wake the platform thread once.
 - A window that is still invisible when it comes to the front is ignored
   until the next focus change.
 - One added UWP game (ApplicationFrameHost) matches every UWP app.
-- No log file: failures such as a settings write error are silent.
+- On Linux each ConfigureNotify of a followed window costs about five X
+  round trips before the "same place" check; a drag at 60 Hz works but
+  could compare the event's own geometry first.
+- Image files replaced during a session (a new image, each size tried)
+  stay in `images/` until the next start prunes them.
+- The image flow and the problem report have run only in headless
+  Chromium with a stand-in for Scorpio, not in WebView2 or WebKitGTK.
 - With hide-while-aiming on, raw mouse input wakes the platform thread for
   every movement packet. Not yet measured; add a figure to `docs/budget.md`.
 

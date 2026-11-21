@@ -37,6 +37,11 @@ h2.t-h4 + .help.lede { margin: 0 0 12px; }
 .well svg { display: block; }
 .well.cramps { overflow: visible; }
 .stage-row { display: flex; justify-content: center; }
+/* CS2 style or the player's image: the switch spans the preview's width. */
+.stage > .seg { display: flex; }
+.stage > .seg button { flex: 1; }
+.well img { display: block; }
+.well img.zoomed { image-rendering: pixelated; }
 .code-row { display: flex; gap: 12px; }
 .code-row .input { flex: 1; min-width: 0; font-family: var(--mono); font-size: var(--fs-small); }
 .controls { min-width: 0; }
@@ -88,6 +93,10 @@ h2.t-h4 + .help.lede { margin: 0 0 12px; }
 .setting.stack .code-row { margin-top: 0; }
 
 .keybind[aria-invalid="true"] { border-color: var(--porphyry-hi); }
+
+/* The problem report, read in full: 20 lines of 16 and the field's 8 above and below. */
+.dialog.wide { width: min(760px, 100%); }
+.report-body .textarea { display: block; width: 100%; height: 336px; margin-top: 16px; resize: none; overflow: auto; font: 400 var(--fs-small)/var(--lh-sm) var(--mono); white-space: pre; }
 
 /* One line: 8 + 18 + 8 = 34. Each further line adds 18, so two lines make 52. */
 #toast { position: fixed; left: 50%; bottom: 28px; max-width: min(560px, calc(100% - 56px)); min-height: 0; padding: 8px 16px; transform: translateX(-50%); }

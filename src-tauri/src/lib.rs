@@ -1,9 +1,12 @@
 pub mod app;
 pub mod core;
+pub mod logging;
 #[cfg(target_os = "linux")]
 mod desktop_entry;
 pub mod platform;
 pub mod obs;
+pub mod picture;
+pub mod report;
 pub mod store;
 pub mod update;
 
@@ -15,7 +18,7 @@ use serde::Serialize;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::mpsc::channel;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use store::Settings;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
@@ -29,6 +32,8 @@ struct Shared {
     app: Mutex<App>,
     platform: Platform,
     path: PathBuf,
+    /// The player's image files (`picture`).
+    images: PathBuf,
     /// Registered shortcut id -> what it does.
     hotkeys: Mutex<HashMap<u32, Hotkey>>,
     lock_item: MenuItem<tauri::Wry>,
@@ -51,7 +56,11 @@ fn apply(handle: &AppHandle, effects: Effects) {
         state.platform.send(command);
     }
     if overlay_changed || effects.settings_changed {
-        let view = state.app.lock().unwrap().stream_view();
+        let (view, png) = {
+            let app = state.app.lock().unwrap();
+            (app.stream_view(), app.stream_png())
+        };
+        state.obs.set_picture(png);
         state.obs.publish(serde_json::to_string(&view).unwrap_or_default());
     }
     if effects.settings_changed {
@@ -74,6 +83,23 @@ fn persist(handle: &AppHandle) -> Settings {
         log::error!("could not save settings: {error}");
     }
     settings
+}
+
+/// Reads the images the settings use that are not decoded yet. A file that
+/// is gone or broken is logged; the CS2 crosshair shows instead.
+fn load_pictures(handle: &AppHandle) {
+    let state = shared(handle);
+    let missing = state.app.lock().unwrap().missing_pictures();
+    for name in missing {
+        let decoded = picture::read(&state.images, &name).map_err(|error| error.to_string()).and_then(picture::decode);
+        match decoded {
+            Ok(decoded) => {
+                let effects = state.app.lock().unwrap().add_picture(name, Arc::new(decoded));
+                apply(handle, effects);
+            }
+            Err(error) => log::warn!("image {name} not shown: {error}"),
+        }
+    }
 }
 
 fn primary_display(handle: &AppHandle) -> Option<Display> {
@@ -104,6 +130,9 @@ fn register_hotkeys(handle: &AppHandle, settings: &Settings) -> Vec<String> {
         }
     }
     *state.hotkeys.lock().unwrap() = map;
+    if !refused.is_empty() {
+        log::warn!("shortcuts refused by the system: {}", refused.join(", "));
+    }
     refused
 }
 
@@ -208,6 +237,9 @@ fn sync_obs(handle: &AppHandle) -> Option<String> {
     let state = shared(handle);
     let wanted = state.app.lock().unwrap().settings.obs;
     let error = state.obs.set_enabled(wanted).err();
+    if let Some(error) = &error {
+        log::warn!("OBS source could not start: {error}");
+    }
     if error.is_some() {
         state.app.lock().unwrap().settings.obs = false;
     }
@@ -230,7 +262,112 @@ fn save_settings(handle: AppHandle, settings: Settings) -> Saved {
     // The window already has these settings: saved, but not echoed back.
     let settings = persist(&handle);
     apply(&handle, Effects { settings_changed: false, status_changed: true, ..effects });
+    load_pictures(&handle);
     Saved { settings, refused, obs_error }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct StoredImage {
+    /// Scorpio's name for the file, for the settings.
+    name: String,
+    /// The bitmap's size as shown (a rendered image only).
+    width: u32,
+    height: u32,
+}
+
+/// Keeps a file the settings window sends as raw bytes. The `x-image`
+/// header says what it is: the kind of an original the player chose
+/// (`svg`, `png`...), or `render` for the PNG made from it, which is checked
+/// by decoding it here and shown as soon as the settings point at it.
+#[tauri::command]
+async fn store_image(handle: AppHandle, request: tauri::ipc::Request<'_>) -> Result<StoredImage, String> {
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else { return Err("No image was sent.".into()) };
+    let kind = request.headers().get("x-image").and_then(|value| value.to_str().ok()).unwrap_or_default().to_string();
+    if bytes.len() > picture::FILE_LIMIT {
+        return Err("The file is larger than 5 MB. Choose a smaller one.".into());
+    }
+    let state = shared(&handle);
+    let keep = |bytes: &[u8], kind: &str| {
+        picture::store(&state.images, bytes, kind).map_err(|error| {
+            log::error!("image could not be kept: {error}");
+            format!("The image could not be kept: {error}")
+        })
+    };
+    if kind == "render" {
+        let decoded = picture::decode(bytes.clone())?;
+        let (width, height) = (decoded.width, decoded.height);
+        let name = keep(bytes, "png")?;
+        log::info!("image rendered: {width}x{height}");
+        let effects = state.app.lock().unwrap().add_picture(name.clone(), Arc::new(decoded));
+        apply(&handle, effects);
+        return Ok(StoredImage { name, width, height });
+    }
+    let kind = picture::kind_of(&format!("file.{kind}")).ok_or("Scorpio takes PNG, JPG, WebP, GIF and SVG images.")?;
+    let name = keep(bytes, kind)?;
+    log::info!("image chosen: {kind}, {} bytes", bytes.len());
+    Ok(StoredImage { name, width: 0, height: 0 })
+}
+
+/// A kept image file, as raw bytes, to draw it again at a new size.
+#[tauri::command]
+async fn image_file(handle: AppHandle, name: String) -> Result<tauri::ipc::Response, String> {
+    picture::read(&shared(&handle).images, &name)
+        .map(tauri::ipc::Response::new)
+        .map_err(|_| "The image file is missing. Choose the image again.".to_string())
+}
+
+/// The problem report, for the player to read before anything leaves.
+#[tauri::command]
+async fn problem_report(handle: AppHandle) -> String {
+    let (settings, state) = {
+        let shared = shared(&handle);
+        let app = shared.app.lock().unwrap();
+        let status = app.status();
+        let display = app.target_area();
+        let state = format!(
+            "Crosshair: {}; locked: {}; hidden by shortcut: {}; always show: {}\n\
+             Centred on: {}x{} at {},{}; primary display {}x{}\n\
+             Window in front: {}\n\
+             Launcher games found: {}; OBS source: {}",
+            if status.visible || status.always { "shown" } else { "hidden" },
+            status.locked,
+            status.hidden,
+            status.always,
+            display.width,
+            display.height,
+            display.x,
+            display.y,
+            app.display.width,
+            app.display.height,
+            status.front.map_or("none".to_string(), |w| format!("{} (class {}, fullscreen {})", w.name, w.window_class, w.fullscreen)),
+            app.installed.len(),
+            if shared.obs.enabled() { "on" } else { "off" },
+        );
+        (app.settings.clone(), state)
+    };
+    report::text(&report::gather(state, Ok(settings)))
+}
+
+/// Saves the report the player read, and says where.
+#[tauri::command]
+async fn save_report(text: String) -> Result<String, String> {
+    if text.len() > report::TEXT_LIMIT {
+        return Err("The report is too long to save.".into());
+    }
+    let path = report::save(&text).map_err(|error| format!("The report could not be saved: {error}"))?;
+    log::info!("problem report saved");
+    Ok(path.to_string_lossy().into_owned())
+}
+
+/// Opens a new GitHub issue in the browser, prefilled with a short body that
+/// asks for the saved file. The address is made here, never taken from the
+/// web view.
+#[tauri::command]
+fn open_issue(file: String) -> Result<(), String> {
+    let file: String = file.rsplit(['/', '\\']).next().unwrap_or_default().chars().filter(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '.')).take(64).collect();
+    let file = if file.starts_with("scorpio-report-") && file.ends_with(".txt") { file } else { "scorpio-report.txt".into() };
+    platform::open_url(&report::issue_url(env!("CARGO_PKG_VERSION"), &report::system(), &file))
 }
 
 /// The crosshair as SVG, sized for the display it will be drawn on.
@@ -312,11 +449,18 @@ fn quit_app(handle: AppHandle) {
 fn setup(handle: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(target_os = "linux")]
     desktop_entry::install();
-    let path = handle.path().app_config_dir()?.join("settings.json");
+    let config = handle.path().app_config_dir()?;
+    let path = config.join("settings.json");
     let settings = store::load(&path);
+    let images = picture::folder(&config);
+    picture::prune(&images, &settings.image_files());
 
     let (events, received) = channel();
-    let platform = platform::start(events).map_err(|unsupported| unsupported.0)?;
+    let platform = platform::start(events).map_err(|unsupported| {
+        log::error!("platform could not start: {}", unsupported.0);
+        unsupported.0
+    })?;
+    log::info!("platform started");
 
     let open = MenuItem::with_id(handle, "open", "Settings", true, None::<&str>)?;
     let lock_item = MenuItem::with_id(handle, "lock", "Unlock position", true, None::<&str>)?;
@@ -327,7 +471,7 @@ fn setup(handle: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(display) = primary_display(handle) {
         app.display = display;
     }
-    handle.manage(Shared { app: Mutex::new(app), platform, path, hotkeys: Mutex::new(HashMap::new()), lock_item, saving: Mutex::new(()), obs: obs::Obs::default() });
+    handle.manage(Shared { app: Mutex::new(app), platform, path, images, hotkeys: Mutex::new(HashMap::new()), lock_item, saving: Mutex::new(()), obs: obs::Obs::default() });
 
     TrayIconBuilder::with_id("scorpio")
         .icon(handle.default_window_icon().cloned().ok_or("no icon")?)
@@ -354,9 +498,7 @@ fn setup(handle: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     register_hotkeys(handle, &settings);
     sync_autostart(handle, settings.start_with_system);
     update::start(handle);
-    if let Some(error) = sync_obs(handle) {
-        log::warn!("OBS source not started: {error}");
-    }
+    sync_obs(handle);
 
     // Platform events, one at a time, for as long as Scorpio runs.
     let events_handle = handle.clone();
@@ -397,10 +539,22 @@ fn setup(handle: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     // Show the crosshair state right away (centred, hidden until a game).
     let effects = shared(handle).app.lock().unwrap().set_display(primary_display(handle).unwrap_or_default());
     apply(handle, effects);
+    load_pictures(handle);
     Ok(())
 }
 
 pub fn run() {
+    // `scorpio --report` prints the problem report and ends; nothing starts.
+    if std::env::args().skip(1).any(|arg| arg == "--report") {
+        platform::attach_console();
+        println!("{}", report::from_files());
+        return;
+    }
+    if let Some(folder) = logging::paths::log_dir() {
+        logging::start(&folder);
+    }
+    log::info!("Scorpio {} starting on {}", env!("CARGO_PKG_VERSION"), report::system());
+
     // The overlay needs X11; under Wayland the settings window joins it on
     // XWayland so both live on the same display server.
     #[cfg(target_os = "linux")]
@@ -442,7 +596,12 @@ pub fn run() {
             pro_crosshairs,
             check_updates,
             install_update,
-            quit_app
+            quit_app,
+            store_image,
+            image_file,
+            problem_report,
+            save_report,
+            open_issue
         ])
         .setup(|app| {
             setup(app.handle())?;

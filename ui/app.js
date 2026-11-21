@@ -5,7 +5,7 @@
 
 const { h, setting, toggle, segmented, select, slider, colorButton, keybind, dialog, toast } = window.ui
 const tauri = window.__TAURI__
-const invoke = ( name, args ) => tauri.core.invoke( name, args )
+const invoke = ( name, args, options ) => tauri.core.invoke( name, args, options )
 
 const S = {
 	tab: 'crosshair',
@@ -68,6 +68,19 @@ const editing = () => {
 
 }
 
+// The image that goes with the crosshair being edited.
+const NO_IMAGE = { on: false, name: '', source: '', rendered: '', size: 64, opacity: 255 }
+
+const editingImage = () => {
+
+	const game = targetGame()
+
+	if ( game?.crosshair ) return ( game.image ||= clone( NO_IMAGE ) )
+
+	return ( S.settings.image ||= clone( NO_IMAGE ) )
+
+}
+
 const change = mutate => {
 
 	mutate( editing() )
@@ -91,6 +104,20 @@ const paintPreview = () => {
 		if ( !well ) return
 		// Answers can arrive out of order; only the newest is drawn.
 		const asked = ++previewAsked
+		const image = editingImage()
+
+		if ( image.on && image.rendered ) {
+
+			const url = await imageUrl( image.rendered )
+
+			if ( asked !== previewAsked ) return
+			well.replaceChildren( h( 'img.preview-image', { src: url, alt: '', style: { opacity: String( image.opacity / 255 ) } } ) )
+			sizeImage( well.firstElementChild, S.zoom )
+
+			return
+
+		}
+
 		const svg = await invoke( 'preview', { crosshair: editing() } )
 
 		if ( asked !== previewAsked ) return
@@ -117,6 +144,122 @@ const sizeSvg = ( svg, zoom ) => {
 	svg.setAttribute( 'width', String( width * scale ) )
 	svg.setAttribute( 'height', String( height * scale ) )
 	svg.style.shapeRendering = zoom === 1 ? 'crispEdges' : 'auto'
+
+}
+
+// The rendered PNG is in physical pixels too: at 1x it is what the overlay shows.
+const sizeImage = ( img, zoom ) => {
+
+	if ( !img ) return
+	const set = () => {
+
+		img.width = img.naturalWidth * zoom / window.devicePixelRatio
+		img.height = img.naturalHeight * zoom / window.devicePixelRatio
+		img.classList.toggle( 'zoomed', zoom !== 1 )
+
+	}
+
+	if ( img.complete && img.naturalWidth ) set()
+	else img.addEventListener( 'load', set, { once: true } )
+
+}
+
+/* The player's own image (picture.js draws it) */
+
+const imageUrls = new Map()
+
+// A kept file as a blob address, fetched once per window.
+const imageUrl = async name => {
+
+	if ( !imageUrls.has( name ) ) {
+
+		const bytes = await invoke( 'image_file', { name } )
+
+		imageUrls.set( name, URL.createObjectURL( new Blob( [ bytes ], { type: picture.TYPES[picture.kindOf( name )] } ) ) )
+
+	}
+
+	return imageUrls.get( name )
+
+}
+
+const failed = error => toast( String( error?.message || error ), { alert: true } )
+
+const storeRender = async ( bytes, kind, size ) => invoke( 'store_image', await picture.rasterise( bytes, kind, size ), { headers: { 'x-image': 'render' } } )
+
+// Choose a file, keep it, draw it, show it.
+const chooseImage = () => {
+
+	const input = h( 'input', { type: 'file', accept: '.png,.jpg,.jpeg,.webp,.gif,.svg', hidden: true } )
+	// The crosshair being edited when the player chose to, whatever is picked meanwhile.
+	const image = editingImage()
+
+	input.addEventListener( 'change', async () => {
+
+		const file = input.files?.[0]
+
+		input.remove()
+		if ( !file ) return
+		const kind = picture.kindOf( file.name )
+
+		if ( !kind ) return toast( 'Scorpio takes PNG, JPG, WebP, GIF and SVG images.', { alert: true } )
+		if ( file.size > picture.FILE_LIMIT ) return toast( 'That file is larger than 5 MB. Choose a smaller one.', { alert: true } )
+		try {
+
+			const bytes = new Uint8Array( await file.arrayBuffer() )
+			const size = await picture.naturalSize( bytes, kind )
+			const source = await invoke( 'store_image', bytes, { headers: { 'x-image': kind } } )
+			const rendered = await storeRender( bytes, kind, size )
+
+			Object.assign( image, { on: true, name: file.name.slice( 0, 120 ), source: source.name, rendered: rendered.name, size } )
+			save()
+			render()
+
+		} catch ( error ) {
+
+			failed( error )
+
+		}
+
+	} )
+	input.addEventListener( 'cancel', () => input.remove() )
+	document.body.append( input )
+	input.click()
+
+}
+
+// A new size is drawn again from the original file, never from the last PNG.
+let resizeTimer = 0
+let resizeAsked = 0
+
+const resizeImage = size => {
+
+	const image = editingImage()
+	const source = image.source
+
+	clearTimeout( resizeTimer )
+	resizeTimer = setTimeout( async () => {
+
+		// Renders can finish out of order; only the newest is kept.
+		const asked = ++resizeAsked
+
+		try {
+
+			const bytes = new Uint8Array( await invoke( 'image_file', { name: source } ) )
+			const rendered = await storeRender( bytes, picture.kindOf( source ), size )
+
+			if ( asked !== resizeAsked || image.source !== source ) return
+			Object.assign( image, { size, rendered: rendered.name } )
+			paintPreview()
+			save()
+
+		} catch ( error ) {
+
+			failed( error )
+
+		}
+
+	}, 200 )
 
 }
 
@@ -149,6 +292,7 @@ const paintStatus = () => {
 	if ( !s.locked ) text = 'Position unlocked: drag the crosshair, then lock it'
 	else if ( s.hidden ) text = 'Hidden by shortcut'
 	else if ( s.visible ) text = s.game ? `Shown over ${s.game}` : 'Shown over a detected game'
+	else if ( s.always ) text = 'Shown over every window'
 
 	node.textContent = text
 
@@ -198,9 +342,30 @@ const crosshairTab = () => {
 	const zoom = segmented( [ [ 1, 'Actual size' ], [ 4, '4×' ] ], S.zoom, z => {
 
 		S.zoom = z
-		sizeSvg( document.getElementById( 'preview' ).firstElementChild, z )
+		const shown = document.getElementById( 'preview' ).firstElementChild
+
+		if ( shown?.tagName === 'IMG' ) sizeImage( shown, z )
+		else sizeSvg( shown, z )
 
 	}, { label: 'Preview size' } )
+
+	const image = editingImage()
+	const useImage = image.on && Boolean( image.rendered )
+	const kind = segmented( [ [ 'cs2', 'CS2 style' ], [ 'image', 'Your image' ] ], useImage ? 'image' : 'cs2', v => {
+
+		if ( v === 'image' && !image.rendered ) {
+
+			render()
+			chooseImage()
+
+			return
+
+		}
+		image.on = v === 'image'
+		save()
+		render()
+
+	}, { label: 'Kind of crosshair' } )
 
 	const left = h( 'section.stage', {},
 		targets.length > 1 ? select( targets, S.target, t => {
@@ -209,11 +374,14 @@ const crosshairTab = () => {
 			render()
 
 		}, { label: 'Crosshair to edit' } ) : null,
+		kind,
 		h( 'div.well.cramps#preview', { 'aria-label': 'Crosshair preview' } ),
 		h( 'div.stage-row', {}, zoom ),
-		h( 'div.field', {}, h( 'label.field-label', { for: 'code', text: 'Share code' } ), h( 'div.code-row', {}, code, copy ),
+		useImage ? null : h( 'div.field', {}, h( 'label.field-label', { for: 'code', text: 'Share code' } ), h( 'div.code-row', {}, code, copy ),
 			h( 'div.help', { text: 'Paste a code to import it. Your outline width stays, CS2 codes do not carry it.' } ) ),
 	)
+
+	if ( useImage ) return h( 'div.crosshair-tab', {}, left, imageControls( image ) )
 
 	const shape = setting( 'Style', null, select( styles, c.style, v => {
 
@@ -308,6 +476,23 @@ const crosshairTab = () => {
 
 }
 
+const imageControls = image => h( 'section.controls', {},
+	h( 'h2.t-h4', { text: 'Image' } ),
+	h( 'div.slab.flush', {},
+		setting( 'File', image.name || 'PNG, JPG, WebP, GIF or SVG, up to 5 MB.', h( 'button.btn', { type: 'button', text: 'Choose another', onclick: chooseImage } ) ),
+		setting( 'Size', 'The longer side, in screen pixels. An SVG stays sharp at any size.', slider( { min: picture.SIZE_MIN, max: picture.SIZE_LIMIT, value: image.size, label: 'Size', format: v => `${v} px`, onInput: resizeImage } ), { stack: true } ),
+		setting( 'Opacity', null, slider( { min: 0, max: 255, value: image.opacity, label: 'Opacity', format: v => `${Math.round( v / 2.55 )}%`, onInput: v => {
+
+			image.opacity = v
+			const shown = document.querySelector( '#preview img' )
+
+			if ( shown ) shown.style.opacity = String( v / 255 )
+			save()
+
+		} } ), { stack: true } ),
+	),
+)
+
 const savedSection = () => {
 
 	const saved = S.settings.saved
@@ -325,6 +510,7 @@ const savedSection = () => {
 			onclick: () => {
 
 				S.savedPick = index
+				editingImage().on = false
 				change( t => Object.assign( t, clone( entry.crosshair ) ) )
 				render()
 
@@ -435,6 +621,7 @@ const gamesTab = () => {
 				toggle( Boolean( game.crosshair ), on => {
 
 					game.crosshair = on ? clone( S.settings.crosshair ) : null
+					game.image = on ? clone( S.settings.image || NO_IMAGE ) : clone( NO_IMAGE )
 					if ( !on && S.target === index ) S.target = 'main'
 					save()
 					render()
@@ -487,6 +674,12 @@ const gamesTab = () => {
 				save()
 
 			}, { label: 'Games from launchers' } ) ),
+			setting( 'Always show', 'Over every window and the desktop. Hide while aiming and the hide shortcut still work.', toggle( S.settings.detect.always, v => {
+
+				S.settings.detect.always = v
+				save()
+
+			}, { label: 'Always show' } ) ),
 		),
 	)
 
@@ -612,6 +805,12 @@ const systemTab = () => {
 
 				} } ),
 			) ),
+			setting( 'Centre on the game window', 'For windowed games: the crosshair follows the middle of the game window.', toggle( s.centreOnWindow, v => {
+
+				s.centreOnWindow = v
+				save()
+
+			}, { label: 'Centre on the game window' } ) ),
 		),
 		h( 'h2.t-h4', { text: 'Scorpio' } ),
 		h( 'div.slab.flush', {},
@@ -634,6 +833,10 @@ const systemTab = () => {
 		obsBlock(),
 		h( 'h2.t-h4', { text: 'Updates' } ),
 		updatesBlock(),
+		h( 'h2.t-h4', { text: 'Help' } ),
+		h( 'div.slab.flush', {},
+			setting( 'Report a problem', 'You read all of it first. Nothing leaves this computer by itself.', h( 'button.btn', { type: 'button', text: 'Show the report', onclick: showReport } ) ),
+		),
 		h( 'div.about', {},
 			h( 'img.lockup', { src: 'brand/lockup.svg', alt: 'Scorpio' } ),
 			h( 'p.t-h3', { text: `Version ${S.view.version}` } ),
@@ -725,6 +928,69 @@ const updatesBlock = () => {
 		}, { label: 'Install updates automatically', disabled: unsupported } ), { off: unsupported } ),
 		setting( 'Version', ( UPDATE_TEXT[u.state] || UPDATE_TEXT.idle )( u ), button ),
 	)
+
+}
+
+// The report is shown in full before anything happens to it. Saving writes
+// it to Downloads; the GitHub issue opens in the browser and asks for that
+// file, so the report itself never goes into an address.
+const showReport = async () => {
+
+	const text = await invoke( 'problem_report' )
+	const area = h( 'textarea.textarea.report', { readonly: true, spellcheck: 'false', 'aria-label': 'The report' } )
+	let saved = null
+
+	area.value = text
+	const saveFile = async () => {
+
+		if ( !saved ) saved = await invoke( 'save_report', { text } )
+
+		return saved
+
+	}
+
+	const body = h( 'div.report-body', {},
+		h( 'p', { text: 'Version, system, settings and the end of the log. Your user folder and name are taken out.' } ),
+		area,
+	)
+	const close = dialog( 'Report a problem', body, [
+		h( 'button.btn.quiet', { type: 'button', text: 'Close', onclick: () => close() } ),
+		h( 'button.btn', { type: 'button', text: 'Copy', onclick: async () => {
+
+			await navigator.clipboard.writeText( text )
+			toast( 'Report copied.' )
+
+		} } ),
+		h( 'button.btn', { type: 'button', text: 'Save as file', onclick: async () => {
+
+			try {
+
+				toast( `Saved to ${await saveFile()}.` )
+
+			} catch ( error ) {
+
+				failed( error )
+
+			}
+
+		} } ),
+		h( 'button.btn.primary', { type: 'button', text: 'Report on GitHub', onclick: async () => {
+
+			try {
+
+				const path = await saveFile()
+
+				await invoke( 'open_issue', { file: path } )
+				toast( `Saved to ${path}. Attach that file to the issue.` )
+
+			} catch ( error ) {
+
+				failed( error )
+
+			}
+
+		} } ),
+	], { wide: true } )
 
 }
 

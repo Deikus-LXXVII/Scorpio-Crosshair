@@ -53,9 +53,41 @@ fn fit_axis(start: f64, length: f64, size: u32, scale: f64) -> Fit {
         .expect("three candidates")
 }
 
+/// Twice the middle of a span that starts at `start` and is `length` long, in
+/// physical pixels: whole even for an even length, odd for an odd one, so no
+/// half pixel is lost.
+pub fn twice_middle(start: i32, length: u32) -> i64 {
+    2 * i64::from(start) + i64::from(length)
+}
+
+/// Where a box `size` pixels long starts so that its middle is the span's
+/// middle (given doubled, from `twice_middle`), in physical pixels. Boxes are
+/// always even (crosshair drawings are, and images are padded to be). On an
+/// even span the box is exact: its middle falls between the two centre
+/// pixels, as a game's crosshair does. On an odd span (a window can be any
+/// width) the half pixel goes left (or up), so the pixel right of the box's
+/// middle, where Scorpio draws a 1 px line, is the span's centre pixel.
+pub fn corner(twice_middle: i64, size: u32) -> i32 {
+    (twice_middle - i64::from(size)).div_euclid(2) as i32
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn corner_matches_centred_at_100_percent_and_handles_odd_spans() {
+        for (start, length) in [(0, 2560), (1920, 1920), (-1920, 1920), (100, 1280)] {
+            for size in [40u32, 132, 512] {
+                let placed = centred(Area { x: start as f64, y: 0.0, width: length as f64, height: 1080.0 }, size, size, 1.0);
+                assert_eq!(corner(twice_middle(start, length), size), placed.x, "{start} {length} {size}");
+            }
+        }
+        // An 801 px wide window at x = 100: its centre pixel is 500.
+        let x = corner(twice_middle(100, 801), 40);
+        assert_eq!(x + 20, 500);
+        assert_eq!(corner(twice_middle(-3, 7), 2), -1);
+    }
 
     #[test]
     fn at_100_percent_the_middle_is_the_displays_middle_exactly() {

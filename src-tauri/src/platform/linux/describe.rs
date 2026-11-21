@@ -37,21 +37,45 @@ pub fn describe(conn: &impl Connection, atoms: &Atoms, window: Window) -> Option
         .or_else(|| property(conn, window, AtomEnum::WM_NAME.into(), AtomEnum::ANY.into()))
         .map(|r| lossy(&r.value))
         .unwrap_or_default();
+    let path = if pid == 0 { String::new() } else { process_path(pid) };
+    let (client, monitor, fullscreen) = geometry(conn, atoms, window);
+    Some(WindowInfo { pid, name: file_stem(&path), path, title, window_class, fullscreen, monitor, client })
+}
+
+/// Where the window is: its client area on the root (the X window inside
+/// any frame the window manager drew), its monitor, and whether the window
+/// manager calls it fullscreen.
+pub fn geometry(conn: &impl Connection, atoms: &Atoms, window: Window) -> crate::platform::Geometry {
     let fullscreen = property(conn, window, atoms._NET_WM_STATE, AtomEnum::ATOM.into())
         .and_then(|r| r.value32().map(|mut states| states.any(|s| s == atoms._NET_WM_STATE_FULLSCREEN)))
         .unwrap_or(false);
-    let path = if pid == 0 { String::new() } else { process_path(pid) };
-    let monitor = monitor_of(conn, window);
-    Some(WindowInfo { pid, name: file_stem(&path), path, title, window_class, fullscreen, monitor })
+    let client = client_area(conn, window);
+    (client.map(|(rect, _)| rect), client.and_then(|([x, y, w, h], root)| monitor_at(conn, root, x + w / 2, y + h / 2)), fullscreen)
 }
 
-/// The RandR monitor holding the window's centre, else the primary one.
-fn monitor_of(conn: &impl Connection, window: Window) -> Option<[i32; 4]> {
+fn client_area(conn: &impl Connection, window: Window) -> Option<([i32; 4], Window)> {
     let geometry = conn.get_geometry(window).ok()?.reply().ok()?;
     let origin = conn.translate_coordinates(window, geometry.root, 0, 0).ok()?.reply().ok()?;
-    let cx = i32::from(origin.dst_x) + i32::from(geometry.width) / 2;
-    let cy = i32::from(origin.dst_y) + i32::from(geometry.height) / 2;
-    let monitors = conn.randr_get_monitors(geometry.root, true).ok()?.reply().ok()?.monitors;
+    Some(([i32::from(origin.dst_x), i32::from(origin.dst_y), i32::from(geometry.width), i32::from(geometry.height)], geometry.root))
+}
+
+/// The top-level window the window manager put `window` in (its frame), or
+/// the window itself when it has none.
+pub fn frame_of(conn: &impl Connection, window: Window) -> Window {
+    let mut current = window;
+    for _ in 0..16 {
+        let Some(tree) = conn.query_tree(current).ok().and_then(|cookie| cookie.reply().ok()) else { break };
+        if tree.parent == tree.root || tree.parent == x11rb::NONE {
+            break;
+        }
+        current = tree.parent;
+    }
+    current
+}
+
+/// The RandR monitor holding the point (the window's centre), else the primary one.
+fn monitor_at(conn: &impl Connection, root: Window, cx: i32, cy: i32) -> Option<[i32; 4]> {
+    let monitors = conn.randr_get_monitors(root, true).ok()?.reply().ok()?.monitors;
     let rect = |m: &x11rb::protocol::randr::MonitorInfo| [i32::from(m.x), i32::from(m.y), i32::from(m.width), i32::from(m.height)];
     let holds = |m: &&x11rb::protocol::randr::MonitorInfo| {
         let [x, y, w, h] = rect(m);

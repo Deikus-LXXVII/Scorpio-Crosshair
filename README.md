@@ -28,8 +28,8 @@ Scorpio is a free crosshair overlay for PC games on Windows and Linux. It draws 
 | --- | --- |
 | What it is | A crosshair overlay: a transparent, click-through window on top of the game |
 | Systems | Windows 10 and 11. Linux with X11 or XWayland |
-| Crosshair | CS2-based, five static styles; CS2 crosshair codes work |
-| When it shows | Only while a game is the window in front |
+| Crosshair | CS2-based, five static styles; CS2 crosshair codes work. Or your own image: PNG, JPG, WebP, GIF or SVG |
+| When it shows | Only while a game is the window in front, or always if you choose |
 | Memory and CPU | 6.9 MB of private memory and 0 ms of CPU time over 10 s while it waits (measured on Windows 11) |
 | Price | Free |
 | Licence | PolyForm Noncommercial 1.0.0. Source-available, free for non-commercial use |
@@ -50,6 +50,8 @@ Scorpio waits in the tray and shows the crosshair when the window in front is a 
 
 The second and the third way each have a switch. Both are on by default.
 
+**Always show** keeps the crosshair on whatever is in front, the desktop included. Hide while aiming and the hide shortcut still work. It stays on the monitor of the window in front; with nothing in front, on the monitor last used.
+
 <p align="center">
   <img src="docs/images/scorpio-game-detection.webp" alt="Scorpio Games tab: two added games, one with its own crosshair, and switches for fullscreen windows and games from launchers" width="820">
 </p>
@@ -65,8 +67,11 @@ The second and the third way each have a switch. Both are on by default.
 - **Saved crosshairs.** Save up to 100, rename them, and step through them with a shortcut.
 - **A crosshair per game.** An added game can have its own crosshair. You edit it in the same editor.
 - **Exact centring.** Scorpio places the crosshair on the centre of the monitor that the game is on, between the two centre pixels where a game draws its own crosshair. At 125 % or 150 % display scaling it picks the window size whose middle lands closest. You can also unlock the crosshair, drag it anywhere, and lock it again.
+- **Centre on the game window.** For a windowed game, the crosshair can sit on the middle of the game's window instead of its monitor, and follows the window when you move or resize it. Its CS2 sizes then scale with the window's height, as in the game.
 
-There are no image crosshairs, on purpose.
+### Your own image
+
+Choose **Your image** on the Crosshair tab and pick a PNG, JPG, WebP, GIF or SVG file of up to 5 MB. A GIF shows its first frame. You set the size (up to 512 pixels on the longer side) and the opacity. Scorpio draws the image at exactly that size, so an SVG stays sharp at any size and a pixel-art PNG keeps hard pixels at whole-number sizes. The image's centre is the crosshair's centre, placed the same way as a CS2 crosshair. A game with its own crosshair can have its own image. The image also reaches OBS through the Browser source.
 
 <p align="center">
   <img src="docs/images/scorpio-crosshair-editor.webp" alt="Scorpio Crosshair tab: preview with a share code field, and sliders for style, length, thickness in half steps, and gap" width="820">
@@ -235,7 +240,7 @@ Scorpio does not touch the game or its input. While it waits, it uses 0 ms of CP
 
 ### Can I use an image or a custom shape as a crosshair?
 
-No. Scorpio's crosshairs are CS2-based only: five static styles and their settings.
+Yes. On the Crosshair tab, choose **Your image** and pick a PNG, JPG, WebP, GIF (first frame) or SVG file of up to 5 MB. You set its size, up to 512 pixels, and its opacity. See [Your own image](#your-own-image).
 
 ### Which pro players' crosshairs are included?
 
@@ -247,7 +252,7 @@ Scorpio has no telemetry and no account. It makes one kind of request: the updat
 
 ### Where does Scorpio keep its settings?
 
-In one file, `settings.json`. On Windows the file is in `%APPDATA%\com.lxxvii.scorpio`. On Linux it is in `~/.config/com.lxxvii.scorpio`.
+In one file, `settings.json`, with your images beside it in `images`. On Windows the folder is `%APPDATA%\com.lxxvii.scorpio`. On Linux it is `~/.config/com.lxxvii.scorpio`. See [Troubleshooting](#troubleshooting) for the log.
 
 ### Is Scorpio open source?
 
@@ -268,6 +273,9 @@ Scorpio is at version 0.1.1. This is the state on 2026-11-21.
 | Windows, inside a real game session | Not tested yet |
 | Linux X11 layer | Run under a virtual X server (Xvfb). The full app has not been run or measured on a Linux desktop |
 | Crosshair in OBS | The local server has a test. Not tested inside OBS yet |
+| Your own image | Drawing, size changes and file checks run in headless Chromium with a stand-in for Scorpio; the PNG check and the bitmap have unit tests. Not yet tried in the real settings window on Windows or Linux |
+| Centre on the game window | Following a window's moves is run under Xvfb on Linux and with a test window on Windows. Not tried with a game |
+| Log and problem report | The log and `--report` run on Linux under Xvfb and `--report` on Windows 11. The report window runs in headless Chromium with a stand-in |
 | Automatic updates | Written. Not yet exercised against a published release |
 | Settings window | Rendered in headless Chromium. Not yet checked in WebKitGTK |
 | Any specific anti-cheat | Not tested |
@@ -277,7 +285,22 @@ Known gaps:
 - A game that turns borderless fullscreen after it came to the front is seen only at the next focus or display change.
 - A window that is still invisible when it comes to the front is ignored until the next focus change.
 - One added UWP game matches every UWP app, because they share a host process.
-- There is no log file yet.
+
+## Troubleshooting
+
+**Report a problem.** On the **System** tab, click **Show the report**. You see the whole report first: Scorpio's version, your system, your settings, and the last 200 lines of the log, with your user folder written as `~` and your user name as `<user>`. Then you can copy it, save it as a file in your Downloads folder, or click **Report on GitHub**, which saves the file and opens a new issue in your browser with a short text that asks you to attach it. Scorpio never sends anything by itself and has no telemetry.
+
+**Files.**
+
+| | Windows | Linux |
+| --- | --- | --- |
+| Settings | `%APPDATA%\com.lxxvii.scorpio\settings.json` | `~/.config/com.lxxvii.scorpio/settings.json` |
+| Your images | `%APPDATA%\com.lxxvii.scorpio\images\` | `~/.config/com.lxxvii.scorpio/images/` |
+| Log | `%LOCALAPPDATA%\com.lxxvii.scorpio\logs\scorpio.log` | `~/.local/share/com.lxxvii.scorpio/logs/scorpio.log` |
+
+The log is plain text, one line per event: `2026-11-21T08:01:55Z INFO  scorpio_lib: platform started`. The time is UTC. Scorpio writes its own lines from the debug level up (start, focus decisions, what the overlay does, updates, the OBS source, errors and panics) and other libraries' lines only from warnings up. Window titles are never logged. At 1 MB the log moves to `scorpio.old.log`, replacing the one before, so the two files hold at most 2 MB. A settings file that cannot be read is kept beside it as `settings.broken-<seconds>.json`.
+
+**For scripts and AI agents.** `scorpio --report` prints the same report to standard output and exits without starting Scorpio, even while Scorpio runs. It cannot say what the running app is doing; the log can. On Windows, redirect it to a file, because the program has no console of its own: `"%LOCALAPPDATA%\Scorpio\scorpio.exe" --report > scorpio-report.txt`. On Linux, run `scorpio --report`, or the AppImage with `--report`.
 
 The screenshots on this page show the real settings window in headless Chromium with sample data.
 
@@ -309,10 +332,13 @@ scorpio (Rust, Tauri 2)
 │   ├── focus        the two-of-four match
 │   └── launchers    install folders from launcher files
 ├── platform/    the only code that talks to the OS
-│   ├── windows      layered overlay window, foreground event, Raw Input
-│   └── linux        X11 override-redirect overlay, active-window events, XInput2
-├── app          state machine: locked, focus, aiming
+│   ├── windows      layered overlay window, foreground and location events, Raw Input
+│   └── linux        X11 override-redirect overlay, active-window and configure events, XInput2
+├── app          state machine: locked, focus, aiming, where to centre
 ├── store        settings file, defaults, validation
+├── picture      your image: PNG check, premultiplied bitmap, its files
+├── logging      the log file, its cap, the panic hook
+├── report       the problem report and `--report`
 ├── obs          the Browser source server
 ├── update       signed updates between games
 └── ui/          the settings window (HTML, CSS, JS), opened on demand

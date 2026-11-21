@@ -82,8 +82,16 @@ pub async fn check(handle: &AppHandle) -> UpdateState {
             state
         }
         Ok(None) => UpdateState::UpToDate,
-        Err(error) => UpdateState::Failed { message: plain(&error.to_string()) },
+        Err(error) => {
+            log::warn!("update check failed: {error}");
+            UpdateState::Failed { message: plain(&error.to_string()) }
+        }
     };
+    match &state {
+        UpdateState::Available { version, .. } => log::info!("update {version} is available"),
+        UpdateState::UpToDate => log::info!("update check: up to date"),
+        _ => {}
+    }
     set(handle, state.clone());
     state
 }
@@ -111,13 +119,20 @@ async fn download_and_install(handle: &AppHandle) {
         .await;
     let bytes = match bytes {
         Ok(bytes) => bytes,
-        Err(error) => return set(handle, UpdateState::Failed { message: format!("The download failed: {error}") }),
+        Err(error) => {
+            log::warn!("update {version} download failed: {error}");
+            return set(handle, UpdateState::Failed { message: format!("The download failed: {error}") });
+        }
     };
+    log::info!("installing update {version}");
     set(handle, UpdateState::Installing { version });
     crate::before_exit(handle);
     match update.install(bytes) {
         Ok(()) => handle.restart(),
-        Err(error) => set(handle, UpdateState::Failed { message: format!("The update could not be installed: {error}") }),
+        Err(error) => {
+            log::error!("update could not be installed: {error}");
+            set(handle, UpdateState::Failed { message: format!("The update could not be installed: {error}") })
+        }
     }
 }
 

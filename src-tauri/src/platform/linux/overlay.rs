@@ -120,6 +120,15 @@ impl Overlay {
         self.paint(conn)
     }
 
+    /// Moves the shown bitmap without sending its pixels again.
+    pub fn move_to(&mut self, conn: &impl Connection, x: i32, y: i32) -> Result<()> {
+        (self.x, self.y) = (x, y);
+        if self.mapped {
+            conn.configure_window(self.window, &ConfigureWindowAux::new().x(x).y(y))?;
+        }
+        Ok(())
+    }
+
     /// Back above every other window, without moving or repainting.
     pub fn raise(&mut self, conn: &impl Connection) -> Result<()> {
         if self.mapped {

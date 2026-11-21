@@ -13,9 +13,12 @@
 mod input;
 mod overlay;
 mod process;
+pub mod system;
 mod window;
 
-use super::{Command, Event, Platform, Unsupported};
+pub use process::image as process_image;
+
+use super::{Command, Event, Geometry, Platform, Unsupported};
 use std::cell::{OnceCell, RefCell};
 use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
 use windows::core::{w, PCWSTR};
@@ -25,7 +28,7 @@ use windows::Win32::UI::Accessibility::{SetWinEventHook, UnhookWinEvent, HWINEVE
 use windows::Win32::UI::HiDpi::{SetThreadDpiAwarenessContext, DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2};
 use windows::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetForegroundWindow, GetMessageW, LoadCursorW,
-    PostMessageW, PostQuitMessage, RegisterClassW, EVENT_SYSTEM_FOREGROUND, HWND_MESSAGE, IDC_ARROW, MSG,
+    GetWindowThreadProcessId, PostMessageW, PostQuitMessage, RegisterClassW, EVENT_OBJECT_LOCATIONCHANGE, EVENT_SYSTEM_FOREGROUND, HWND_MESSAGE, IDC_ARROW, MSG,
     WINDOW_EX_STYLE, WINDOW_STYLE, WINEVENT_OUTOFCONTEXT, WM_APP, WM_INPUT, WNDCLASSW, WNDPROC,
 };
 
@@ -38,6 +41,51 @@ struct State {
     /// Hidden message-only window: the target of wake-ups and of Raw Input.
     sink: HWND,
     listener: RefCell<input::Listener>,
+    follow: RefCell<Follow>,
+}
+
+/// Following the game window's moves and resizes (Command::Follow).
+#[derive(Default)]
+struct Follow {
+    on: bool,
+    /// The last top-level window in front that was not Scorpio's.
+    target: Option<HWND>,
+    /// The location hook, scoped to the target's process and thread.
+    hook: Option<HWINEVENTHOOK>,
+    /// What was last reported, to send only changes.
+    last: Option<Geometry>,
+}
+
+impl Follow {
+    /// Sets, moves or removes the location hook to match `on` and `target`.
+    /// Out of context and scoped to the one window's process and thread
+    /// (`idProcess`, `idThread`): the system posts those events to this
+    /// thread's queue and loads nothing into the game. Other processes'
+    /// location changes never wake Scorpio.
+    fn rehook(&mut self) {
+        if let Some(hook) = self.hook.take() {
+            // SAFETY: the hook was set by this thread and is not used again.
+            let _ = unsafe { UnhookWinEvent(hook) };
+        }
+        self.last = None;
+        let Some(target) = self.target.filter(|_| self.on) else { return };
+        let mut pid = 0u32;
+        // SAFETY: reads the window's owner from the window manager; `pid` is a valid out-pointer.
+        let thread = unsafe { GetWindowThreadProcessId(target, Some(&mut pid)) };
+        if thread == 0 || pid == 0 {
+            return;
+        }
+        // SAFETY: the callback is a plain function that lives as long as the program.
+        let hook = unsafe {
+            SetWinEventHook(EVENT_OBJECT_LOCATIONCHANGE, EVENT_OBJECT_LOCATIONCHANGE, None, Some(location_changed), pid, thread, WINEVENT_OUTOFCONTEXT)
+        };
+        if hook.is_invalid() {
+            log::warn!("the location hook could not be set; the game window will not be followed");
+        } else {
+            log::debug!("following window of pid {pid}");
+            self.hook = Some(hook);
+        }
+    }
 }
 
 thread_local! {
@@ -80,7 +128,7 @@ fn run(events: Sender<Event>, commands: Receiver<Command>, ready: Sender<Result<
             return;
         }
     };
-    let state = State { events, commands, sink, listener: RefCell::default() };
+    let state = State { events, commands, sink, listener: RefCell::default(), follow: RefCell::default() };
     STATE.with(|cell| cell.set(state).ok());
 
     // Out of context: the system posts the event to this thread's queue. No
@@ -106,7 +154,14 @@ fn run(events: Sender<Event>, commands: Receiver<Command>, ready: Sender<Result<
         unsafe { DispatchMessageW(&message) };
     }
 
-    STATE.with(|state| state.get().map(|state| state.listener.borrow_mut().listen(sink, Vec::new(), Vec::new())));
+    STATE.with(|state| {
+        state.get().map(|state| {
+            state.listener.borrow_mut().listen(sink, Vec::new(), Vec::new());
+            let mut follow = state.follow.borrow_mut();
+            follow.on = false;
+            follow.rehook();
+        })
+    });
     overlay::destroy();
     // SAFETY: the hook and the window belong to this thread and are not used again.
     unsafe {
@@ -141,10 +196,52 @@ fn report_foreground(hwnd: HWND) {
     if let Some(event) = window::foreground_event(hwnd) {
         STATE.with(|state| {
             if let Some(state) = state.get() {
+                // A window of another process in front becomes the one followed.
+                if let Event::Foreground(Some(info)) = &event {
+                    let mut follow = state.follow.borrow_mut();
+                    if info.pid != std::process::id() && follow.target != Some(hwnd) {
+                        follow.target = Some(hwnd);
+                        if follow.on {
+                            follow.rehook();
+                            follow.last = Some((info.client, info.monitor, info.fullscreen));
+                        }
+                    }
+                }
                 let _ = state.events.send(event);
             }
         });
     }
+}
+
+unsafe extern "system" fn location_changed(
+    _hook: HWINEVENTHOOK,
+    _event: u32,
+    hwnd: HWND,
+    object: i32,
+    child: i32,
+    _thread: u32,
+    _time: u32,
+) {
+    // The window itself (OBJID_WINDOW, CHILDID_SELF), not the caret, the
+    // cursor or a control inside it.
+    if object != 0 || child != 0 {
+        return;
+    }
+    STATE.with(|state| {
+        let Some(state) = state.get() else { return };
+        let Ok(mut follow) = state.follow.try_borrow_mut() else { return };
+        if follow.target != Some(hwnd) {
+            return;
+        }
+        let now = window::geometry(hwnd);
+        // A drag sends many events for the same place: report changes only.
+        if follow.last != Some(now) {
+            follow.last = Some(now);
+            let pid = window::pid_of(hwnd);
+            let (client, monitor, fullscreen) = now;
+            let _ = state.events.send(Event::Geometry { pid, client, monitor, fullscreen });
+        }
+    });
 }
 
 unsafe extern "system" fn foreground_changed(
@@ -184,6 +281,21 @@ fn drain_commands(state: &State) {
             Ok(Command::Show { bitmap, x, y, unlocked, button }) => overlay::show(&bitmap, x, y, unlocked, button),
             Ok(Command::Hide) => overlay::hide(),
             Ok(Command::Raise) => overlay::raise(),
+            Ok(Command::Move { x, y }) => overlay::move_to(x, y),
+            Ok(Command::Follow(on)) => {
+                let mut follow = state.follow.borrow_mut();
+                if follow.on != on {
+                    follow.on = on;
+                    follow.rehook();
+                    // Where the window is now: it may have moved while nobody followed it.
+                    if let Some(target) = follow.target.filter(|_| on) {
+                        let now = window::geometry(target);
+                        follow.last = Some(now);
+                        let (client, monitor, fullscreen) = now;
+                        let _ = state.events.send(Event::Geometry { pid: window::pid_of(target), client, monitor, fullscreen });
+                    }
+                }
+            }
             Ok(Command::ExcludeFromCapture(exclude)) => overlay::exclude_from_capture(exclude),
             Ok(Command::ListenTo { mouse, keys }) => state.listener.borrow_mut().listen(state.sink, mouse, keys),
             // SAFETY: no pointers; ends this thread's message loop.

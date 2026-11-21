@@ -15,6 +15,9 @@ pub struct WindowInfo {
     pub fullscreen: bool,
     /// The monitor the window is on: x, y, width, height in physical pixels.
     pub monitor: Option<[i32; 4]>,
+    /// The window's client area (inside its frame) on the screen: x, y,
+    /// width, height in physical pixels. Window-manager data only.
+    pub client: Option<[i32; 4]>,
 }
 
 /// The four checks of a saved game.
@@ -143,7 +146,7 @@ mod tests {
     const OWN: u32 = 4242;
 
     fn window(pid: u32, name: &str, path: &str, title: &str, class: &str, fullscreen: bool) -> WindowInfo {
-        WindowInfo { pid, name: name.into(), path: path.into(), title: title.into(), window_class: class.into(), fullscreen, monitor: None }
+        WindowInfo { pid, name: name.into(), path: path.into(), title: title.into(), window_class: class.into(), fullscreen, monitor: None, client: None }
     }
 
     fn cs2() -> WindowInfo {

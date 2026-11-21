@@ -25,6 +25,23 @@ mod stub;
 #[cfg(not(any(windows, target_os = "linux")))]
 pub use self::stub::start;
 
+#[cfg(windows)]
+pub use self::windows::system::{attach_console, open_url, version as windows_version};
+/// The program name and path of a process, from the system's process list
+/// (no handle is opened). For the probes.
+#[cfg(windows)]
+pub use self::windows::process_image;
+
+/// Opens an address in the default browser.
+#[cfg(not(windows))]
+pub fn open_url(url: &str) -> Result<(), String> {
+    let opener = if cfg!(target_os = "macos") { "open" } else { "xdg-open" };
+    std::process::Command::new(opener).arg(url).spawn().map(drop).map_err(|error| format!("{opener} could not be started ({error})"))
+}
+
+#[cfg(not(windows))]
+pub fn attach_console() {}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MouseButton {
     Left,
@@ -33,6 +50,10 @@ pub enum MouseButton {
     Back,
     Forward,
 }
+
+/// A window's client area, its monitor (x, y, width, height, physical
+/// pixels) and whether it is fullscreen: what following it reports.
+pub type Geometry = (Option<[i32; 4]>, Option<[i32; 4]>, bool);
 
 /// What the platform thread tells the app.
 #[derive(Clone, Debug, PartialEq)]
@@ -44,6 +65,10 @@ pub enum Event {
     /// A key anywhere, read from raw input; `code` is a platform-neutral key
     /// name as in keybinds ("H", "F5", "Shift", "Mouse4"...).
     Key { code: String, down: bool },
+    /// The followed window (see `Command::Follow`) moved or changed size:
+    /// its client area and monitor now, physical pixels. Sent only when
+    /// something changed, so a drag sends one event per real change.
+    Geometry { pid: u32, client: Option<[i32; 4]>, monitor: Option<[i32; 4]>, fullscreen: bool },
     /// The unlocked overlay was dragged to this position (physical pixels).
     Moved { x: i32, y: i32 },
     /// The unlocked overlay's centre button was clicked.
@@ -58,6 +83,8 @@ pub enum Command {
     /// window takes the mouse: dragging moves it (reported as `Moved`), a click
     /// inside `button` (x, y, w, h relative to the bitmap) reports `CenterClicked`.
     Show { bitmap: Bitmap, x: i32, y: i32, unlocked: bool, button: Option<(i32, i32, i32, i32)> },
+    /// Put the shown bitmap's top-left at (x, y) without drawing it again.
+    Move { x: i32, y: i32 },
     /// Hide the overlay without destroying it.
     Hide,
     /// Put the shown overlay back above every other window; sent when the
@@ -68,6 +95,9 @@ pub enum Command {
     ExcludeFromCapture(bool),
     /// Mouse buttons and keys to report; nothing is listened to otherwise.
     ListenTo { mouse: Vec<MouseButton>, keys: Vec<String> },
+    /// Report moves and resizes of the window in front (the last one that was
+    /// not Scorpio's) as `Event::Geometry`. Nothing is watched while false.
+    Follow(bool),
     Quit,
 }
 
