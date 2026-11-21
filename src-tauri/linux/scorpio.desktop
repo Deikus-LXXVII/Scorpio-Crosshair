@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name={{name}}
+GenericName=Crosshair Overlay
+Comment={{comment}}
+Exec={{exec}}
+Icon={{icon}}
+Terminal=false
+Categories={{categories}}
+Keywords=crosshair;overlay;cs2;counter-strike;reticle;aim;scorpio;
+StartupWMClass=scorpio

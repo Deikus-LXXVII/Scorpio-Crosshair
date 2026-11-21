@@ -1,5 +1,7 @@
 pub mod app;
 pub mod core;
+#[cfg(target_os = "linux")]
+mod desktop_entry;
 pub mod platform;
 pub mod obs;
 pub mod store;
@@ -308,6 +310,8 @@ fn quit_app(handle: AppHandle) {
 }
 
 fn setup(handle: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+    #[cfg(target_os = "linux")]
+    desktop_entry::install();
     let path = handle.path().app_config_dir()?.join("settings.json");
     let settings = store::load(&path);
 

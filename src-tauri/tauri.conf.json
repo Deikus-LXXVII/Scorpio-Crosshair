@@ -46,7 +46,12 @@
     "publisher": "LXXVII",
     "copyright": "© 2026 LXXVII. PolyForm Noncommercial 1.0.0.",
     "homepage": "https://github.com/Deikus-LXXVII/Scorpio-Crosshair",
-    "longDescription": "A light CS2-style crosshair overlay that shows only while your game is in front, and never touches the game or its anti-cheat."
+    "longDescription": "A light CS2-style crosshair overlay that shows only while your game is in front, and never touches the game or its anti-cheat.",
+    "linux": {
+      "deb": {
+        "desktopTemplate": "linux/scorpio.desktop"
+      }
+    }
   },
   "plugins": {
     "updater": {
