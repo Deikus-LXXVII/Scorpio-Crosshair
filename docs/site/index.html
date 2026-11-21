@@ -118,7 +118,7 @@
 					"name": "Does Scorpio lower my frame rate?",
 					"acceptedAnswer": {
 						"@type": "Answer",
-						"text": "Most likely not, though frame rates have not been measured. On Windows it runs as one process with about 10 MB of memory, uses tens of milliseconds of processor time every 30 seconds while idle, and loads nothing into the game."
+						"text": "Most likely not, though we have not measured it. Scorpio is one small process, nearly idle on the processor, and loads nothing into the game."
 					}
 				},
 				{
@@ -228,6 +228,15 @@ html.page::-webkit-scrollbar{display:none}
 .tbl td{color:var(--mute)}
 .tbl .tech{width:30%;padding-right:0;font:400 13px/20px var(--mono);color:var(--mute)}
 .tbl .tech code{font:inherit;color:inherit}
+/* the anti-cheat comparison: one row a program */
+.cmp{margin-top:48px}
+.cmp>p{margin:0 0 24px;max-width:62ch;color:var(--mute)}
+.cmp .tbl thead td{border-bottom:1px solid var(--line-hi)}
+.cmp .tbl tbody th{width:28%}
+.cmp .tbl td:first-of-type{width:42%}
+.cmp .me th{font-weight:500}
+.cmp .me td{color:var(--marble)}
+.cmp figcaption{margin-top:16px;color:var(--mute)}
 
 /* the efficiency chart: a table drawn as bars, one row a program, two measures side by side on their own scales */
 .chart table{width:100%;border-collapse:collapse}
@@ -293,6 +302,9 @@ html.js .rv.in{opacity:1;transform:none}
 	.tbl tbody th,.tbl td{padding:0;border:0}
 	.tbl td{margin-top:4px}
 	.tbl .tech{width:auto;margin-top:8px}
+	.cmp .tbl tbody th,.cmp .tbl td:first-of-type{width:auto}
+	.cmp .tbl td::before{content:attr(data-label) ': ';color:var(--mute)}
+	.cmp .tbl td{color:var(--marble)}
 }
 @media (max-width:640px){
 	:root{--fs-hero:clamp(56px,19vw,96px)}
@@ -359,7 +371,7 @@ html.js .rv.in{opacity:1;transform:none}
 		<h2 class="name" id="crosshair-h">The crosshair</h2>
 		
 		<p><b>Make your own crosshair, or bring yours from CS.</b> Scorpio's crosshairs are CS2-based, so CS2 crosshair codes work in Scorpio: paste one, or copy yours.</p>
-		<p>Five static styles, thickness in half steps, an outline of 1 to 6 pixels. Save favourites, try one of 13 pro players', or give each game its own.</p>
+		<p>Save favourites, try one of 13 pro players', or give each game its own.</p>
 	</div>
 	<figure class="shot"><img src="images/scorpio-saved-and-pro-crosshairs.webp" width="1960" height="1400" loading="lazy" decoding="async" alt="Scorpio Crosshair tab: a green crosshair in the preview at 4x, its share code, four saved crosshairs and pro player crosshairs"></figure>
 </section>
@@ -371,17 +383,30 @@ html.js .rv.in{opacity:1;transform:none}
 		<thead><tr><th scope="col">Scorpio needs to</th><th scope="col">How it stays outside</th><th scope="col">Windows · Linux</th></tr></thead>
 		<tbody>
 			<tr><th scope="row">Know which window is in front</th><td>The system tells it when you switch windows.</td><td class="tech"><code>SetWinEventHook</code> · <code>_NET_ACTIVE_WINDOW</code></td></tr>
-			<tr><th scope="row">Recognise a game</th><td>It reads the window’s title and size and the program’s name, without opening it.</td><td class="tech"><code>GetWindowTextW</code>, <code>NtQuerySystemInformation</code> · <code>/proc/&lt;pid&gt;/exe</code></td></tr>
-			<tr><th scope="row">Hide while you aim</th><td>It hears the aim button through its own window, with no hooks.</td><td class="tech">Raw Input · XInput2</td></tr>
+			<tr><th scope="row">Recognise a game</th><td>From the window’s title and size and the program’s name, never opening it.</td><td class="tech"><code>GetWindowTextW</code>, <code>NtQuerySystemInformation</code> · <code>/proc/&lt;pid&gt;/exe</code></td></tr>
+			<tr><th scope="row">Hide while you aim</th><td>Through its own window, with no hooks.</td><td class="tech">Raw Input · XInput2</td></tr>
 			<tr><th scope="row">Run your shortcuts</th><td>Ordinary system shortcuts, as any app uses.</td><td class="tech"><code>RegisterHotKey</code> · <code>XGrabKey</code></td></tr>
 			<tr><th scope="row">Draw the crosshair</th><td>Its own see-through window on top; clicks pass through.</td><td class="tech">Layered window · override-redirect</td></tr>
 			<tr><th scope="row">Show it in OBS, if asked</th><td>Only on your own computer.</td><td class="tech"><code>127.0.0.1:47117</code></td></tr>
 		</tbody>
 	</table>
+	<figure class="cmp obj">
+		<p><b>Of four crosshair apps, only Scorpio hides while you aim without global hooks.</b> Aimbots use them too.</p>
+		<table class="tbl">
+			<thead><tr><td></td><th scope="col">Hides while aiming</th><th scope="col">Reads keys by</th></tr></thead>
+			<tbody>
+				<tr class="me"><th scope="row">Scorpio</th><td data-label="Hides while aiming">Yes</td><td data-label="Reads keys by">System shortcuts</td></tr>
+				<tr><th scope="row">Simple Crosshair Overlay</th><td data-label="Hides while aiming">No</td><td data-label="Reads keys by">Checking every key, nonstop</td></tr>
+				<tr><th scope="row">Crosshair Y</th><td data-label="Hides while aiming">No</td><td data-label="Reads keys by">One system shortcut</td></tr>
+				<tr><th scope="row">CrossOver</th><td data-label="Hides while aiming">Yes</td><td data-label="Reads keys by">Global hooks, for aiming</td></tr>
+			</tbody>
+		</table>
+		<figcaption>From each app’s code. None touches the game.</figcaption>
+	</figure>
 	<div class="faq obj" id="faq">
 		<details class="qa"><summary>Is a crosshair overlay bannable?<i aria-hidden="true"></i></summary><div class="a"><p>No overlay can promise that you will never be banned. Scorpio never reads or changes the game, but a game's own rules can forbid external crosshairs.</p></div></details>
 		<details class="qa"><summary>Does it work with Vanguard, Easy Anti-Cheat, BattlEye or VAC?<i aria-hidden="true"></i></summary><div class="a"><p>None of them has approved it directly. Scorpio crosses none of their lines, since it never touches the game or the anti-cheat. The exception is a game whose own rules forbid crosshair overlays.</p></div></details>
-		<details class="qa"><summary>Does Scorpio lower my frame rate?<i aria-hidden="true"></i></summary><div class="a"><p>Most likely not, though frame rates have not been measured. On Windows it runs as one process with about 10 MB of memory, uses tens of milliseconds of processor time every 30 seconds while idle, and loads nothing into the game.</p></div></details>
+		<details class="qa"><summary>Does Scorpio lower my frame rate?<i aria-hidden="true"></i></summary><div class="a"><p>Most likely not, though we have not measured it. Scorpio is one small process, nearly idle on the processor, and loads nothing into the game.</p></div></details>
 		<details class="qa"><summary>Does Scorpio collect data?<i aria-hidden="true"></i></summary><div class="a"><p>No. It sends no usage data, has no account, and goes online only for updates from GitHub.</p></div></details>
 	</div>
 </section>
@@ -400,8 +425,7 @@ html.js .rv.in{opacity:1;transform:none}
 	<div class="copy rv">
 		<h2 class="name" id="efficiency-h">Efficiency</h2>
 		
-		<p><b>Light on memory and idle on the processor.</b> Simple Crosshair Overlay uses less memory, but it redraws all the time and keeps the processor 15 to 40 times busier.</p>
-		<p>The download is 2.1 MB. CrossOver's is 101.7 MB and Crosshair Y's 142 MB; Simple Crosshair Overlay is one 1.5 MB file.</p>
+		<p><b>Light on memory and idle on the processor.</b> Simple Crosshair Overlay uses less memory but keeps the processor far busier.</p>
 	</div>
 	<figure class="chart">
 			<table>

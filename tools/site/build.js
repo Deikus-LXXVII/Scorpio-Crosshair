@@ -24,7 +24,7 @@ const FAQ = [
 	[ 'Does it work with Vanguard, Easy Anti-Cheat, BattlEye or VAC?',
 		`None of them has approved it directly. Scorpio crosses none of their lines, since it never touches the game or the anti-cheat. The exception is a game whose own rules forbid crosshair overlays.` ],
 	[ 'Does Scorpio lower my frame rate?',
-		`Most likely not, though frame rates have not been measured. On Windows it runs as one process with about 10 MB of memory, uses tens of milliseconds of processor time every 30 seconds while idle, and loads nothing into the game.` ],
+		`Most likely not, though we have not measured it. Scorpio is one small process, nearly idle on the processor, and loads nothing into the game.` ],
 	[ 'Does Scorpio collect data?',
 		`No. It sends no usage data, has no account, and goes online only for updates from GitHub.` ],
 ]
@@ -35,11 +35,21 @@ const plain = html => html.replace( /<[^>]+>/g, '' )
 const HEAD = [ 'Scorpio needs to', 'How it stays outside', 'Windows · Linux' ]
 const CALLS = [
 	[ 'Know which window is in front', 'The system tells it when you switch windows.', '<code>SetWinEventHook</code> · <code>_NET_ACTIVE_WINDOW</code>' ],
-	[ 'Recognise a game', 'It reads the window’s title and size and the program’s name, without opening it.', '<code>GetWindowTextW</code>, <code>NtQuerySystemInformation</code> · <code>/proc/&lt;pid&gt;/exe</code>' ],
-	[ 'Hide while you aim', 'It hears the aim button through its own window, with no hooks.', 'Raw Input · XInput2' ],
+	[ 'Recognise a game', 'From the window’s title and size and the program’s name, never opening it.', '<code>GetWindowTextW</code>, <code>NtQuerySystemInformation</code> · <code>/proc/&lt;pid&gt;/exe</code>' ],
+	[ 'Hide while you aim', 'Through its own window, with no hooks.', 'Raw Input · XInput2' ],
 	[ 'Run your shortcuts', 'Ordinary system shortcuts, as any app uses.', '<code>RegisterHotKey</code> · <code>XGrabKey</code>' ],
 	[ 'Draw the crosshair', 'Its own see-through window on top; clicks pass through.', 'Layered window · override-redirect' ],
 	[ 'Show it in OBS, if asked', 'Only on your own computer.', '<code>127.0.0.1:47117</code>' ],
+]
+
+// Anti-cheat comparison, read from each program's code on 2026-11-21 (Scorpio 0.1.1, Simple Crosshair Overlay 1.2.1,
+// Crosshair Y 4.2, CrossOver 3.4.11). None of the four opens, injects into or draws into a game.
+const CMP_HEAD = [ 'Hides while aiming', 'Reads keys by' ]
+const CMP = [
+	[ 'Scorpio', 'Yes', 'System shortcuts', true ],
+	[ 'Simple Crosshair Overlay', 'No', 'Checking every key, nonstop' ],
+	[ 'Crosshair Y', 'No', 'One system shortcut' ],
+	[ 'CrossOver', 'Yes', 'Global hooks, for aiming' ],
 ]
 
 // Efficiency, measured by the owner on a Windows 11 gaming PC, 2026-11-21: each program idle with its crosshair shown,
@@ -367,6 +377,15 @@ html.page::-webkit-scrollbar{display:none}
 .tbl td{color:var(--mute)}
 .tbl .tech{width:30%;padding-right:0;font:400 13px/20px var(--mono);color:var(--mute)}
 .tbl .tech code{font:inherit;color:inherit}
+/* the anti-cheat comparison: one row a program */
+.cmp{margin-top:48px}
+.cmp>p{margin:0 0 24px;max-width:62ch;color:var(--mute)}
+.cmp .tbl thead td{border-bottom:1px solid var(--line-hi)}
+.cmp .tbl tbody th{width:28%}
+.cmp .tbl td:first-of-type{width:42%}
+.cmp .me th{font-weight:500}
+.cmp .me td{color:var(--marble)}
+.cmp figcaption{margin-top:16px;color:var(--mute)}
 
 /* the efficiency chart: a table drawn as bars, one row a program, two measures side by side on their own scales */
 .chart table{width:100%;border-collapse:collapse}
@@ -432,6 +451,9 @@ html.js .rv.in{opacity:1;transform:none}
 	.tbl tbody th,.tbl td{padding:0;border:0}
 	.tbl td{margin-top:4px}
 	.tbl .tech{width:auto;margin-top:8px}
+	.cmp .tbl tbody th,.cmp .tbl td:first-of-type{width:auto}
+	.cmp .tbl td::before{content:attr(data-label) ': ';color:var(--mute)}
+	.cmp .tbl td{color:var(--marble)}
 }
 @media (max-width:640px){
 	:root{--fs-hero:clamp(56px,19vw,96px)}
@@ -548,7 +570,7 @@ ${HEROES[ HERO ]}
 <main id="main">
 ${block( 'crosshair', 'The crosshair', `
 		<p><b>Make your own crosshair, or bring yours from CS.</b> Scorpio's crosshairs are CS2-based, so CS2 crosshair codes work in Scorpio: paste one, or copy yours.</p>
-		<p>Five static styles, thickness in half steps, an outline of 1 to 6 pixels. Save favourites, try one of 13 pro players', or give each game its own.</p>`, shot( 'editor' ) )}
+		<p>Save favourites, try one of 13 pro players', or give each game its own.</p>`, shot( 'editor' ) )}
 
 <section class="block wide" id="safety" aria-labelledby="safety-h">
 	<h2 class="name" id="safety-h">Outside the game</h2>
@@ -559,6 +581,16 @@ ${block( 'crosshair', 'The crosshair', `
 ${CALLS.map( ( [ need, how, tech ] ) => `\t\t\t<tr><th scope="row">${need}</th><td>${how}</td><td class="tech">${tech}</td></tr>` ).join( '\n' )}
 		</tbody>
 	</table>
+	<figure class="cmp obj">
+		<p><b>Of four crosshair apps, only Scorpio hides while you aim without global hooks.</b> Aimbots use them too.</p>
+		<table class="tbl">
+			<thead><tr><td></td>${CMP_HEAD.map( h => `<th scope="col">${h}</th>` ).join( '' )}</tr></thead>
+			<tbody>
+${CMP.map( ( [ name, aim, keys, me ] ) => `\t\t\t\t<tr${me ? ' class="me"' : ''}><th scope="row">${name}</th>${[ aim, keys ].map( ( v, i ) => `<td data-label="${CMP_HEAD[ i ]}">${v}</td>` ).join( '' )}</tr>` ).join( '\n' )}
+			</tbody>
+		</table>
+		<figcaption>From each app’s code. None touches the game.</figcaption>
+	</figure>
 	<div class="faq obj" id="faq">
 ${FAQ.map( ( [ q, a ] ) => `\t\t<details class="qa"><summary>${q}<i aria-hidden="true"></i></summary><div class="a"><p>${a}</p></div></details>` ).join( '\n' )}
 	</div>
@@ -567,8 +599,7 @@ ${block( 'games', 'Only over&nbsp;games', `
 		<p>The crosshair shows while a game is in front and hides when you switch away. A game is one <b>you added</b>, any <b>fullscreen</b> window, or a game from a launcher such as Steam, Epic Games or GOG.</p>
 		<p>It can also hide while you aim, and keyboard shortcuts lock, centre and switch it.</p>`, shot( 'games' ), true )}
 ${block( 'efficiency', 'Efficiency', `
-		<p><b>Light on memory and idle on the processor.</b> Simple Crosshair Overlay uses less memory, but it redraws all the time and keeps the processor 15 to 40 times busier.</p>
-		<p>The download is 2.1 MB. CrossOver's is 101.7 MB and Crosshair Y's 142 MB; Simple Crosshair Overlay is one 1.5 MB file.</p>`, chart() )}
+		<p><b>Light on memory and idle on the processor.</b> Simple Crosshair Overlay uses less memory but keeps the processor far busier.</p>`, chart() )}
 ${block( 'obs', 'On stream', `
 		<p>OBS's Game Capture records only the game, so add the crosshair as a <b>Browser source</b>.</p>
 		<ol class="steps">
