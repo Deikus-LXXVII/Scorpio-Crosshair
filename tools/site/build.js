@@ -6,7 +6,8 @@ const OUT = require( 'path' ).join( __dirname, '../../docs/site/index.html' )
 const SITE = 'https://scorpio.lxxvll.com/'
 const REPO = 'https://github.com/Deikus-LXXVII/Scorpio-Crosshair'
 const DOWNLOAD = REPO + '/releases/latest'
-const VERSION = '0.1.1'
+// The released version, from the app's own config: the site is rebuilt after each release.
+const VERSION = JSON.parse( fs.readFileSync( require( 'path' ).join( __dirname, '../../src-tauri/tauri.conf.json' ), 'utf8' ) ).version
 const DATE = '2026-11-21'
 
 const TITLE = 'Scorpio: crosshair overlay for Windows and Linux'
@@ -427,7 +428,7 @@ footer{max-width:1280px;margin:160px auto 0;padding:0 var(--gutter)}
 .get{max-width:62ch;padding-bottom:112px}
 .get>*+*{margin-top:24px}
 .get p{color:var(--mute)}
-.get .go{margin-top:28px}
+.get .btn{margin-top:28px}
 .foot{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:16px 40px;padding:40px 0 56px;border-top:1px solid var(--line)}
 .sig{display:inline-flex;align-items:center;gap:12px;font:400 17px/1 var(--display);letter-spacing:.18em;text-transform:uppercase}
 .sig svg{width:24px;height:24px}
@@ -450,7 +451,7 @@ html.js .rv.in{opacity:1;transform:none}
 	footer{margin-top:72px}
 	/* a finger needs 44px: the caps links keep their look and grow their box */
 	.go{display:inline-flex;align-items:center;min-height:44px;padding:0}
-	.copy .go,.get .go{margin-top:16px}
+	.copy .go,.get .btn{margin-top:16px}
 	/* the table's rows stack: what it needs, how, then the call names in the quiet line */
 	.tbl thead{display:none}
 	.tbl,.tbl tbody,.tbl tr,.tbl tbody th,.tbl td{display:block;width:auto}
@@ -667,7 +668,7 @@ ${FAQ.map( ( [ q, a ] ) => `\t\t<details class="qa"><summary>${q}<i aria-hidden=
 			<li>Click the tray icon, make a crosshair or paste a code, and start your game.</li>
 		</ol>
 		<p>Free for non-commercial use under the PolyForm Noncommercial 1.0.0 licence.</p>
-		<a class="go" href="${DOWNLOAD}">Open the latest release</a>
+		<a class="btn" href="${DOWNLOAD}">Download from GitHub</a>
 	</div>
 	<div class="foot">
 		<span class="sig">${mark( 'Scorpio' )}Scorpio</span>
