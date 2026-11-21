@@ -75,14 +75,14 @@ is created when opened and destroyed when closed. Measured and recorded in
 2. [x] Rust workspace and interfaces (core types, platform traits).
 3. [x] Core in Rust with tests (crosshair, raster, center, focus, launchers).
 4. [x] Windows platform layer (built and probed on the gaming PC).
-5. [ ] Linux platform layer.
+5. [x] Linux platform layer (built and probed on the VPS under Xvfb).
 6. [x] App state machine, store, tray, hotkeys, Tauri commands.
 7. [x] Settings UI: tabs Crosshair, Games, Controls, System (see the style audit);
        switches, dropdowns, sliders, colour picker, keybind fields; one
        shape language.
 8. [x] Style and UX audit (`docs/style-audit.md`), applied.
 9. [x] Windows: build on the gaming PC, run, drive, measure (idle and settings; not yet in a real game).
-10. [ ] Linux: build on the VPS, run under Xvfb + openbox, drive, measure.
+10. [x] Linux: .deb and AppImage built on the VPS, run under Xvfb + openbox, measured (settings window not driven yet).
 11. [x] Independent review (Opus, Grok paused), fixes; open items under Known gaps.
 
 ## Dropped from CrossOver's feature set

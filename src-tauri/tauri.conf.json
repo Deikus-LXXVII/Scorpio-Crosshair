@@ -39,7 +39,9 @@
           "English",
           "Russian"
         ],
-        "displayLanguageSelector": false
+        "displayLanguageSelector": false,
+        "headerImage": "installer/header.bmp",
+        "sidebarImage": "installer/sidebar.bmp"
       }
     },
     "createUpdaterArtifacts": true,
