@@ -35,7 +35,7 @@ Scorpio is a free crosshair overlay for PC games on Windows and Linux. It draws 
 | Price | Free |
 | Licence | PolyForm Noncommercial 1.0.0. Source-available, free for non-commercial use |
 | Written in | Rust, with Tauri 2 |
-| Version | 0.1.0 |
+| Version | 0.1.1 |
 
 Scorpio is new. [What is tested and what is not](#what-is-tested-and-what-is-not) lists what has been proven so far.
 
@@ -260,7 +260,7 @@ No. Scorpio is for Windows and Linux.
 
 ## What is tested and what is not
 
-Scorpio is at version 0.1.0. This is the state on 2026-11-21.
+Scorpio is at version 0.1.1. This is the state on 2026-11-21.
 
 | Area | State |
 | --- | --- |

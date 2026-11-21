@@ -6,7 +6,7 @@ const OUT = require( 'path' ).join( __dirname, '../../docs/site/index.html' )
 const SITE = 'https://scorpio.lxxvll.com/'
 const REPO = 'https://github.com/Deikus-LXXVII/Scorpio-Crosshair'
 const DOWNLOAD = REPO + '/releases/latest'
-const VERSION = '0.1.0'
+const VERSION = '0.1.1'
 const DATE = '2026-11-21'
 
 const TITLE = 'Scorpio: crosshair overlay for Windows and Linux'

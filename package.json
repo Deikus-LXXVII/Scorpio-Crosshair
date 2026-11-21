@@ -1,7 +1,7 @@
 {
   "name": "scorpio",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A CS2 crosshair overlay for Windows and Linux that shows only while your game is in focus",
   "license": "PolyForm-Noncommercial-1.0.0",
   "scripts": {
