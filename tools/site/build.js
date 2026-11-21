@@ -550,7 +550,8 @@ const block = ( id, name, copy, figure, flip ) => `
 	${figure}
 </section>`
 
-// The download closes the page inside the footer, so the landing page keeps five blocks (R13).
+// The download closes the page inside the footer. The questions are a sixth block at the owner's request
+// (2026-11-21), which also leaves "Outside the game" with two objects instead of three (R13).
 const html = `<!doctype html>
 <html lang="en" class="page">
 <head>
@@ -625,9 +626,6 @@ ${CMP.map( ( [ what, ...cells ] ) => `\t\t\t\t<tr><th scope="row">${what}</th>${
 		</table>
 		<figcaption>From each app’s code.</figcaption>
 	</figure>
-	<div class="faq obj" id="faq">
-${FAQ.map( ( [ q, a ] ) => `\t\t<details class="qa"><summary>${q}<i aria-hidden="true"></i></summary><div class="a"><p>${a}</p></div></details>` ).join( '\n' )}
-	</div>
 </section>
 ${block( 'games', 'Only over&nbsp;games', `
 		<p>The crosshair shows while a game is in front and hides when you switch away. A game is one <b>you added</b>, any <b>fullscreen</b> window, or a game from a launcher such as Steam, Epic Games or GOG.</p>
@@ -642,6 +640,13 @@ ${block( 'obs', 'On stream', `
 			<li>Set its URL to <code>http://127.0.0.1:47117/obs</code>.</li>
 			<li>Make it the size of your canvas, with no transform.</li>
 		</ol>`, shot( 'obs' ), true )}
+
+<section class="block wide" id="faq" aria-labelledby="faq-h">
+	<h2 class="name" id="faq-h">Questions</h2>
+	<div class="faq obj">
+${FAQ.map( ( [ q, a ] ) => `\t\t<details class="qa"><summary>${q}<i aria-hidden="true"></i></summary><div class="a"><p>${a}</p></div></details>` ).join( '\n' )}
+	</div>
+</section>
 </main>
 
 <footer id="download" aria-labelledby="download-h">
