@@ -16,5 +16,17 @@ its own commit, after the figure improved.
 With the settings window open, WebView2 adds six processes and about
 240 MB; all of them exit when the window closes.
 
-Linux (VPS, Xvfb): the platform thread alone used 0 CPU ticks over 3 s and
-about 3.8 MB resident. The full app has not been measured there yet.
+Linux (VPS, Ubuntu 24.04 under Xvfb + openbox, the .deb build, settings
+never opened, 2026-11-21): GTK and WebKitGTK are loaded at start, so Linux
+costs more than Windows.
+
+| Figure | Measured | Budget |
+| --- | --- | --- |
+| Private dirty memory (anonymous) | 20.1 MB | 25 MB |
+| PSS (shared libraries counted fairly) | 70.7 MB | 88 MB |
+| CPU over 10 s idle | 2 ticks (20 ms) | 5 ticks |
+| .deb size | 3.2 MB | 4 MB |
+| AppImage size (bundles WebKitGTK) | 78 MB | 98 MB |
+
+Measured with `/proc/<pid>/smaps_rollup` and `/proc/<pid>/stat`; there is
+no Linux check script yet.
