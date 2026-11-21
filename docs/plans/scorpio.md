@@ -54,7 +54,7 @@ scorpio (Rust, Tauri 2)
 | Its client area (centre on the game window) | `GetClientRect`, `ClientToScreen` | `GetGeometry`, `TranslateCoordinates`, `QueryTree` (to find the frame) | Window manager data about the window's rectangle; no process is opened. |
 | The game window moved or resized (only while "Centre on the game window" is on and a game is in front) | `SetWinEventHook(EVENT_OBJECT_LOCATIONCHANGE, WINEVENT_OUTOFCONTEXT)` scoped with `idProcess` and `idThread` to the window in front, re-scoped on each foreground change, removed when not needed; the callback keeps only `OBJID_WINDOW` of that window | `StructureNotify` (ConfigureNotify) selected on the window in front and its frame, removed when not needed | Out of context, like the foreground hook: the system posts the event to Scorpio's own thread and nothing is loaded into the game. It reports only window-manager data (where a window is). Scoped to the one window's thread, other programs' moves never wake Scorpio, and a place already reported is not sent again, so a drag sends one event per real change. |
 | Its executable | `NtQuerySystemInformation(SystemProcessIdInformation)` | `/proc/<pid>/exe`, else `cmdline` for Wine | No process handle is ever opened (`OpenProcess` is banned). |
-| Aim button, hide key | Raw Input, `RIDEV_INPUTSINK`, on Scorpio's own hidden window | XInput2 raw events on the root | No low-level hooks (`WH_*_LL` are banned): the same input every game and Discord read. |
+| Aim button or key, hide key | Raw Input, `RIDEV_INPUTSINK`, on Scorpio's own hidden window | XInput2 raw events on the root | No low-level hooks (`WH_*_LL` are banned): the same input every game and Discord read. One device class at a time: the mouse for a mouse button, the keyboard only when the aim is a key, and nothing while hiding is off or no crosshair is up. |
 | Hotkeys | `RegisterHotKey` | `XGrabKey` | Standard. |
 | Overlay | Layered, topmost, click-through window (`WS_EX_LAYERED|TRANSPARENT|TOOLWINDOW|NOACTIVATE`) | Override-redirect ARGB window, empty input shape | A separate window over the game, like Discord's or Steam's. Never drawn into the game. |
 | Colour pipette | One screen grab when the player asks | Same | Only on request. |
@@ -119,8 +119,17 @@ sounds, update checks, announcements, macOS, portable mode.
   stay in `images/` until the next start prunes them.
 - The image flow and the problem report have run only in headless
   Chromium with a stand-in for Scorpio, not in WebView2 or WebKitGTK.
-- With hide-while-aiming on, raw mouse input wakes the platform thread for
-  every movement packet. Not yet measured; add a figure to `docs/budget.md`.
+- With hide-while-aiming on and a mouse button as the aim, raw mouse input
+  wakes the platform thread for every movement packet. Not yet measured; add
+  a figure to `docs/budget.md`. A key as the aim wakes it only on key presses.
+- The aim key is bound by its position (`KeyboardEvent.code`), and read by
+  scan code on Windows and evdev code on Linux (`platform::KEYS`), so it holds
+  on every layout. Two limits: on Windows, AltGr arrives as a left Control
+  plus a right Alt, so pressing AltGr in the field binds Left Ctrl (and Left
+  Ctrl then aims too); WebView2 may never pass PrintScreen to the page, and
+  Alt+PrintScreen sends SysRq, which is not in the table. Keys a program
+  sends with no scan code (macro tools) are not read on Windows. Escape and
+  Pause cannot be the aim: Escape cancels binding, Pause sends no release.
 
 ## Code signing (owner's decision, 2026-11-21)
 

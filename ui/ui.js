@@ -556,6 +556,158 @@ const keybind = ( accelerator, onChange, { label, error } = {} ) => {
 
 }
 
+/* The aim button */
+
+// Keys by position (KeyboardEvent.code), as Windows and Linux read them:
+// the same list as KEYS in src-tauri/src/platform/mod.rs, kept equal by a test there.
+const AIM_CODES = [
+	'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7',
+	'Digit8', 'Digit9', 'Digit0', 'Minus', 'Equal', 'Backspace', 'Tab', 'KeyQ',
+	'KeyW', 'KeyE', 'KeyR', 'KeyT', 'KeyY', 'KeyU', 'KeyI', 'KeyO',
+	'KeyP', 'BracketLeft', 'BracketRight', 'Enter', 'ControlLeft', 'KeyA', 'KeyS', 'KeyD',
+	'KeyF', 'KeyG', 'KeyH', 'KeyJ', 'KeyK', 'KeyL', 'Semicolon', 'Quote',
+	'Backquote', 'ShiftLeft', 'Backslash', 'KeyZ', 'KeyX', 'KeyC', 'KeyV', 'KeyB',
+	'KeyN', 'KeyM', 'Comma', 'Period', 'Slash', 'ShiftRight', 'NumpadMultiply', 'AltLeft',
+	'Space', 'CapsLock', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6',
+	'F7', 'F8', 'F9', 'F10', 'ScrollLock', 'Numpad7', 'Numpad8',
+	'Numpad9', 'NumpadSubtract', 'Numpad4', 'Numpad5', 'Numpad6', 'NumpadAdd', 'Numpad1', 'Numpad2',
+	'Numpad3', 'Numpad0', 'NumpadDecimal', 'IntlBackslash', 'F11', 'F12', 'F13', 'F14',
+	'F15', 'F16', 'F17', 'F18', 'F19', 'F20', 'F21', 'F22',
+	'F23', 'F24', 'NumpadEnter', 'ControlRight', 'NumpadDivide', 'PrintScreen', 'AltRight', 'NumLock',
+	'Home', 'ArrowUp', 'PageUp', 'ArrowLeft', 'ArrowRight', 'End', 'ArrowDown', 'PageDown',
+	'Insert', 'Delete', 'MetaLeft', 'MetaRight', 'ContextMenu',
+]
+const AIM_MOUSE = [ 'Mouse1', 'Mouse3', 'Mouse2', 'Mouse4', 'Mouse5' ] // by MouseEvent.button
+const AIM_MOUSE_SHOWN = { Mouse1: 'Left mouse button', Mouse2: 'Right mouse button', Mouse3: 'Middle mouse button', Mouse4: 'Back mouse button', Mouse5: 'Forward mouse button' }
+const AIM_SHOWN = {
+	ShiftLeft: 'Left Shift', ShiftRight: 'Right Shift', ControlLeft: 'Left Ctrl', ControlRight: 'Right Ctrl', AltLeft: 'Left Alt', AltRight: 'Right Alt',
+	MetaLeft: 'Left Win', MetaRight: 'Right Win', ContextMenu: 'Menu', ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→', Backquote: '`',
+	Minus: '-', Equal: '=', BracketLeft: '[', BracketRight: ']', Backslash: '\\', Semicolon: ';', Quote: '\'', Comma: ',', Period: '.', Slash: '/',
+	IntlBackslash: '< >', NumpadMultiply: 'Num *', NumpadAdd: 'Num +', NumpadSubtract: 'Num −', NumpadDecimal: 'Num .', NumpadDivide: 'Num /', NumpadEnter: 'Num Enter',
+}
+
+// What the key at this position prints on the player's keyboard, when the
+// web view can tell (Chromium's keyboard map); the position's name otherwise.
+let layout = null
+navigator.keyboard?.getLayoutMap?.().then( map => {
+
+	layout = map
+
+} ).catch( () => {} )
+
+const aimShown = code => {
+
+	if ( AIM_SHOWN[code] ) return AIM_SHOWN[code]
+	if ( /^Numpad\d$/.test( code ) ) return `Num ${code.slice( 6 )}`
+	const printed = layout?.get( code )
+
+	if ( printed && /^Key|^Digit/.test( code ) ) return printed.toUpperCase()
+
+	return code.replace( /^Key|^Digit/, '' )
+
+}
+
+// One field listens at a time; a new one, or a redraw, ends the last.
+let aimListening = null
+
+// The release, click, menu or back/forward that follows a taken mouse press
+// belongs to it, not to the page, however long the button is held. The next
+// press clears it (this listener runs before any field's own).
+let aimTaken = false
+const aimSwallow = event => {
+
+	if ( event.type === 'mousedown' ) return void ( aimTaken = false )
+	if ( !aimTaken ) return
+	event.preventDefault()
+	event.stopPropagation()
+	if ( event.type !== 'mouseup' ) aimTaken = false
+
+}
+
+for ( const type of [ 'mousedown', 'mouseup', 'click', 'contextmenu', 'auxclick' ] ) document.addEventListener( type, aimSwallow, true )
+
+// Click, then press any key or mouse button. Escape, or a click outside the
+// field, cancels: the left button counts only when it is pressed on the
+// field itself, so clicking away is never taken for it.
+const aimbind = ( name, onChange, { label } = {} ) => {
+
+	const node = h( 'button.keybind', { type: 'button', 'aria-label': label } )
+	let listening = false
+
+	const paint = () => {
+
+		node.replaceChildren()
+		if ( listening ) node.append( h( 'span.hint', { text: 'Press a key or mouse button' } ) )
+		else if ( AIM_MOUSE_SHOWN[name] ) node.append( h( 'span.hint.value', { text: AIM_MOUSE_SHOWN[name] } ) )
+		else node.append( h( 'kbd', { text: aimShown( name ) } ) )
+
+	}
+
+	const stop = () => {
+
+		if ( !listening ) return
+		listening = false
+		if ( aimListening === stop ) aimListening = null
+		node.classList.remove( 'listening' )
+		document.removeEventListener( 'keydown', onKey, true )
+		document.removeEventListener( 'mousedown', onMouse, true )
+		removeEventListener( 'blur', stop )
+		paint()
+
+	}
+
+	const take = next => {
+
+		stop()
+		if ( next === name ) return
+		name = next
+		paint()
+		onChange( name )
+
+	}
+
+	const onKey = event => {
+
+		if ( !node.isConnected ) return stop()
+		event.preventDefault()
+		event.stopPropagation()
+		if ( event.repeat ) return
+		if ( event.code === 'Escape' ) return stop()
+		if ( AIM_CODES.includes( event.code ) ) take( event.code )
+
+	}
+
+	const onMouse = event => {
+
+		if ( !node.isConnected ) return stop()
+		if ( event.button === 0 && !node.contains( event.target ) ) return stop()
+		event.preventDefault()
+		event.stopPropagation()
+		aimTaken = true
+		if ( AIM_MOUSE[event.button] ) take( AIM_MOUSE[event.button] )
+
+	}
+
+	node.addEventListener( 'click', event => {
+
+		if ( listening ) return
+		aimListening?.()
+		aimListening = stop
+		listening = true
+		node.classList.add( 'listening' )
+		document.addEventListener( 'keydown', onKey, true )
+		document.addEventListener( 'mousedown', onMouse, true )
+		addEventListener( 'blur', stop )
+		paint()
+
+	} )
+
+	paint()
+
+	return node
+
+}
+
 /* Dialog and toast */
 
 const dialog = ( title, body, actions, { wide = false } = {} ) => {
@@ -615,6 +767,6 @@ const toast = ( text, { alert = false } = {} ) => {
 
 }
 
-window.ui = { h, setting, toggle, segmented, select, slider, colorButton, keybind, dialog, toast, hex }
+window.ui = { h, setting, toggle, segmented, select, slider, colorButton, keybind, aimbind, dialog, toast, hex }
 
 }

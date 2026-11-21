@@ -3,7 +3,6 @@
 
 use crate::core::crosshair::Crosshair;
 use crate::core::focus::Fingerprint;
-use crate::platform::MouseButton;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
@@ -117,14 +116,30 @@ pub enum AimMode {
 #[serde(default, rename_all = "camelCase")]
 pub struct Aim {
     pub hide: bool,
-    pub button: MouseButton,
+    /// Any mouse button or key: "Mouse2" (the right button), "Mouse4", or a
+    /// key by its position, "ShiftLeft", "KeyV"... (`platform::KEYS`).
+    #[serde(deserialize_with = "aim_button")]
+    pub button: String,
     pub mode: AimMode,
 }
 
 impl Default for Aim {
     fn default() -> Self {
-        Aim { hide: false, button: MouseButton::Right, mode: AimMode::Hold }
+        Aim { hide: false, button: DEFAULT_AIM.into(), mode: AimMode::Hold }
     }
+}
+
+const DEFAULT_AIM: &str = "Mouse2";
+
+/// Reads the aim button, also as 0.1.2 and earlier saved it: a mouse button
+/// by its old name ("Right", "Back"...).
+fn aim_button<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<String, D::Error> {
+    let name = String::deserialize(deserializer)?;
+    let old = ["Left", "Right", "Middle", "Back", "Forward"].iter().position(|old| *old == name);
+    Ok(match old {
+        Some(index) => ["Mouse1", "Mouse2", "Mouse3", "Mouse4", "Mouse5"][index].into(),
+        None => name,
+    })
 }
 
 /// Global shortcuts as accelerators ("Ctrl+Shift+Alt+X"); empty means none.
@@ -200,6 +215,9 @@ impl Settings {
     /// Every value in range, names tidy, lists bounded. Idempotent.
     pub fn validated(mut self) -> Settings {
         self.crosshair = self.crosshair.normalized();
+        if !crate::platform::is_key_name(&self.aim.button) {
+            self.aim.button = DEFAULT_AIM.into();
+        }
         self.saved.truncate(SAVED_LIMIT);
         for saved in &mut self.saved {
             saved.name = clean_name(&saved.name, "Crosshair");
@@ -364,7 +382,7 @@ mod tests {
         });
         settings.detect.always = true;
         settings.centre_on_window = true;
-        settings.aim = Aim { hide: true, button: MouseButton::Back, mode: AimMode::Toggle };
+        settings.aim = Aim { hide: true, button: "Mouse4".into(), mode: AimMode::Toggle };
         settings.offset = (3, -1);
         save(&path, &settings).unwrap();
         assert_eq!(load(&path), (settings.validated(), true));
@@ -376,7 +394,7 @@ mod tests {
         fs::write(&path, r#"{"aim":{"hide":true},"crosshair":{"gap":-3}}"#).unwrap();
         let (settings, _) = load(&path);
         assert!(settings.aim.hide);
-        assert_eq!(settings.aim.button, MouseButton::Right);
+        assert_eq!(settings.aim.button, "Mouse2");
         assert_eq!(settings.crosshair.gap, -3);
         assert_eq!(settings.keys, Keys::default());
     }
@@ -412,6 +430,17 @@ mod tests {
         let mut kept = images_kept_aside(&path);
         kept.sort();
         assert_eq!(kept, ["0123456789abcdef.svg", "fedcba9876543210.png"]);
+    }
+
+    #[test]
+    fn the_aim_button_is_any_key_and_old_names_still_load() {
+        let path = folder().join("settings.json");
+        let old = [("Back", "Mouse4"), ("Right", "Mouse2"), ("Left", "Mouse1")];
+        let new = [("KeyV", "KeyV"), ("ShiftLeft", "ShiftLeft"), ("ArrowRight", "ArrowRight"), ("ArrowLeft", "ArrowLeft"), ("Mouse5", "Mouse5"), ("F13", "F13")];
+        for (saved, read) in old.into_iter().chain(new).chain([("V", "Mouse2"), ("bogus", "Mouse2"), ("", "Mouse2")]) {
+            fs::write(&path, format!(r#"{{"aim":{{"hide":true,"button":"{saved}"}}}}"#)).unwrap();
+            assert_eq!(load(&path).0.aim.button, read, "{saved}");
+        }
     }
 
     #[test]

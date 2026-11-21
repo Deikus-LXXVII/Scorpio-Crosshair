@@ -79,7 +79,7 @@ Choose **Your image** on the Crosshair tab and pick a PNG, JPG, WebP, GIF or SVG
 
 ### Controls
 
-**Hide while aiming** is for scoped weapons. Scorpio hides the crosshair while you hold the aim button, or switches it on each press. You choose the button: right, middle, back, forward or left. Scorpio reads the button through raw input, the way a game does, and sends nothing to the game. The setting is off by default.
+**Hide while aiming** is for scoped weapons. Scorpio hides the crosshair while you hold the aim button, or switches it on each press. To choose the button, click the field and press any mouse button or key. Scorpio reads it through raw input, the way a game does, and sends nothing to the game. The keyboard is read only when the aim is a key, and only while the crosshair is up. The setting is off by default.
 
 Global shortcuts work while the game is in front:
 

@@ -23,23 +23,23 @@ const USAGE_MOUSE: u16 = 2;
 const USAGE_KEYBOARD: u16 = 6;
 const KEY_UP: u16 = 1; // RI_KEY_BREAK
 const KEY_E0: u16 = 2; // RI_KEY_E0: the right-hand or navigation twin of a key
+const KEY_E1: u16 = 4; // RI_KEY_E1: the first half of Pause, which reads as Control
 
-/// (button, RI_MOUSE_*_DOWN flag, RI_MOUSE_*_UP flag, name as a key)
-const BUTTONS: [(MouseButton, u16, u16, &str); 5] = [
-    (MouseButton::Left, 0x001, 0x002, "Mouse1"),
-    (MouseButton::Right, 0x004, 0x008, "Mouse2"),
-    (MouseButton::Middle, 0x010, 0x020, "Mouse3"),
-    (MouseButton::Back, 0x040, 0x080, "Mouse4"),
-    (MouseButton::Forward, 0x100, 0x200, "Mouse5"),
+/// (button, RI_MOUSE_*_DOWN flag, RI_MOUSE_*_UP flag)
+const BUTTONS: [(MouseButton, u16, u16); 5] = [
+    (MouseButton::Left, 0x001, 0x002),
+    (MouseButton::Right, 0x004, 0x008),
+    (MouseButton::Middle, 0x010, 0x020),
+    (MouseButton::Back, 0x040, 0x080),
+    (MouseButton::Forward, 0x100, 0x200),
 ];
 
 #[derive(Default)]
 pub struct Listener {
     mouse: Vec<MouseButton>,
     keys: Vec<String>,
-    /// Physical keys now down, with their names: tells a repeat from a press,
-    /// and keeps "Shift" down until both Shift keys are up.
-    held: Vec<(u32, String)>,
+    /// Keys now down: tells a held key's repeats from a new press.
+    held: Vec<&'static str>,
     mouse_registered: bool,
     keyboard_registered: bool,
 }
@@ -50,9 +50,8 @@ impl Listener {
         self.mouse = mouse;
         self.keys = keys;
         self.held.clear();
-        // A keybind may be a mouse button ("Mouse4"); that needs the mouse too.
-        let want_mouse = !self.mouse.is_empty() || BUTTONS.iter().any(|button| self.keys.iter().any(|key| key == button.3));
-        let want_keyboard = self.keys.iter().any(|key| !key.starts_with("Mouse"));
+        let want_mouse = !self.mouse.is_empty();
+        let want_keyboard = !self.keys.is_empty();
         register(sink, USAGE_MOUSE, want_mouse, &mut self.mouse_registered);
         register(sink, USAGE_KEYBOARD, want_keyboard, &mut self.keyboard_registered);
     }
@@ -78,43 +77,54 @@ impl Listener {
         if raw.header.dwType == RIM_TYPEMOUSE.0 {
             // SAFETY: the header says this packet is the mouse member of the union.
             let flags = unsafe { raw.data.mouse.Anonymous.Anonymous.usButtonFlags };
-            for (button, down_flag, up_flag, name) in BUTTONS {
-                if flags & (down_flag | up_flag) == 0 {
-                    continue;
-                }
-                let down = flags & down_flag != 0;
-                if self.mouse.contains(&button) {
-                    report(Event::Mouse { button, down });
-                }
-                if self.keys.iter().any(|key| key == name) {
-                    report(Event::Key { code: name.to_string(), down });
+            for (button, down_flag, up_flag) in BUTTONS {
+                if flags & (down_flag | up_flag) != 0 && self.mouse.contains(&button) {
+                    report(Event::Mouse { button, down: flags & down_flag != 0 });
                 }
             }
         } else if raw.header.dwType == RIM_TYPEKEYBOARD.0 {
             // SAFETY: the header says this packet is the keyboard member of the union.
             let key = unsafe { raw.data.keyboard };
-            let Some(name) = key_name(key.VKey) else { return };
-            if !self.keys.contains(&name) {
-                return;
-            }
-            let physical = u32::from(key.MakeCode) | u32::from(key.Flags & KEY_E0) << 16 | u32::from(key.VKey) << 20;
-            let was_down = self.held.iter().any(|(_, held)| *held == name);
-            if key.Flags & KEY_UP == 0 {
-                if self.held.iter().any(|(id, _)| *id == physical) {
-                    return; // auto-repeat
-                }
-                self.held.push((physical, name.clone()));
-                if !was_down {
-                    report(Event::Key { code: name, down: true });
-                }
-            } else {
-                self.held.retain(|(id, _)| *id != physical);
-                if was_down && !self.held.iter().any(|(_, held)| *held == name) {
-                    report(Event::Key { code: name, down: false });
-                }
+            let Some(scan) = scan_of(key.VKey, key.MakeCode, key.Flags) else { return };
+            if let Some(event) = self.key(scan, key.Flags & KEY_UP == 0) {
+                report(event);
             }
         }
     }
+
+    /// A key at this scan code went down or up: an event when it is one
+    /// listened to, and not a held key's repeat.
+    fn key(&mut self, scan: u16, down: bool) -> Option<Event> {
+        let name = code_of(scan).filter(|name| self.keys.iter().any(|wanted| wanted == name))?;
+        if down == self.held.contains(&name) {
+            return None;
+        }
+        if down {
+            self.held.push(name);
+        } else {
+            self.held.retain(|held| *held != name);
+        }
+        Some(Event::Key { code: name.to_string(), down })
+    }
+}
+
+/// The table's scan code for a Raw Input key packet. Raw Input gives
+/// hardware codes: NumLock comes as 0x45, the code Pause has in the table's
+/// (Chromium's) convention; Pause itself comes as an E1 packet and then one
+/// with no key (0xFF), like the fake Shifts around PrintScreen. Neither Pause
+/// nor those is a key here.
+fn scan_of(vkey: u16, make: u16, flags: u16) -> Option<u16> {
+    match vkey {
+        0x90 => Some(0xE045),
+        0xFF => None,
+        _ if flags & KEY_E1 != 0 => None,
+        _ => Some(make | if flags & KEY_E0 != 0 { 0xE000 } else { 0 }),
+    }
+}
+
+/// The key at this scan code (0xE0.. for an extended key), by its position.
+fn code_of(scan: u16) -> Option<&'static str> {
+    crate::platform::KEYS.iter().find(|key| key.1 == scan).map(|key| key.0)
 }
 
 fn register(sink: HWND, usage: u16, wanted: bool, registered: &mut bool) {
@@ -135,55 +145,29 @@ fn register(sink: HWND, usage: u16, wanted: bool, registered: &mut bool) {
     }
 }
 
-/// The platform-neutral name of a virtual key, as keybinds store it. Left and
-/// right Shift, Control and Alt share one name. Punctuation is named by its
-/// US-layout character.
-pub fn key_name(vkey: u16) -> Option<String> {
-    let fixed = match vkey {
-        0x41..=0x5A | 0x30..=0x39 => return Some(char::from(vkey as u8).to_string()),
-        0x70..=0x87 => return Some(format!("F{}", vkey - 0x6F)),
-        0x60..=0x69 => return Some(format!("Numpad{}", vkey - 0x60)),
-        0x10 | 0xA0 | 0xA1 => "Shift",
-        0x11 | 0xA2 | 0xA3 => "Control",
-        0x12 | 0xA4 | 0xA5 => "Alt",
-        0x5B | 0x5C => "Super",
-        0x08 => "Backspace",
-        0x09 => "Tab",
-        0x0D => "Enter",
-        0x13 => "Pause",
-        0x14 => "CapsLock",
-        0x1B => "Escape",
-        0x20 => "Space",
-        0x21 => "PageUp",
-        0x22 => "PageDown",
-        0x23 => "End",
-        0x24 => "Home",
-        0x25 => "Left",
-        0x26 => "Up",
-        0x27 => "Right",
-        0x28 => "Down",
-        0x2C => "PrintScreen",
-        0x2D => "Insert",
-        0x2E => "Delete",
-        0x6A => "NumpadMultiply",
-        0x6B => "NumpadAdd",
-        0x6D => "NumpadSubtract",
-        0x6E => "NumpadDecimal",
-        0x6F => "NumpadDivide",
-        0x90 => "NumLock",
-        0x91 => "ScrollLock",
-        0xBA => ";",
-        0xBB => "=",
-        0xBC => ",",
-        0xBD => "-",
-        0xBE => ".",
-        0xBF => "/",
-        0xC0 => "`",
-        0xDB => "[",
-        0xDC => "\\",
-        0xDD => "]",
-        0xDE => "'",
-        _ => return None, // includes 0xFF, the filler in multi-part scan codes
-    };
-    Some(fixed.to_string())
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn keys_are_read_by_position() {
+        assert_eq!(code_of(0x2C), Some("KeyZ"), "the key left of X, whatever the layout prints on it");
+        assert_eq!(code_of(0x47), Some("Numpad7"), "the keypad with NumLock off too");
+        assert_eq!(code_of(0xE047), Some("Home"));
+        assert_eq!(code_of(0xE02A), None, "the fake Shift before PrintScreen");
+        assert_eq!(scan_of(0x90, 0x45, 0).and_then(code_of), Some("NumLock"), "not Pause");
+        assert_eq!(scan_of(0x13, 0x1D, KEY_E1), None, "Pause's first half is not Control");
+        assert_eq!(scan_of(0xFF, 0x45, 0), None);
+        assert_eq!(scan_of(0x24, 0x47, KEY_E0).and_then(code_of), Some("Home"));
+    }
+
+    #[test]
+    fn a_held_key_counts_once_and_others_are_ignored() {
+        let mut listener = Listener { keys: vec!["ShiftLeft".into()], ..Listener::default() };
+        let key = |down: bool| Some(Event::Key { code: "ShiftLeft".into(), down });
+        assert_eq!(listener.key(0x2A, true), key(true));
+        assert_eq!(listener.key(0x2A, true), None, "a repeat");
+        assert_eq!(listener.key(0x36, true), None, "the right Shift is another key");
+        assert_eq!(listener.key(0x2A, false), key(false));
+    }
 }

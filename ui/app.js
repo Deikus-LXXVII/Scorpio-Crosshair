@@ -3,7 +3,7 @@
 // validated settings. Changes made elsewhere (shortcuts) arrive as events.
 'use strict'
 
-const { h, setting, toggle, segmented, select, slider, colorButton, keybind, dialog, toast } = window.ui
+const { h, setting, toggle, segmented, select, slider, colorButton, keybind, aimbind, dialog, toast } = window.ui
 const tauri = window.__TAURI__
 const invoke = ( name, args, options ) => tauri.core.invoke( name, args, options )
 
@@ -722,7 +722,6 @@ const pickWindow = async () => {
 
 }
 
-const BUTTONS = [ [ 'Right', 'Right button' ], [ 'Middle', 'Middle button' ], [ 'Back', 'Back side button' ], [ 'Forward', 'Forward side button' ], [ 'Left', 'Left button' ] ]
 const SHORTCUTS = [
 	[ 'lock', 'Unlock or lock position', 'Unlocked, drag the crosshair anywhere.' ],
 	[ 'center', 'Centre exactly', 'Puts the crosshair back on the exact centre of the screen.' ],
@@ -741,14 +740,14 @@ const controlsTab = () => {
 		h( 'h2.t-h1-app', { text: 'Controls' } ),
 		h( 'h2.t-h4', { text: 'Aiming' } ),
 		h( 'div.slab.flush', {},
-			setting( 'Hide while aiming', 'For scoped weapons. Scorpio reads the button the way every game does and sends nothing to the game.', toggle( aim.hide, v => {
+			setting( 'Hide while aiming', 'For scoped weapons. Scorpio reads the button or key the way every game does and sends nothing to the game.', toggle( aim.hide, v => {
 
 				aim.hide = v
 				save()
 				render()
 
 			}, { label: 'Hide while aiming' } ) ),
-			setting( 'Aim button', null, select( BUTTONS, aim.button, v => {
+			setting( 'Aim button', 'Click, then press any key or mouse button. Escape cancels.', aimbind( aim.button, v => {
 
 				aim.button = v
 				save()

@@ -122,7 +122,7 @@ pub struct App {
     shown: Shown,
     /// Width and height of the bitmap last shown.
     shown_size: (u32, u32),
-    listening: Option<Vec<MouseButton>>,
+    listening: Option<(Vec<MouseButton>, Vec<String>)>,
     following: Option<bool>,
     /// The window in front changed since the overlay was last raised.
     raise: bool,
@@ -242,6 +242,18 @@ impl App {
         self.focus.visible || self.settings.detect.always
     }
 
+    /// The aim button or key went down or up.
+    fn aim(&mut self, down: bool) {
+        if !self.settings.aim.hide {
+            return;
+        }
+        match self.settings.aim.mode {
+            AimMode::Hold => self.aiming = down,
+            AimMode::Toggle if down => self.aiming = !self.aiming,
+            AimMode::Toggle => {}
+        }
+    }
+
     /// A game may be in front: one is, or Always show is on and draws over
     /// games Scorpio does not recognise. Automatic updates wait for neither.
     pub fn maybe_playing(&self) -> bool {
@@ -284,15 +296,15 @@ impl App {
                 }
             }
             Event::Mouse { button, down } => {
-                if self.settings.aim.hide && button == self.settings.aim.button {
-                    match self.settings.aim.mode {
-                        AimMode::Hold => self.aiming = down,
-                        AimMode::Toggle if down => self.aiming = !self.aiming,
-                        AimMode::Toggle => {}
-                    }
+                if MouseButton::from_name(&self.settings.aim.button) == Some(button) {
+                    self.aim(down);
                 }
             }
-            Event::Key { .. } => {}
+            Event::Key { code, down } => {
+                if code == self.settings.aim.button {
+                    self.aim(down);
+                }
+            }
             Event::Moved { x, y } => {
                 // A drag cut short by locking reports the slab's corner; the
                 // crosshair has already gone back to its own size.
@@ -489,6 +501,21 @@ impl App {
 
     /// Sends what changed since the last step.
     fn sync(&mut self, effects: &mut Effects) {
+        // Only the aim button or key, only while it can matter: a keyboard is
+        // read only when the aim is a key.
+        let aim = &self.settings.aim.button;
+        let listen = match MouseButton::from_name(aim) {
+            _ if !(self.settings.aim.hide && self.over_something() && self.locked) => (Vec::new(), Vec::new()),
+            Some(button) => (vec![button], Vec::new()),
+            None => (Vec::new(), vec![aim.clone()]),
+        };
+        if self.listening.as_ref() != Some(&listen) {
+            effects.commands.push(Command::ListenTo { mouse: listen.0.clone(), keys: listen.1.clone() });
+            self.listening = Some(listen);
+            // The release of what was held will not come: start from not aiming.
+            self.aiming = false;
+        }
+
         let want = self.wanted();
         // A Show raises the overlay too; otherwise raise it when the window
         // in front changed and the crosshair stays.
@@ -530,11 +557,6 @@ impl App {
             self.capture_hidden = Some(self.settings.hide_from_capture);
         }
 
-        let listen = if self.settings.aim.hide && self.over_something() && self.locked { vec![self.settings.aim.button] } else { Vec::new() };
-        if self.listening.as_ref() != Some(&listen) {
-            effects.commands.push(Command::ListenTo { mouse: listen.clone(), keys: Vec::new() });
-            self.listening = Some(listen);
-        }
 
         // The game window is followed only while it matters: centring on it,
         // with a game in front.
@@ -671,7 +693,7 @@ mod tests {
         settings.games.push(Game { name: "Game".into(), fingerprint: focus::fingerprint(&window(1, "game", false)), ..Game::default() });
         let mut app = App::new(settings, OWN);
         app.capture_hidden = Some(false);
-        app.listening = Some(Vec::new());
+        app.listening = Some((Vec::new(), Vec::new()));
         app.following = Some(false);
         app
     }
@@ -741,6 +763,31 @@ mod tests {
         assert_eq!(app.active_crosshair(), &red);
         app.event(Event::Foreground(Some(window(2, "browser", false))));
         assert_eq!(app.active_crosshair(), &app.settings.crosshair);
+    }
+
+    #[test]
+    fn a_key_can_be_the_aim_and_only_then_is_the_keyboard_read() {
+        let mut app = app();
+        app.settings.aim.hide = true;
+        app.settings.aim.button = "ShiftLeft".into();
+        let effects = app.event(Event::Foreground(Some(window(1, "game", false))));
+        assert!(effects.commands.contains(&Command::ListenTo { mouse: vec![], keys: vec!["ShiftLeft".into()] }));
+        assert_eq!(shows(&app.event(Event::Key { code: "ShiftLeft".into(), down: true })), Some(false));
+        assert_eq!(shows(&app.event(Event::Mouse { button: MouseButton::Right, down: true })), None, "the right button is no longer the aim");
+        assert_eq!(shows(&app.event(Event::Key { code: "ShiftLeft".into(), down: false })), Some(true));
+        assert_eq!(shows(&app.event(Event::Key { code: "KeyV".into(), down: true })), None);
+    }
+
+    #[test]
+    fn changing_the_aim_while_aiming_shows_the_crosshair_again() {
+        let mut app = app();
+        app.settings.aim.hide = true;
+        app.settings.aim.mode = AimMode::Toggle;
+        app.event(Event::Foreground(Some(window(1, "game", false))));
+        assert_eq!(shows(&app.event(Event::Mouse { button: MouseButton::Right, down: true })), Some(false));
+        let mut settings = app.settings.clone();
+        settings.aim.button = "KeyV".into();
+        assert_eq!(shows(&app.replace_settings(settings)), Some(true));
     }
 
     #[test]
@@ -1110,7 +1157,7 @@ mod tests {
     fn with_always_show_a_toggled_aim_survives_switching_between_other_windows() {
         let mut app = app();
         app.settings.detect.always = true;
-        app.settings.aim = crate::store::Aim { hide: true, button: MouseButton::Right, mode: AimMode::Toggle };
+        app.settings.aim = crate::store::Aim { hide: true, button: "Mouse2".into(), mode: AimMode::Toggle };
         app.event(Event::Foreground(Some(window(2, "browser", false))));
         assert_eq!(shows(&app.event(Event::Mouse { button: MouseButton::Right, down: true })), Some(false));
         assert_eq!(shows(&app.event(Event::Foreground(Some(window(3, "editor", false))))), None, "still aiming");

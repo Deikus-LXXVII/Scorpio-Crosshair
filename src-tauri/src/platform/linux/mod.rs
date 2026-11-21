@@ -161,10 +161,6 @@ impl State {
                 self.refresh_foreground();
                 None
             }
-            XEvent::MappingNotify(_) => {
-                self.input.load_keymap(&self.conn);
-                None
-            }
             XEvent::Error(e) => {
                 // Mostly BadWindow from a window that closed while we read it.
                 log::debug!("X error: {e:?}");

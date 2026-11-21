@@ -93,6 +93,7 @@ h2.t-h4 + .help.lede { margin: 0 0 12px; }
 .setting.stack .code-row { margin-top: 0; }
 
 .keybind[aria-invalid="true"] { border-color: var(--porphyry-hi); }
+.keybind .hint.value { color: var(--marble); }   /* a mouse button, named in words: the value, not a prompt */
 
 /* The problem report, read in full: 20 lines of 16 and the field's 8 above and below. */
 .dialog.wide { width: min(760px, 100%); }
