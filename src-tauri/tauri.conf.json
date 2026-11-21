@@ -36,8 +36,7 @@
         "installMode": "currentUser",
         "installerIcon": "icons/icon.ico",
         "languages": [
-          "English",
-          "Russian"
+          "English"
         ],
         "displayLanguageSelector": false,
         "headerImage": "installer/header.bmp",

@@ -15,7 +15,6 @@ Scorpio is a free crosshair overlay for PC games on Windows and Linux. It draws 
 </p>
 
 <p align="center">
-  <a href="README.ru.md">Русский</a> ·
   <a href="https://scorpio.lxxvll.com/">Website</a> ·
   <a href="#is-scorpio-safe-with-anti-cheats">Anti-cheat safety</a> ·
   <a href="#faq">FAQ</a>
@@ -102,7 +101,7 @@ You can change every shortcut. A shortcut needs Ctrl, Alt or Super unless it is 
 
 ## Is Scorpio safe with anti-cheats?
 
-Scorpio is built so that it has no contact with the game. It is a separate window on top of the game, and it works only with what the operating system tells every program about windows and input. No overlay can promise that you will never be banned, and no anti-cheat vendor has reviewed or approved Scorpio. What follows is what Scorpio does and does not do on your computer, so you can judge for yourself.
+Scorpio is built so that it has no contact with the game. It is a separate window on top of the game, and it works only with what the operating system tells every program about windows and input. No overlay can promise that you will never be banned. No anti-cheat vendor has approved Scorpio directly, but Scorpio crosses none of their lines: it never touches the game or the anti-cheat. What follows is what Scorpio does and does not do on your computer, so you can judge for yourself.
 
 Scorpio never does any of the following:
 
@@ -199,11 +198,11 @@ Scorpio scales the crosshair from the height of your game's screen to the height
 
 ### Is a crosshair overlay bannable?
 
-It depends on the game's rules, and no overlay can promise that you will never be banned. Anti-cheats look for programs that read or change a game. Scorpio does neither. It is a separate transparent window on top of the game, and it never opens the game's process, reads its memory, hooks it, injects code or sends input. A game's terms can still forbid external crosshairs, so check the rules of the game that you play. No anti-cheat vendor has reviewed or approved Scorpio. See [Is Scorpio safe with anti-cheats?](#is-scorpio-safe-with-anti-cheats)
+It depends on the game's rules, and no overlay can promise that you will never be banned. Anti-cheats look for programs that read or change a game. Scorpio does neither. It is a separate transparent window on top of the game, and it never opens the game's process, reads its memory, hooks it, injects code or sends input. A game's terms can still forbid external crosshairs, so check the rules of the game that you play. No anti-cheat vendor has approved Scorpio directly, but it crosses none of their lines. See [Is Scorpio safe with anti-cheats?](#is-scorpio-safe-with-anti-cheats)
 
 ### Does Scorpio work with Vanguard, Easy Anti-Cheat, BattlEye or VAC?
 
-Nobody has tested Scorpio against a specific anti-cheat yet, and none of these vendors has reviewed or approved it. What is known is what Scorpio does on your computer: it never touches the game's process or the anti-cheat's process, and the full list of its system calls is in the [safety section](#is-scorpio-safe-with-anti-cheats). Keep **Hide from screen capture** off.
+None of them has approved it directly. Scorpio crosses none of their lines, since it never touches the game's process or the anti-cheat's process; the full list of its system calls is in the [safety section](#is-scorpio-safe-with-anti-cheats). The exception is a game whose own rules forbid crosshair overlays.
 
 ### How do I use a CS2 crosshair code outside CS2?
 

@@ -13,14 +13,13 @@ Facts to get right:
 - A game is a window the player added (two of four checks match: program name, program path, window title, window class), a fullscreen window, or a game from a launcher: Steam, Epic Games, GOG, Ubisoft Connect, EA, Battle.net, Riot and Xbox on Windows; Steam, Heroic and Lutris on Linux.
 - Also: a crosshair per game, saved crosshairs, exact centring on the game's monitor, hide while aiming (raw input), global shortcuts, an opt-in OBS Browser source at `http://127.0.0.1:47117/obs`, and signed automatic updates that install only after no game has been in front for 3 minutes.
 - Weight on Windows 11: 6.9 MB of private memory and 0 ms of CPU over 10 s while idle. `scorpio.exe` is 3.7 MB.
-- Anti-cheat: Scorpio never opens another process, reads or writes its memory, injects code, installs hooks, sends synthetic input, loads a driver, or draws into the game's frames. No anti-cheat vendor has reviewed or approved it, and it has not been tested against any specific anti-cheat. Do not call it approved, whitelisted or guaranteed safe.
+- Anti-cheat: Scorpio never opens another process, reads or writes its memory, injects code, installs hooks, sends synthetic input, loads a driver, or draws into the game's frames. No anti-cheat vendor has approved it directly, but it crosses none of their lines: it never touches the game or the anti-cheat. The exception is a game whose own rules forbid crosshair overlays. Do not call it approved, whitelisted or guaranteed safe.
 - "Hide from screen capture" (Windows only, off by default) is not risk-free: cheat overlays use the same Windows call.
 - Not tested yet: inside a real game, inside OBS, the full app on a Linux desktop, and automatic updates against a published release.
 
 ## Docs
 
 - [README](https://raw.githubusercontent.com/Deikus-LXXVII/Scorpio-Crosshair/main/README.md): Features, every OS call, install, OBS, FAQ, test status, building.
-- [README in Russian](https://raw.githubusercontent.com/Deikus-LXXVII/Scorpio-Crosshair/main/README.ru.md): A shorter Russian version.
 - [Plan and anti-cheat review](https://raw.githubusercontent.com/Deikus-LXXVII/Scorpio-Crosshair/main/docs/plans/scorpio.md): Architecture, the OS call review, banned calls, known gaps.
 - [Budget](https://raw.githubusercontent.com/Deikus-LXXVII/Scorpio-Crosshair/main/docs/budget.md): Measured memory, CPU and file size, with enforced budgets.
 

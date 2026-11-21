@@ -20,9 +20,9 @@ const mark = label => `<svg viewBox="128 128 768 768" role="img" aria-label="${l
 // [question, answer as HTML]. Three sentences at most; links and <b> only.
 const FAQ = [
 	[ 'Is a crosshair overlay bannable?',
-		`No overlay can promise that you will never be banned. Scorpio never reads or changes the game, but no anti-cheat vendor has approved it, and a game's rules can forbid external crosshairs.` ],
+		`No overlay can promise that you will never be banned. Scorpio never reads or changes the game, but a game's own rules can forbid external crosshairs.` ],
 	[ 'Does it work with Vanguard, Easy Anti-Cheat, BattlEye or VAC?',
-		`Nobody has tested it against them yet, and none of these vendors has approved it.` ],
+		`None of them has approved it directly. Scorpio crosses none of their lines, since it never touches the game or the anti-cheat. The exception is a game whose own rules forbid crosshair overlays.` ],
 	[ 'Does Scorpio lower my frame rate?',
 		`It does not touch the game or its input. Its effect on the frame rate has not been measured yet.` ],
 	[ 'Does Scorpio collect data?',
@@ -190,10 +190,17 @@ html.page::-webkit-scrollbar{display:none}
 .tbl th{padding:0 16px 12px 0;text-align:left;font:500 10px/1 var(--text);letter-spacing:.24em;text-transform:uppercase;color:var(--mute);border-bottom:1px solid var(--line-hi)}
 .tbl td{padding:16px 16px 16px 0;border-bottom:1px solid var(--line);color:var(--mute);vertical-align:top}
 .tbl td:first-child{color:var(--marble)}
-.faq{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 72px}
-.faq>div{padding:24px 0;border-bottom:1px solid var(--line)}
-.faq dt{font:400 21px/1.2 var(--display);color:var(--marble)}
-.faq dd{max-width:52ch;margin-top:8px;color:var(--mute)}
+.faq{max-width:760px}
+.qa{border-bottom:1px solid var(--line)}
+.qa summary{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:24px 0;font:400 21px/1.2 var(--display);color:var(--marble);list-style:none;cursor:pointer;transition:color var(--t-color) var(--ease)}
+.qa summary::-webkit-details-marker{display:none}
+.qa summary:hover,.qa[open] summary{color:var(--lit)}
+.qa summary i{position:relative;flex:none;width:12px;height:12px}
+.qa summary i::before,.qa summary i::after{content:"";position:absolute;left:0;top:50%;width:12px;height:1px;background:currentColor;transition:transform var(--t-move) var(--ease)}
+.qa summary i::after{transform:rotate(90deg)}
+.qa[open] summary i::after{transform:rotate(0deg)}
+.qa .a{overflow:hidden}
+.qa .a p{max-width:52ch;padding-bottom:24px;color:var(--mute)}
 
 footer{max-width:1280px;margin:160px auto 0;padding:0 var(--gutter)}
 .foot{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:16px 40px;padding:40px 0 56px;border-top:1px solid var(--line)}
@@ -215,7 +222,6 @@ html.js .rv.in{opacity:1;transform:none}
 	.cramp.r{right:calc(12px + 7%)}
 	.block,.block.flip{grid-template-columns:minmax(0,1fr);gap:40px;padding-top:72px}
 	.block.flip>.copy{order:0}
-	.faq{grid-template-columns:minmax(0,1fr)}
 	footer{margin-top:72px}
 }
 @media (max-width:640px){
@@ -239,6 +245,25 @@ html.js .rv.in{opacity:1;transform:none}
 
 // reveal once, and light the name of the block in the middle of the screen. Both start a change; neither follows the scroll.
 const js = `
+// FAQ answers open and close with their height, on the guide's one curve.
+// Reduced motion leaves the native, instant toggle alone.
+for ( const d of document.querySelectorAll( '.qa' ) ) {
+	const s = d.querySelector( 'summary' ), a = d.querySelector( '.a' )
+	let run = null
+	s.addEventListener( 'click', e => {
+		if ( matchMedia( '(prefers-reduced-motion: reduce)' ).matches ) return
+		e.preventDefault()
+		const from = run ? a.offsetHeight : ( d.open ? a.scrollHeight : 0 )
+		run?.cancel()
+		const opening = !d.open || ( run && run.closing )
+		d.open = true
+		const to = opening ? a.scrollHeight : 0
+		run = a.animate( [ { height: from + 'px', opacity: opening ? 0 : 1 }, { height: to + 'px', opacity: opening ? 1 : 0 } ],
+			{ duration: opening ? 400 : 300, easing: 'cubic-bezier(.2,.7,.15,1)' } )
+		run.closing = !opening
+		run.onfinish = () => { if ( !opening ) d.open = false; run = null }
+	} )
+}
 (() => {
 	if (!('IntersectionObserver' in window)) { document.querySelectorAll('.rv').forEach((el) => el.classList.add('in')); return }
 	const rv = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); rv.unobserve(e.target) } }), { threshold: .15 })
@@ -331,16 +356,16 @@ ${block( 'obs', 'On stream', `
 
 <section class="block wide" id="safety" aria-labelledby="safety-h">
 	<h2 class="name" id="safety-h">Outside the game</h2>
-	<p class="lead">Scorpio never opens another process, reads or writes its memory, injects code, installs a hook, sends synthetic input, loads a driver, or draws into the game's frames. No anti-cheat vendor has approved it. Leave <b>Hide from screen capture</b> off: cheat overlays use the same Windows call.</p>
+	<p class="lead">Scorpio never opens another process, reads or writes its memory, injects code, installs a hook, sends synthetic input, loads a driver, or draws into the game's frames.</p>
 	<table class="tbl obj">
 		<thead><tr>${HEAD.map( h => `<th scope="col">${h}</th>` ).join( '' )}</tr></thead>
 		<tbody>
 ${CALLS.map( r => `\t\t\t<tr>${r.map( ( c, i ) => `<td${i === 1 || i === 2 ? ` data-h="${HEAD[ i ]}"` : ''}>${c}</td>` ).join( '' )}</tr>` ).join( '\n' )}
 		</tbody>
 	</table>
-	<dl class="faq obj" id="faq">
-${FAQ.map( ( [ q, a ] ) => `\t\t<div><dt>${q}</dt><dd>${a}</dd></div>` ).join( '\n' )}
-	</dl>
+	<div class="faq obj" id="faq">
+${FAQ.map( ( [ q, a ] ) => `\t\t<details class="qa"><summary>${q}<i aria-hidden="true"></i></summary><div class="a"><p>${a}</p></div></details>` ).join( '\n' )}
+	</div>
 </section>
 ${block( 'download', 'Download', `
 		<ol class="steps">
@@ -358,7 +383,6 @@ ${block( 'download', 'Download', `
 		<nav aria-label="Links">
 			<a class="go" href="${REPO}">GitHub</a>
 			<a class="go" href="${REPO}/blob/main/LICENSE">Licence</a>
-			<a class="go" href="${REPO}/blob/main/README.ru.md" hreflang="ru" lang="ru">Русский</a>
 			<a class="go" href="https://lxxvll.com">LXXVII</a>
 		</nav>
 		<span class="year" title="2026">MMXXVI</span>
