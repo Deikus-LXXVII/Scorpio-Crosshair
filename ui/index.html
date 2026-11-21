@@ -1,1 +1,35 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Scorpio Settings</title></head><body></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scorpio</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="components.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body class="app">
+<header class="titlebar" data-tauri-drag-region>
+	<span class="title" data-tauri-drag-region><b>Scorpio</b></span>
+	<span class="status" id="status" data-tauri-drag-region><i class="dot"></i><span></span></span>
+	<div class="window-controls">
+		<button type="button" id="minimize" aria-label="Minimize"><svg viewBox="0 0 10 10"><path d="M0 5.5h10"/></svg></button>
+		<button type="button" id="maximize" aria-label="Maximize"><svg viewBox="0 0 10 10"><path d="M.5 .5h9v9h-9z"/></svg></button>
+		<button type="button" id="close" class="close" aria-label="Close"><svg viewBox="0 0 10 10"><path d="M0 0l10 10M10 0L0 10"/></svg></button>
+	</div>
+</header>
+
+<nav class="tabs" role="tablist" aria-label="Settings">
+	<button role="tab" type="button" data-tab="crosshair" aria-selected="true">Crosshair</button>
+	<button role="tab" type="button" data-tab="games" aria-selected="false">Games</button>
+	<button role="tab" type="button" data-tab="controls" aria-selected="false">Controls</button>
+	<button role="tab" type="button" data-tab="system" aria-selected="false">System</button>
+</nav>
+
+<main id="view"></main>
+
+<div id="toast" class="toast" role="status" hidden></div>
+<script src="ui.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

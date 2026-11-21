@@ -1,0 +1,73 @@
+/* Scorpio's settings window: layout only. Every colour, size, shape and
+   curve comes from tokens.css and components.css. */
+
+html, body { height: 100%; }
+body { display: grid; grid-template-rows: auto auto 1fr; overflow: hidden; background: var(--basalt); color: var(--marble); font: 300 var(--fs-body-app)/1.5 var(--text); }
+
+.titlebar .status { display: flex; flex: 1; align-items: center; justify-content: center; gap: 10px; min-width: 0; padding: 0 16px; font-size: var(--fs-small); color: var(--mute); white-space: nowrap; overflow: hidden; }
+.titlebar .status span { overflow: hidden; text-overflow: ellipsis; }
+
+#view { overflow-y: auto; scrollbar-gutter: stable; }
+
+h2.t-h4 { margin: 28px 0 12px; color: var(--marble); }
+.slab.flush { background: var(--stone); }
+.section-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.section-head h2 { margin: 0; }
+.help.lede { margin: 8px 0 0; }
+
+/* Crosshair: the preview stays in view on the left while the controls scroll */
+.crosshair-tab { display: grid; grid-template-columns: minmax(280px, 380px) minmax(0, 1fr); gap: 36px; padding: 28px; align-items: start; }
+.stage { position: sticky; top: 28px; display: flex; flex-direction: column; gap: 16px; }
+.stage .select { max-width: none; width: 100%; }
+.well { display: grid; place-items: center; aspect-ratio: 1; overflow: hidden; background: var(--cut); border-radius: var(--radius); box-shadow: inset 0 0 0 1px var(--line-hi); }
+.well svg { display: block; }
+.well.cramps { overflow: visible; }
+.stage-row { display: flex; justify-content: center; }
+.code-row { display: flex; gap: 8px; }
+.code-row .input { flex: 1; min-width: 0; font-family: var(--mono); font-size: var(--fs-small); }
+.controls { min-width: 0; }
+.controls > h2.t-h4:first-child { margin-top: 0; }
+.controls .setting.stack .slider-row { max-width: none; }
+
+.saved { margin-top: 28px; }
+.saved .tiles { margin-top: 14px; }
+.saved .tile .thumb { overflow: hidden; }
+.saved > .help { margin-top: 10px; }
+.saved-edit { display: flex; gap: 8px; margin-top: 14px; }
+.saved-edit .input { flex: 1; min-width: 0; }
+
+/* Pages: one column of settings */
+.page { max-width: 760px; padding: 28px; }
+.page > h2.t-h1-app { margin: 0; }
+.page > .section-head + .help.lede, .page > h2.t-h1-app + h2.t-h4 { margin-top: 20px; }
+
+.games { margin-top: 20px; }
+.game-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 24px; padding: 14px 22px; }
+.game-row + .game-row { border-top: 1px solid var(--line); }
+.game-name { min-width: 0; }
+.game-name .path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.game-own { display: flex; align-items: center; gap: 12px; }
+.game-actions { display: flex; gap: 8px; justify-content: flex-end; min-width: 200px; }
+.page .empty { margin-top: 20px; background: var(--stone); border-radius: var(--radius); }
+
+.window-list { display: flex; flex-direction: column; max-height: 50vh; margin-top: 16px; overflow-y: auto; border-top: 1px solid var(--line); }
+.window-item { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; text-align: left; color: var(--mute); background: none; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; cursor: pointer; transition: background-color var(--t-color) var(--ease), color var(--t-color) var(--ease); }
+.window-item b { font-weight: 500; color: var(--marble); }
+.window-item span { font-size: var(--fs-small); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.window-item:hover, .window-item:focus-visible { background: var(--raised); color: var(--marble); }
+
+.inline-actions { display: flex; gap: 8px; grid-column: 2; grid-row: 1 / span 2; }
+.about { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 36px; padding-top: 24px; border-top: 1px solid var(--line); }
+.about .btn { margin-top: 12px; }
+
+.keybind[aria-invalid="true"] { border-color: var(--porphyry-hi); }
+
+#toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); max-width: calc(100% - 48px); }
+#toast[hidden] { display: none; }
+
+@media (max-width: 860px) {
+	.crosshair-tab { grid-template-columns: 1fr; }
+	.stage { position: static; max-width: 420px; }
+	.game-row { grid-template-columns: 1fr; gap: 10px; }
+	.game-actions { justify-content: flex-start; min-width: 0; }
+}

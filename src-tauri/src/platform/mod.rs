@@ -7,6 +7,7 @@
 
 use crate::core::focus::WindowInfo;
 use crate::core::raster::Bitmap;
+use serde::{Deserialize, Serialize};
 use std::sync::mpsc::Sender;
 
 #[cfg(windows)]
@@ -24,7 +25,7 @@ mod stub;
 #[cfg(not(any(windows, target_os = "linux")))]
 pub use self::stub::start;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MouseButton {
     Left,
     Right,
