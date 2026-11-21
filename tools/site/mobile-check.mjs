@@ -203,6 +203,7 @@ function inPage(CEIL) {
 		const tb = t.getBoundingClientRect();
 		if (tb.right > W + .5) out.push(`the table runs outside the viewport (right edge ${Math.round(tb.right)})`);
 		for (const c of t.querySelectorAll("tbody th, tbody td")) {
+			if (!c.getClientRects().length) continue; // not drawn at this width (display:none), so not squeezed
 			const b = c.getBoundingClientRect();
 			if (b.right > tb.right + .5 || b.left < tb.left - .5) out.push(`a table cell runs outside its table: ${name(c)}`);
 			if (b.width < 100) out.push(`a table cell only ${Math.round(b.width)}px wide: ${name(c)}`);

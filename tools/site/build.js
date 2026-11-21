@@ -57,6 +57,7 @@ const CMP = [
 	[ 'Systems', 'Windows, Linux', 'Windows, macOS', 'Windows, Linux', 'Windows, macOS, Linux' ],
 ]
 
+
 // Efficiency, measured by the owner on a Windows 11 gaming PC, 2026-11-21: each program idle with its crosshair shown,
 // no settings window, three runs, 25 s after start; private memory and CPU time over the next 30 s, summed over all
 // of a program's processes. The chart shows the middle of the three runs; the runs are kept here as measured.
@@ -389,6 +390,7 @@ html.page::-webkit-scrollbar{display:none}
 .cmp .tbl tbody th{width:28%}
 .cmp .tbl td{width:18%}
 .cmp .tbl .me{color:var(--marble)}
+.cmp .vs{display:none}
 .cmp figcaption{margin-top:16px;color:var(--mute)}
 
 /* the efficiency chart: a table drawn as bars, one row a program, two measures side by side on their own scales */
@@ -455,9 +457,20 @@ html.js .rv.in{opacity:1;transform:none}
 	.tbl tbody th,.tbl td{padding:0;border:0}
 	.tbl td{margin-top:4px}
 	.tbl .tech{width:auto;margin-top:8px}
-	.cmp .tbl tbody th,.cmp .tbl td{width:auto}
-	.cmp .tbl td::before{content:attr(data-label) ': ';color:var(--mute)}
-	.cmp .tbl td{color:var(--marble)}
+	/* a phone shows Scorpio next to one other app, picked with the switch */
+	.cmp .vs{display:flex;margin:0 0 16px;border-bottom:1px solid var(--line-hi)}
+	.cmp .vs button{flex:1;min-height:52px;padding:0 4px;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;background:none;font:400 14px/20px var(--text);color:var(--mute);cursor:pointer}
+	.cmp .vs button[aria-pressed="true"]{color:var(--marble);border-bottom-color:var(--porphyry-hi)}
+	.cmp .vs button:focus-visible{outline:1px solid var(--marble);outline-offset:-1px}
+	.cmp .tbl thead{display:block}
+	.cmp .tbl tr{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1fr);column-gap:12px;padding:12px 0}
+	.cmp .tbl tr:first-child{border-top:0}
+	.cmp .tbl thead tr{padding:0 0 8px;border-bottom:1px solid var(--line-hi)}
+	.cmp .tbl thead th,.cmp .tbl thead td{padding:0;border:0}
+	.cmp .tbl tbody th,.cmp .tbl td{width:auto;margin:0}
+	.cmp[data-vs="1"] .tbl tr>:is(:nth-child(4),:nth-child(5)),
+	.cmp[data-vs="2"] .tbl tr>:is(:nth-child(3),:nth-child(5)),
+	.cmp[data-vs="3"] .tbl tr>:is(:nth-child(3),:nth-child(4)){display:none}
 }
 @media (max-width:640px){
 	:root{--fs-hero:clamp(56px,19vw,96px)}
@@ -465,6 +478,12 @@ html.js .rv.in{opacity:1;transform:none}
 ${HERO_CSS[ HERO ]}
 /* a phone on its side (proposed; the guide's least height of 620px would push the button below the fold): the tablet
    still stops short of the fold, and the copy sits low on the left, clear of the cue */
+/* the narrowest phones: the feature's name above its two values */
+@media (max-width:380px){
+	.cmp .tbl tr{grid-template-columns:minmax(0,1fr) minmax(0,1fr);row-gap:4px}
+	.cmp .tbl tbody th{grid-column:1/-1}
+	.cmp .tbl thead td{display:none}
+}
 @media (max-height:500px) and (orientation:landscape){
 	.tablet{min-height:0}
 	.hero-b{--vy:38%}
@@ -484,6 +503,14 @@ ${HERO_CSS[ HERO ]}
 
 // reveal once, and light the name of the block in the middle of the screen. Both start a change; neither follows the scroll.
 const js = `
+// The comparison on a phone: Scorpio next to the app picked in the switch.
+for ( const f of document.querySelectorAll( '.cmp' ) ) {
+	const buttons = f.querySelectorAll( '.vs button' )
+	for ( const b of buttons ) b.addEventListener( 'click', () => {
+		f.dataset.vs = b.dataset.vs
+		for ( const o of buttons ) o.setAttribute( 'aria-pressed', String( o === b ) )
+	} )
+}
 // FAQ answers open and close with their height, on the guide's one curve.
 // Reduced motion leaves the native, instant toggle alone.
 for ( const d of document.querySelectorAll( '.qa' ) ) {
@@ -585,8 +612,9 @@ ${block( 'crosshair', 'The crosshair', `
 ${CALLS.map( ( [ need, how, tech ] ) => `\t\t\t<tr><th scope="row">${need}</th><td>${how}</td><td class="tech">${tech}</td></tr>` ).join( '\n' )}
 		</tbody>
 	</table>
-	<figure class="cmp obj">
+	<figure class="cmp obj" data-vs="3">
 		<p><b>Only Scorpio hides while you aim without global hooks,</b> which aimbots use too.</p>
+		<div class="vs" role="group" aria-label="Compare Scorpio with">${CMP_APPS.slice( 1 ).map( ( a, i ) => `<button type="button" data-vs="${i + 1}" aria-pressed="${i === 2}">${a.replace( ' Crosshair Overlay', '' )}</button>` ).join( '' )}</div>
 		<table class="tbl">
 			<thead><tr><td></td>${CMP_APPS.map( a => `<th scope="col">${a}</th>` ).join( '' )}</tr></thead>
 			<tbody>
