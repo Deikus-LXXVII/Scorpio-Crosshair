@@ -1,0 +1,8 @@
+<!-- Concept III, QUINCUNX: five tesserae set as the legion set its maniples; the middle one is the aim. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="96 96 832 832">
+	<path fill="#ebe5da" transform="rotate(0 512 512)" d="M408 256L512 152L616 256L512 360Z"/>
+	<path fill="#ebe5da" transform="rotate(90 512 512)" d="M408 256L512 152L616 256L512 360Z"/>
+	<path fill="#ebe5da" transform="rotate(180 512 512)" d="M408 256L512 152L616 256L512 360Z"/>
+	<path fill="#ebe5da" transform="rotate(270 512 512)" d="M408 256L512 152L616 256L512 360Z"/>
+	<path fill="#c8435a" d="M408 512L512 408L616 512L512 616Z"/>
+</svg>

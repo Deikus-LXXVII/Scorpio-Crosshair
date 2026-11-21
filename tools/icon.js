@@ -1,109 +1,167 @@
-// Draws Scorpio's 1024 px source icon: a static cross on basalt with a
-// porphyry centre. `npx tauri icon tools/icon.png` makes every size from it.
-// Run: node tools/icon.js
+// Renders Scorpio's icons from the vector sources in assets/brand.
+//
+//   node tools/icon.js           writes tools/icon.png (1024 px) and the two tray PNGs
+//   node tools/icon.js --icons   the same, then runs `npx tauri icon tools/icon.png`,
+//                                deletes the outputs Scorpio does not ship, and puts the
+//                                pixel-drawn tray icon into the small sizes
+//
+// Why the small sizes are replaced: Tauri gives the tray the 32 px icon (48 px at
+// 150 % scaling) and the shell shrinks it to half. A 1024 px drawing shrunk that far
+// is a blur. The tray drawings sit on whole pixels and are stored at exactly double
+// size, so they halve cleanly.
+//
+// The renderer is a headless Chromium. Set CHROME to its path, or let the script
+// look in the Playwright cache and the usual install places.
 const fs = require( 'fs' )
+const os = require( 'os' )
 const path = require( 'path' )
-const zlib = require( 'zlib' )
+const { execFileSync, execSync } = require( 'child_process' )
+const { pathToFileURL } = require( 'url' )
 
-const SIZE = 1024
-const BASALT = [ 11, 10, 9 ]
-const MARBLE = [ 235, 229, 218 ]
-const PORPHYRY = [ 200, 67, 90 ]
-const pixels = Buffer.alloc( SIZE * SIZE * 4 )
+const ROOT = path.join( __dirname, '..' )
+const BRAND = path.join( ROOT, 'assets', 'brand' )
+const ICONS = path.join( ROOT, 'src-tauri', 'icons' )
 
-const fill = ( x, y, w, h, [ r, g, b ] ) => {
+// size in src-tauri/icons -> the tray drawing it is rendered from
+const SMALL = {
+	16: 'scorpio-tray.svg',
+	24: 'scorpio-tray-24.svg',
+	32: 'scorpio-tray.svg',
+	48: 'scorpio-tray-24.svg',
+}
 
-	for ( let row = y; row < y + h; row++ ) {
+const findChrome = () => {
 
-		for ( let col = x; col < x + w; col++ ) {
+	const names = [ 'chrome-headless-shell', 'chrome-headless-shell.exe', 'chrome', 'chrome.exe', path.join( 'Chromium.app', 'Contents', 'MacOS', 'Chromium' ) ]
+	const caches = [
+		path.join( os.homedir(), 'Library', 'Caches', 'ms-playwright' ),
+		path.join( os.homedir(), '.cache', 'ms-playwright' ),
+		path.join( process.env.LOCALAPPDATA || '', 'ms-playwright' ),
+	]
+	const found = []
 
-			const i = ( ( row * SIZE ) + col ) * 4
+	if ( process.env.CHROME ) found.push( process.env.CHROME )
 
-			pixels[i] = r
-			pixels[i + 1] = g
-			pixels[i + 2] = b
-			pixels[i + 3] = 255
+	for ( const cache of caches ) {
+
+		if ( ! fs.existsSync( cache ) ) continue
+
+		for ( const build of fs.readdirSync( cache ).filter( name => name.startsWith( 'chromium' ) ).sort().reverse() ) {
+
+			for ( const inner of fs.readdirSync( path.join( cache, build ) ) ) {
+
+				for ( const name of names ) found.push( path.join( cache, build, inner, name ) )
+
+			}
 
 		}
 
 	}
 
+	found.push(
+		'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+		'/usr/bin/chromium',
+		'/usr/bin/chromium-browser',
+		'/usr/bin/google-chrome',
+		'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+		'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+	)
+
+	const chrome = found.find( file => fs.existsSync( file ) && fs.statSync( file ).isFile() )
+
+	if ( ! chrome ) throw new Error( 'No Chromium found. Set CHROME to a Chrome, Chromium or Edge binary.' )
+
+	return chrome
+
 }
 
-const mid = SIZE / 2
-const bar = 64
-const gap = 112
-const arm = 272
+const chrome = findChrome()
 
-fill( 0, 0, SIZE, SIZE, BASALT )
-fill( mid + gap, mid - ( bar / 2 ), arm, bar, MARBLE )
-fill( mid - gap - arm, mid - ( bar / 2 ), arm, bar, MARBLE )
-fill( mid - ( bar / 2 ), mid + gap, bar, arm, MARBLE )
-fill( mid - ( bar / 2 ), mid - gap - arm, bar, arm, MARBLE )
-fill( mid - ( bar / 2 ), mid - ( bar / 2 ), bar, bar, PORPHYRY )
+// Draws one SVG file into a square PNG with a transparent ground.
+const render = ( svg, png, size ) => {
 
-const crcTable = Array.from( { length: 256 }, ( _, n ) => {
+	execFileSync( chrome, [
+		'--headless',
+		'--hide-scrollbars',
+		'--default-background-color=00000000',
+		`--screenshot=${ png }`,
+		`--window-size=${ size },${ size }`,
+		pathToFileURL( svg ).href,
+	], { stdio: 'ignore' } )
 
-	let c = n
+	const head = fs.readFileSync( png )
 
-	for ( let k = 0; k < 8; k++ ) {
+	if ( head.readUInt32BE( 16 ) !== size || head.readUInt32BE( 20 ) !== size ) throw new Error( `${ png } is not ${ size } px square` )
 
-		c = c & 1 ? 0xedb88320 ^ ( c >>> 1 ) : c >>> 1
+	if ( png.startsWith( ROOT ) ) console.log( path.relative( ROOT, png ), `${ size } px` )
+
+}
+
+// Swaps the PNG entries of the given sizes in an .ico file. Entry order stays as Tauri wrote it.
+const patchIco = ( file, layers ) => {
+
+	const ico = fs.readFileSync( file )
+	const count = ico.readUInt16LE( 4 )
+	const entries = []
+
+	for ( let i = 0; i < count; i++ ) {
+
+		const at = 6 + ( i * 16 )
+		const size = ico[at] || 256
+		const data = layers[size] || ico.subarray( ico.readUInt32LE( at + 12 ), ico.readUInt32LE( at + 12 ) + ico.readUInt32LE( at + 8 ) )
+
+		entries.push( { head: Buffer.from( ico.subarray( at, at + 16 ) ), data } )
 
 	}
 
-	return c >>> 0
+	const missing = Object.keys( layers ).filter( size => ! entries.some( entry => ( entry.head[0] || 256 ) === Number( size ) ) )
 
-} )
+	if ( missing.length ) throw new Error( `${ file } has no ${ missing.join( ', ' ) } px entry` )
 
-const crc = buffer => {
+	let offset = 6 + ( count * 16 )
 
-	let c = 0xffffffff
+	for ( const entry of entries ) {
 
-	for ( const byte of buffer ) {
-
-		c = crcTable[( c ^ byte ) & 0xff] ^ ( c >>> 8 )
+		entry.head.writeUInt32LE( entry.data.length, 8 )
+		entry.head.writeUInt32LE( offset, 12 )
+		offset += entry.data.length
 
 	}
 
-	return ( c ^ 0xffffffff ) >>> 0
+	fs.writeFileSync( file, Buffer.concat( [ ico.subarray( 0, 6 ), ...entries.map( entry => entry.head ), ...entries.map( entry => entry.data ) ] ) )
 
 }
 
-const chunk = ( type, data ) => {
+render( path.join( BRAND, 'scorpio-icon.svg' ), path.join( __dirname, 'icon.png' ), 1024 )
+render( path.join( BRAND, 'scorpio-tray.svg' ), path.join( BRAND, 'scorpio-tray-16.png' ), 16 )
+render( path.join( BRAND, 'scorpio-tray.svg' ), path.join( BRAND, 'scorpio-tray-32.png' ), 32 )
 
-	const length = Buffer.alloc( 4 )
-	const sum = Buffer.alloc( 4 )
-	const body = Buffer.concat( [ Buffer.from( type ), data ] )
+if ( process.argv.includes( '--icons' ) ) {
 
-	length.writeUInt32BE( data.length )
-	sum.writeUInt32BE( crc( body ) )
+	execSync( 'npx tauri icon tools/icon.png', { cwd: ROOT, stdio: 'inherit' } )
 
-	return Buffer.concat( [ length, body, sum ] )
+	// Scorpio ships for Windows and Linux only
+	for ( const name of fs.readdirSync( ICONS ) ) {
+
+		if ( name === 'android' || name === 'ios' || name === 'icon.icns' || name === 'StoreLogo.png' || name.startsWith( 'Square' ) ) fs.rmSync( path.join( ICONS, name ), { recursive: true } )
+
+	}
+
+	const tmp = fs.mkdtempSync( path.join( os.tmpdir(), 'scorpio-icon-' ) )
+	const layers = {}
+
+	for ( const [ size, drawing ] of Object.entries( SMALL ) ) {
+
+		const png = path.join( tmp, `${ size }.png` )
+
+		render( path.join( BRAND, drawing ), png, Number( size ) )
+		layers[size] = fs.readFileSync( png )
+
+	}
+
+	fs.writeFileSync( path.join( ICONS, '32x32.png' ), layers[32] )
+	patchIco( path.join( ICONS, 'icon.ico' ), layers )
+	fs.rmSync( tmp, { recursive: true } )
+	console.log( 'src-tauri/icons: 16, 24, 32 and 48 px are the pixel-drawn tray icon' )
 
 }
-
-const header = Buffer.alloc( 13 )
-
-header.writeUInt32BE( SIZE, 0 )
-header.writeUInt32BE( SIZE, 4 )
-header[8] = 8
-header[9] = 6
-
-const raw = Buffer.alloc( SIZE * ( ( SIZE * 4 ) + 1 ) )
-
-for ( let row = 0; row < SIZE; row++ ) {
-
-	pixels.copy( raw, ( row * ( ( SIZE * 4 ) + 1 ) ) + 1, row * SIZE * 4, ( row + 1 ) * SIZE * 4 )
-
-}
-
-const png = Buffer.concat( [
-	Buffer.from( [ 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a ] ),
-	chunk( 'IHDR', header ),
-	chunk( 'IDAT', zlib.deflateSync( raw, { level: 9 } ) ),
-	chunk( 'IEND', Buffer.alloc( 0 ) ),
-] )
-
-fs.writeFileSync( path.join( __dirname, 'icon.png' ), png )
-console.log( 'tools/icon.png', png.length, 'bytes' )

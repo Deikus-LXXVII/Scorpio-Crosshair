@@ -1,0 +1,24 @@
+<!-- Scorpio, the app icon: the mark on a stone tablet with cut corners, held by four bronze cramps.
+     tools/icon.js renders this file to tools/icon.png at 1024. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Scorpio">
+	<title>Scorpio</title>
+	<!-- the tablet: a hairline edge, then the stone -->
+	<path fill="#43413d" d="M52 32H972L992 52V972L972 992H52L32 972V52Z"/>
+	<path fill="#141311" d="M56 40H968L984 56V968L968 984H56L40 968V56Z"/>
+	<!-- two long lozenge bands, crossed and interlaced; each of the four pieces is a quarter turn of the next -->
+	<path fill="#ebe5da" d="M647.8 403.4L896 512L512 680L484.2 667.8L453.5 597.7L512 623.2L766.3 512L678.5 473.6Z
+		M403.4 376.2L512 128L680 512L667.8 539.8L597.7 570.5L623.2 512L512 257.7L473.6 345.5Z
+		M376.2 620.6L128 512L512 344L539.8 356.2L570.5 426.3L512 400.8L257.7 512L345.5 550.4Z
+		M620.6 647.8L512 896L344 512L356.2 484.2L426.3 453.5L400.8 512L512 766.3L550.4 678.5Z"/>
+	<!-- the point of aim -->
+	<path fill="#c8435a" d="M468 512L512 468L556 512L512 556Z"/>
+	<!-- cramps: two set into the top edge, two into the bottom -->
+	<path fill="#6b5a40" d="M160 16h128v12h-128z"/><path fill="#3f3426" d="M160 28h128v10h-128z"/><path fill="#2c241a" d="M160 38h128v10h-128z"/>
+	<circle cx="180" cy="32" r="7" fill="#a08a63"/><circle cx="268" cy="32" r="7" fill="#a08a63"/>
+	<path fill="#6b5a40" d="M736 16h128v12h-128z"/><path fill="#3f3426" d="M736 28h128v10h-128z"/><path fill="#2c241a" d="M736 38h128v10h-128z"/>
+	<circle cx="756" cy="32" r="7" fill="#a08a63"/><circle cx="844" cy="32" r="7" fill="#a08a63"/>
+	<path fill="#6b5a40" d="M160 976h128v12h-128z"/><path fill="#3f3426" d="M160 988h128v10h-128z"/><path fill="#2c241a" d="M160 998h128v10h-128z"/>
+	<circle cx="180" cy="992" r="7" fill="#a08a63"/><circle cx="268" cy="992" r="7" fill="#a08a63"/>
+	<path fill="#6b5a40" d="M736 976h128v12h-128z"/><path fill="#3f3426" d="M736 988h128v10h-128z"/><path fill="#2c241a" d="M736 998h128v10h-128z"/>
+	<circle cx="756" cy="992" r="7" fill="#a08a63"/><circle cx="844" cy="992" r="7" fill="#a08a63"/>
+</svg>

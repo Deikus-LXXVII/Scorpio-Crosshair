@@ -1,0 +1,8 @@
+<!-- Concept II, ACIES: four bolt heads aimed at one point. No interlace, nothing to lose at small sizes. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="96 96 832 832">
+	<path fill="#ebe5da" transform="rotate(0 512 512)" d="M512 392L588 260L512 128L436 260Z"/>
+	<path fill="#ebe5da" transform="rotate(90 512 512)" d="M512 392L588 260L512 128L436 260Z"/>
+	<path fill="#ebe5da" transform="rotate(180 512 512)" d="M512 392L588 260L512 128L436 260Z"/>
+	<path fill="#ebe5da" transform="rotate(270 512 512)" d="M512 392L588 260L512 128L436 260Z"/>
+	<path fill="#c8435a" d="M464 512L512 464L560 512L512 560Z"/>
+</svg>

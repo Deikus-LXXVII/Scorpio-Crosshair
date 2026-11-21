@@ -1,0 +1,10 @@
+<!-- Scorpio, the tray icon on a 16 px grid: every edge sits on a whole pixel.
+     Render it at 16 px or at a whole multiple of 16 px (tools/icon.js does). -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" role="img" aria-label="Scorpio">
+	<title>Scorpio</title>
+	<path fill="#141311" d="M1 0H15L16 1V15L15 16H1L0 15V1Z"/>
+	<g shape-rendering="crispEdges">
+		<path fill="#ebe5da" d="M7 1h2v2h-2zM6 3h4v2h-4zM5 5h2v1h-2zM9 5h2v1h-2zM3 6h3v1h-3zM10 6h3v1h-3zM1 7h4v2h-4zM11 7h4v2h-4zM3 9h3v1h-3zM10 9h3v1h-3zM5 10h2v1h-2zM9 10h2v1h-2zM6 11h4v2h-4zM7 13h2v2h-2z"/>
+		<path fill="#c8435a" d="M7 7h2v2h-2z"/>
+	</g>
+</svg>

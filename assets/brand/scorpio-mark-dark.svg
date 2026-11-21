@@ -1,0 +1,11 @@
+<!-- Scorpio, the mark alone: basalt ink, for light grounds. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="96 96 832 832" role="img" aria-label="Scorpio">
+	<title>Scorpio</title>
+	<!-- two long lozenge bands, crossed and interlaced; each of the four pieces is a quarter turn of the next -->
+	<path fill="#0b0a09" d="M647.8 403.4L896 512L512 680L484.2 667.8L453.5 597.7L512 623.2L766.3 512L678.5 473.6Z
+		M403.4 376.2L512 128L680 512L667.8 539.8L597.7 570.5L623.2 512L512 257.7L473.6 345.5Z
+		M376.2 620.6L128 512L512 344L539.8 356.2L570.5 426.3L512 400.8L257.7 512L345.5 550.4Z
+		M620.6 647.8L512 896L344 512L356.2 484.2L426.3 453.5L400.8 512L512 766.3L550.4 678.5Z"/>
+	<!-- the point of aim -->
+	<path fill="#9b2c3f" d="M468 512L512 468L556 512L512 556Z"/>
+</svg>
