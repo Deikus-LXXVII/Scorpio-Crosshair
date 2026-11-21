@@ -229,23 +229,25 @@ impl Settings {
 
 /// Reads the settings; a missing file gives defaults, an unreadable one is
 /// kept beside as `.broken` so nothing the player made is lost silently.
-pub fn load(path: &Path) -> Settings {
+/// The flag is false when defaults stand in for a file that exists: then
+/// nothing may be cleaned up on the strength of these settings.
+pub fn load(path: &Path) -> (Settings, bool) {
     let text = match fs::read_to_string(path) {
         Ok(text) => text,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Settings::default(),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return (Settings::default(), true),
         Err(error) => {
             // Unreadable but present: keep a copy before defaults replace it.
             log::warn!("settings could not be read ({error}); starting from defaults");
             let _ = fs::copy(path, broken_name(path));
-            return Settings::default();
+            return (Settings::default(), false);
         }
     };
     match serde_json::from_str::<Settings>(&text) {
-        Ok(settings) => settings.validated(),
+        Ok(settings) => (settings.validated(), true),
         Err(error) => {
             log::warn!("settings unreadable ({error}); starting from defaults");
             let _ = fs::rename(path, broken_name(path));
-            Settings::default()
+            (Settings::default(), false)
         }
     }
 }
@@ -261,6 +263,25 @@ pub fn peek(path: &Path) -> Result<Option<Settings>, String> {
 }
 
 /// `settings.broken-<seconds>.json`, so an earlier broken copy is never lost.
+/// The image files the copies of unreadable settings name, so a cleanup
+/// never removes what restoring such a copy would need.
+pub fn images_kept_aside(path: &Path) -> Vec<String> {
+    let (Some(folder), Some(stem)) = (path.parent(), path.file_stem().and_then(|stem| stem.to_str())) else { return Vec::new() };
+    let Ok(entries) = fs::read_dir(folder) else { return Vec::new() };
+    let prefix = format!("{stem}.broken-");
+    let mut names = Vec::new();
+    for entry in entries.filter_map(Result::ok) {
+        if !entry.file_name().to_string_lossy().starts_with(&prefix) {
+            continue;
+        }
+        let Ok(bytes) = fs::read(entry.path()) else { continue };
+        let text = String::from_utf8_lossy(&bytes);
+        let words = text.split(|c: char| !(c.is_ascii_alphanumeric() || c == '.'));
+        names.extend(words.filter(|word| crate::picture::valid_file_name(word)).map(str::to_string));
+    }
+    names
+}
+
 fn broken_name(path: &Path) -> std::path::PathBuf {
     let seconds = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs());
     path.with_extension(format!("broken-{seconds}.json"))
@@ -290,7 +311,7 @@ mod tests {
 
     #[test]
     fn missing_file_gives_defaults() {
-        assert_eq!(load(&folder().join("none.json")), Settings::default());
+        assert_eq!(load(&folder().join("none.json")), (Settings::default(), true));
     }
 
     #[test]
@@ -309,14 +330,14 @@ mod tests {
         settings.aim = Aim { hide: true, button: MouseButton::Back, mode: AimMode::Toggle };
         settings.offset = (3, -1);
         save(&path, &settings).unwrap();
-        assert_eq!(load(&path), settings.validated());
+        assert_eq!(load(&path), (settings.validated(), true));
     }
 
     #[test]
     fn partial_file_fills_in_defaults() {
         let path = folder().join("settings.json");
         fs::write(&path, r#"{"aim":{"hide":true},"crosshair":{"gap":-3}}"#).unwrap();
-        let settings = load(&path);
+        let (settings, _) = load(&path);
         assert!(settings.aim.hide);
         assert_eq!(settings.aim.button, MouseButton::Right);
         assert_eq!(settings.crosshair.gap, -3);
@@ -328,9 +349,20 @@ mod tests {
         let dir = folder();
         let path = dir.join("settings.json");
         fs::write(&path, "{ not json").unwrap();
-        assert_eq!(load(&path), Settings::default());
+        assert_eq!(load(&path), (Settings::default(), false), "defaults stand in, not to be trusted");
         let kept = fs::read_dir(&dir).unwrap().filter_map(Result::ok).any(|e| e.file_name().to_string_lossy().starts_with("settings.broken-"));
         assert!(kept);
+    }
+
+    #[test]
+    fn images_named_in_a_broken_copy_are_kept() {
+        let dir = folder();
+        let path = dir.join("settings.json");
+        fs::write(&path, r#"{"image":{"rendered":"fedcba9876543210.png","source":"0123456789abcdef.svg" , broken"#).unwrap();
+        assert!(!load(&path).1);
+        let mut kept = images_kept_aside(&path);
+        kept.sort();
+        assert_eq!(kept, ["0123456789abcdef.svg", "fedcba9876543210.png"]);
     }
 
     #[test]

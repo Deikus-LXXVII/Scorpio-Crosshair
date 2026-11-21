@@ -19,6 +19,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 use store::Settings;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
@@ -47,31 +48,50 @@ fn shared(handle: &AppHandle) -> tauri::State<'_, Shared> {
     handle.state::<Shared>()
 }
 
-/// Carries out what an app step decided: platform commands, saving, telling
-/// the settings window.
-fn apply(handle: &AppHandle, effects: Effects) {
-    let state = shared(handle);
+/// What is left of an app step once the overlay and the stream were told.
+struct Rest {
+    settings_changed: bool,
+    status_changed: bool,
+}
+
+/// Sends an app step's overlay commands and the stream's view. Called with
+/// the app lock held, so steps taken on two threads reach the overlay and
+/// OBS in the order the app decided them.
+fn deliver(state: &Shared, app: &App, effects: Effects) -> Rest {
     let overlay_changed = !effects.commands.is_empty();
     for command in effects.commands {
         state.platform.send(command);
     }
     if overlay_changed || effects.settings_changed {
-        let (view, png) = {
-            let app = state.app.lock().unwrap();
-            (app.stream_view(), app.stream_png())
-        };
-        state.obs.set_picture(png);
-        state.obs.publish(serde_json::to_string(&view).unwrap_or_default());
+        state.obs.set_picture(app.stream_png());
+        state.obs.publish(serde_json::to_string(&app.stream_view()).unwrap_or_default());
     }
-    if effects.settings_changed {
+    Rest { settings_changed: effects.settings_changed, status_changed: effects.status_changed }
+}
+
+/// Saving and telling the settings window, after the app lock is let go.
+fn finish(handle: &AppHandle, rest: Rest) {
+    let state = shared(handle);
+    if rest.settings_changed {
         let settings = persist(handle);
         let _ = handle.emit_to(SETTINGS_WINDOW, "settings", &settings);
     }
-    if effects.status_changed || effects.settings_changed {
+    if rest.status_changed || rest.settings_changed {
         let status = state.app.lock().unwrap().status();
         let _ = state.lock_item.set_text(if status.locked { "Unlock position" } else { "Lock position" });
         let _ = handle.emit_to(SETTINGS_WINDOW, "status", &status);
     }
+}
+
+/// Takes one app step and carries out what it decided.
+fn step(handle: &AppHandle, decide: impl FnOnce(&mut App) -> Effects) {
+    let state = shared(handle);
+    let rest = {
+        let mut app = state.app.lock().unwrap();
+        let effects = decide(&mut app);
+        deliver(&state, &app, effects)
+    };
+    finish(handle, rest);
 }
 
 /// Writes the current settings and returns what was written.
@@ -85,6 +105,14 @@ fn persist(handle: &AppHandle) -> Settings {
     settings
 }
 
+/// Removes image files older than `age` that neither the settings nor a
+/// kept-aside copy of unreadable settings name.
+fn tidy_images(images: &std::path::Path, path: &std::path::Path, settings: &Settings, age: Duration) {
+    let mut used = store::images_kept_aside(path);
+    used.extend(settings.image_files().into_iter().map(str::to_string));
+    picture::prune(images, &used, age);
+}
+
 /// Reads the images the settings use that are not decoded yet. A file that
 /// is gone or broken is logged; the CS2 crosshair shows instead.
 fn load_pictures(handle: &AppHandle) {
@@ -94,8 +122,7 @@ fn load_pictures(handle: &AppHandle) {
         let decoded = picture::read(&state.images, &name).map_err(|error| error.to_string()).and_then(picture::decode);
         match decoded {
             Ok(decoded) => {
-                let effects = state.app.lock().unwrap().add_picture(name, Arc::new(decoded));
-                apply(handle, effects);
+                step(handle, |app| app.add_picture(name, Arc::new(decoded)));
             }
             Err(error) => log::warn!("image {name} not shown: {error}"),
         }
@@ -178,8 +205,10 @@ pub fn settings_snapshot(handle: &AppHandle) -> Settings {
 }
 
 /// True while the crosshair is over a game (or a detected window).
+/// A game may be in front: one is, or Always show is on, which draws over
+/// games Scorpio does not recognise, so an automatic update must wait.
 pub fn game_in_front(handle: &AppHandle) -> bool {
-    shared(handle).app.lock().unwrap().focus.visible
+    shared(handle).app.lock().unwrap().maybe_playing()
 }
 
 fn quit(handle: &AppHandle) {
@@ -250,18 +279,21 @@ fn sync_obs(handle: &AppHandle) -> Option<String> {
 #[tauri::command]
 fn save_settings(handle: AppHandle, settings: Settings) -> Saved {
     let state = shared(&handle);
-    let (effects, keys_changed, settings) = {
+    let (rest, keys_changed, settings) = {
         let mut app = state.app.lock().unwrap();
         let keys_changed = app.settings.keys != settings.keys;
         let effects = app.replace_settings(settings);
-        (effects, keys_changed, app.settings.clone())
+        // The window already has these settings: saved below, not echoed back.
+        let effects = Effects { settings_changed: false, status_changed: true, ..effects };
+        (deliver(&state, &app, effects), keys_changed, app.settings.clone())
     };
     let refused = if keys_changed { register_hotkeys(&handle, &settings) } else { Vec::new() };
     sync_autostart(&handle, settings.start_with_system);
     let obs_error = sync_obs(&handle);
-    // The window already has these settings: saved, but not echoed back.
     let settings = persist(&handle);
-    apply(&handle, Effects { settings_changed: false, status_changed: true, ..effects });
+    // Older than a minute: a file just kept for a setting on its way stays.
+    tidy_images(&state.images, &state.path, &settings, Duration::from_secs(60));
+    finish(&handle, rest);
     load_pictures(&handle);
     Saved { settings, refused, obs_error }
 }
@@ -299,8 +331,7 @@ async fn store_image(handle: AppHandle, request: tauri::ipc::Request<'_>) -> Res
         let (width, height) = (decoded.width, decoded.height);
         let name = keep(bytes, "png")?;
         log::info!("image rendered: {width}x{height}");
-        let effects = state.app.lock().unwrap().add_picture(name.clone(), Arc::new(decoded));
-        apply(&handle, effects);
+        step(&handle, |app| app.add_picture(name.clone(), Arc::new(decoded)));
         return Ok(StoredImage { name, width, height });
     }
     let kind = picture::kind_of(&format!("file.{kind}")).ok_or("Scorpio takes PNG, JPG, WebP, GIF and SVG images.")?;
@@ -414,16 +445,14 @@ fn add_window(handle: AppHandle, window: WindowInfo) -> bool {
     let state = shared(&handle);
     let added = state.app.lock().unwrap().add_game(&window);
     if added {
-        let effects = Effects { settings_changed: true, status_changed: true, ..Effects::default() };
-        apply(&handle, effects);
+        finish(&handle, Rest { settings_changed: true, status_changed: true });
     }
     added
 }
 
 #[tauri::command]
 fn set_locked(handle: AppHandle, locked: bool) {
-    let effects = shared(&handle).app.lock().unwrap().set_locked(locked);
-    apply(&handle, effects);
+    step(&handle, |app| app.set_locked(locked));
 }
 
 #[tauri::command]
@@ -451,9 +480,11 @@ fn setup(handle: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     desktop_entry::install();
     let config = handle.path().app_config_dir()?;
     let path = config.join("settings.json");
-    let settings = store::load(&path);
+    let (settings, trusted) = store::load(&path);
     let images = picture::folder(&config);
-    picture::prune(&images, &settings.image_files());
+    if trusted {
+        tidy_images(&images, &path, &settings, Duration::ZERO);
+    }
 
     let (events, received) = channel();
     let platform = platform::start(events).map_err(|unsupported| {
@@ -486,8 +517,7 @@ fn setup(handle: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         .on_menu_event(|handle, event| match event.id.as_ref() {
             "open" => open_settings(handle),
             "lock" => {
-                let effects = shared(handle).app.lock().unwrap().hotkey(Hotkey::Lock);
-                apply(handle, effects);
+                step(handle, |app| app.hotkey(Hotkey::Lock));
             }
             "quit" => quit(handle),
             _ => {}
@@ -506,22 +536,19 @@ fn setup(handle: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         for event in received {
             let display_check = matches!(event, platform::Event::Foreground(_));
             let display = display_check.then(|| primary_display(&events_handle)).flatten();
-            let effects = {
-                let state = shared(&events_handle);
-                let mut app = state.app.lock().unwrap();
+            step(&events_handle, |app| {
                 let mut effects = display.map(|d| app.set_display(d)).unwrap_or_default();
-                let step = app.event(event);
-                effects.commands.extend(step.commands);
-                effects.settings_changed |= step.settings_changed;
-                effects.status_changed |= step.status_changed;
+                let next = app.event(event);
+                effects.commands.extend(next.commands);
+                effects.settings_changed |= next.settings_changed;
+                effects.status_changed |= next.status_changed;
                 effects
-            };
-            apply(&events_handle, effects);
+            });
             if display_check {
                 let (visible, manual) = {
                     let state = shared(&events_handle);
                     let app = state.app.lock().unwrap();
-                    (app.focus.visible, app.settings.update_manually)
+                    (app.maybe_playing(), app.settings.update_manually)
                 };
                 update::on_focus(&events_handle, visible, manual);
             }
@@ -532,20 +559,19 @@ fn setup(handle: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let scan_handle = handle.clone();
     std::thread::Builder::new().name("scorpio-launchers".into()).spawn(move || {
         let installed = core::launchers::scan();
-        let effects = shared(&scan_handle).app.lock().unwrap().set_installed(installed);
-        apply(&scan_handle, effects);
+        step(&scan_handle, |app| app.set_installed(installed));
     })?;
 
     // Show the crosshair state right away (centred, hidden until a game).
-    let effects = shared(handle).app.lock().unwrap().set_display(primary_display(handle).unwrap_or_default());
-    apply(handle, effects);
+    let display = primary_display(handle).unwrap_or_default();
+    step(handle, |app| app.set_display(display));
     load_pictures(handle);
     Ok(())
 }
 
 pub fn run() {
     // `scorpio --report` prints the problem report and ends; nothing starts.
-    if std::env::args().skip(1).any(|arg| arg == "--report") {
+    if std::env::args_os().skip(1).any(|arg| arg == "--report") {
         platform::attach_console();
         println!("{}", report::from_files());
         return;
@@ -582,8 +608,7 @@ pub fn run() {
             let state = shared(handle);
             let hotkey = state.hotkeys.lock().unwrap().get(&shortcut.id()).copied();
             if let Some(hotkey) = hotkey {
-                let effects = state.app.lock().unwrap().hotkey(hotkey);
-                apply(handle, effects);
+                step(handle, |app| app.hotkey(hotkey));
             }
         })
         .build();

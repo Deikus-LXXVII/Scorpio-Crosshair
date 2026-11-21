@@ -79,34 +79,38 @@ fn user_name() -> Option<String> {
 }
 
 /// Replaces the home folder with `~` (either slash style, any case on
-/// Windows) and the user name, where it is long enough not to hit ordinary
-/// words, with `<user>`.
+/// Windows) and the user name, where it is long enough and stands as a word
+/// of its own (so a user called `lin` leaves `Linux` alone), with `<user>`.
 pub fn redact(text: &str, home: Option<&Path>, user: Option<&str>) -> String {
     let mut out = text.to_string();
     if let Some(home) = home.map(|h| h.to_string_lossy().into_owned()).filter(|h| h.len() > 1) {
         for form in [home.clone(), home.replace('\\', "/"), home.replace('\\', "\\\\")] {
-            out = replace_ignoring_case(&out, &form, "~");
+            out = replace_ignoring_case(&out, &form, "~", false);
         }
     }
     if let Some(user) = user.filter(|u| u.chars().count() >= 3) {
-        out = replace_ignoring_case(&out, user, "<user>");
+        out = replace_ignoring_case(&out, user, "<user>", true);
     }
     out
 }
 
-fn replace_ignoring_case(text: &str, from: &str, to: &str) -> String {
-    let (lower, needle) = (text.to_lowercase(), from.to_lowercase());
-    // Lower-casing can change lengths outside ASCII; then match exactly.
-    if needle.is_empty() || lower.len() != text.len() || needle.len() != from.len() {
-        return text.replace(from, to);
+/// ASCII case only: it never changes a string's length, so positions found
+/// in the lower-cased copy hold in the original whatever else it contains.
+fn replace_ignoring_case(text: &str, from: &str, to: &str, whole_word: bool) -> String {
+    let (lower, needle) = (text.to_ascii_lowercase(), from.to_ascii_lowercase());
+    if needle.is_empty() {
+        return text.to_string();
     }
+    let word = |c: Option<char>| c.is_some_and(char::is_alphanumeric);
     let mut out = String::with_capacity(text.len());
     let mut rest = 0;
     for (at, _) in lower.match_indices(&needle) {
-        if at >= rest {
+        let end = at + needle.len();
+        let alone = !whole_word || (!word(text[..at].chars().next_back()) && !word(text[end..].chars().next()));
+        if at >= rest && alone {
             out.push_str(&text[rest..at]);
             out.push_str(to);
-            rest = at + needle.len();
+            rest = end;
         }
     }
     out.push_str(&text[rest..]);
@@ -179,6 +183,9 @@ mod tests {
         let linux = redact("/home/lena/.steam and lena", Some(Path::new("/home/lena")), Some("lena"));
         assert_eq!(linux, "~/.steam and <user>");
         assert_eq!(redact("Bob is a bob", None, Some("Bo")), "Bob is a bob", "short names are left alone");
+        assert_eq!(redact("Linux, lin and LIN-2", None, Some("lin")), "Linux, <user> and <user>-2", "only the name as a word of its own");
+        let odd = redact("game İstanbul at c:\\users\\lena\\x", Some(Path::new(r"C:\Users\Lena")), None);
+        assert_eq!(odd, "game İstanbul at ~\\x", "a letter that changes length when lower-cased does not stop the match");
     }
 
     #[test]

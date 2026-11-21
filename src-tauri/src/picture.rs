@@ -139,7 +139,10 @@ pub fn store(folder: &Path, bytes: &[u8], kind: &str) -> std::io::Result<String>
     let name = file_name(bytes, kind);
     fs::create_dir_all(folder)?;
     let path = folder.join(&name);
-    if !path.exists() {
+    if path.exists() {
+        // Fresh again, so a cleanup in the next minute leaves it alone.
+        let _ = fs::File::options().append(true).open(&path).and_then(|file| file.set_modified(std::time::SystemTime::now()));
+    } else {
         let temporary = folder.join(format!("{name}.tmp"));
         fs::write(&temporary, bytes)?;
         fs::rename(&temporary, &path)?;
@@ -155,13 +158,17 @@ pub fn read(folder: &Path, name: &str) -> std::io::Result<Vec<u8>> {
 }
 
 /// Removes the files no setting uses any more (an image replaced, a size
-/// changed). Only names of Scorpio's own form are touched.
-pub fn prune(folder: &Path, used: &[&str]) {
+/// changed) once they are older than `age`, so a file just kept for a
+/// setting not yet saved stays. Only names of Scorpio's own form are touched.
+pub fn prune(folder: &Path, used: &[String], age: std::time::Duration) {
     let Ok(entries) = fs::read_dir(folder) else { return };
+    let now = std::time::SystemTime::now();
     for entry in entries.filter_map(Result::ok) {
         let name = entry.file_name().to_string_lossy().into_owned();
         let ours = valid_file_name(&name) || name.ends_with(".tmp");
-        if ours && !used.contains(&name.as_str()) {
+        let modified = entry.metadata().and_then(|meta| meta.modified()).unwrap_or(now);
+        let old = now.duration_since(modified).is_ok_and(|elapsed| elapsed >= age);
+        if ours && old && !used.contains(&name) {
             if let Err(error) = fs::remove_file(entry.path()) {
                 log::warn!("unused image {name} could not be removed: {error}");
             }
@@ -236,7 +243,9 @@ mod tests {
         let dropped = store(&dir, b"two", "svg").unwrap();
         assert_eq!(store(&dir, b"one", "png").unwrap(), kept);
         fs::write(dir.join("notes.txt"), b"mine").unwrap();
-        prune(&dir, &[kept.as_str()]);
+        prune(&dir, &[], std::time::Duration::from_secs(60));
+        assert!(read(&dir, &dropped).is_ok(), "a file under a minute old stays, its setting may be on its way");
+        prune(&dir, std::slice::from_ref(&kept), std::time::Duration::ZERO);
         assert_eq!(read(&dir, &kept).unwrap(), b"one");
         assert!(read(&dir, &dropped).is_err());
         assert!(dir.join("notes.txt").exists(), "a file Scorpio did not name is left alone");

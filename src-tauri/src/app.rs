@@ -242,6 +242,12 @@ impl App {
         self.focus.visible || self.settings.detect.always
     }
 
+    /// A game may be in front: one is, or Always show is on and draws over
+    /// games Scorpio does not recognise. Automatic updates wait for neither.
+    pub fn maybe_playing(&self) -> bool {
+        self.over_something()
+    }
+
     fn should_show(&self) -> bool {
         !self.locked || (self.over_something() && !self.hidden && !(self.settings.aim.hide && self.aiming))
     }
@@ -404,6 +410,7 @@ impl App {
             .map(|image| image.rendered.clone())
             .filter(|name| !name.is_empty() && !self.pictures.contains_key(name))
             .collect();
+        names.sort();
         names.dedup();
         names
     }
@@ -921,6 +928,14 @@ mod tests {
         assert_eq!(shows(&app.event(Event::Foreground(None))), None, "the desktop keeps it");
         assert_eq!(shows(&app.event(Event::Foreground(Some(window(1, "game", false))))), None, "a game keeps it");
         assert_eq!(shows(&app.event(Event::Foreground(Some(window(2, "browser", false))))), None);
+    }
+
+    #[test]
+    fn always_show_counts_as_maybe_playing() {
+        let mut app = app();
+        assert!(!app.maybe_playing());
+        app.settings.detect.always = true;
+        assert!(app.maybe_playing(), "an automatic update must not restart Scorpio over an unrecognised game");
     }
 
     #[test]
