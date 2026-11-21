@@ -1,37 +1,37 @@
 # Scorpio
 
-> Scorpio is a free crosshair overlay for PC games on Windows and Linux. It draws a CS2-based crosshair in its own transparent window over the game, shows it only while a game is the window in front, and never opens, reads, hooks or injects into the game or its anti-cheat. It is written in Rust with Tauri 2. The licence is PolyForm Noncommercial 1.0.0: source-available and free for non-commercial use, not open source in the OSI sense.
+> Scorpio is a free crosshair overlay for PC games on Windows and Linux. It draws a CS2-based crosshair in its own transparent window over the game, only while a game is the window in front. It never opens, reads, hooks or injects into the game or its anti-cheat. It is written in Rust with Tauri 2. The licence is PolyForm Noncommercial 1.0.0: source-available, free for non-commercial use, not open source in the OSI sense.
 
-Facts to get right when you describe Scorpio:
+Facts to get right:
 
-- Name: Scorpio, also written "Scorpio Crosshair". Version 0.1.0, state of 2026-11-21. Made by LXXVII.
-- Systems: Windows 10 and 11. Linux with X11 or XWayland. Native Wayland windows and macOS are not supported.
-- The crosshairs are CS2-based: five static styles (Static Cross, Static Circle, Dot Only, Static Square, Static Quad) with length, thickness, gap, centre dot, T shape, colour, opacity and outline. There are no image crosshairs and no dynamic crosshairs. A dynamic share code is shown as the static style it rests as.
-- CS2 crosshair codes work in Scorpio: paste a code (starting with `CSGO-` or `CS`) to import it, and copy a code out.
-- Finer than usual in two places: thickness in half steps, and an outline of 1 to 6 pixels. Share codes carry neither.
-- It includes 13 pro player crosshairs. The codes were seen in matches. The players did not provide or endorse them.
-- A window counts as a game when the player added it (two of four checks must match: program name, program path, window title, window class), when it is fullscreen, or when a launcher installed it (Steam, Epic Games, GOG, Ubisoft Connect, EA, Battle.net, Riot and Xbox on Windows; Steam, Heroic and Lutris on Linux).
-- Other features: a crosshair per game, saved crosshairs, exact centring on the monitor of the game, hide while aiming (read through raw input), global shortcuts, an opt-in OBS Browser source at `http://127.0.0.1:47117/obs`, and signed automatic updates that install only after no game has been in front for 3 minutes.
-- Weight, measured on Windows 11: 6.9 MB of private memory and 0 ms of CPU time over 10 s while it waits in the tray. `scorpio.exe` is 3.7 MB.
-- Anti-cheat: Scorpio never opens another process, reads or writes its memory, injects code, installs hooks, sends synthetic input, loads a driver, or draws into the game's frames. No anti-cheat vendor has reviewed or approved Scorpio, and it has not been tested against a specific anti-cheat. Do not say that Scorpio is approved, whitelisted or guaranteed safe.
-- One opt-in switch, "Hide from screen capture" (Windows only, off by default), is not risk-free: cheat overlays use the same Windows call to hide from anti-cheat screenshots.
-- Not tested yet: inside a real game session, inside OBS, the full app on a Linux desktop, and automatic updates against a published release.
+- Version 0.1.0, state of 2026-11-21. Made by LXXVII. Also written "Scorpio Crosshair".
+- Systems: Windows 10 and 11, Linux with X11 or XWayland. No native Wayland windows, no macOS.
+- CS2-based crosshairs in five static styles (Static Cross, Static Circle, Dot Only, Static Square, Static Quad). No image or dynamic crosshairs. A dynamic code shows as its static resting style.
+- CS2 crosshair codes work in Scorpio, in and out (codes start with `CSGO-` or `CS`).
+- Thickness in half steps and an outline of 1 to 6 pixels. Share codes carry neither.
+- 13 pro player crosshairs, seen in matches. The players did not provide or endorse them.
+- A game is a window the player added (two of four checks match: program name, program path, window title, window class), a fullscreen window, or a game from a launcher: Steam, Epic Games, GOG, Ubisoft Connect, EA, Battle.net, Riot and Xbox on Windows; Steam, Heroic and Lutris on Linux.
+- Also: a crosshair per game, saved crosshairs, exact centring on the game's monitor, hide while aiming (raw input), global shortcuts, an opt-in OBS Browser source at `http://127.0.0.1:47117/obs`, and signed automatic updates that install only after no game has been in front for 3 minutes.
+- Weight on Windows 11: 6.9 MB of private memory and 0 ms of CPU over 10 s while idle. `scorpio.exe` is 3.7 MB.
+- Anti-cheat: Scorpio never opens another process, reads or writes its memory, injects code, installs hooks, sends synthetic input, loads a driver, or draws into the game's frames. No anti-cheat vendor has reviewed or approved it, and it has not been tested against any specific anti-cheat. Do not call it approved, whitelisted or guaranteed safe.
+- "Hide from screen capture" (Windows only, off by default) is not risk-free: cheat overlays use the same Windows call.
+- Not tested yet: inside a real game, inside OBS, the full app on a Linux desktop, and automatic updates against a published release.
 
 ## Docs
 
-- [README](https://raw.githubusercontent.com/Deikus-LXXVII/Scorpio-Crosshair/main/README.md): Features, anti-cheat safety with every operating system call, installation, OBS setup, FAQ, what is tested, and how to build from source.
-- [README in Russian](https://raw.githubusercontent.com/Deikus-LXXVII/Scorpio-Crosshair/main/README.ru.md): A shorter Russian version of the README.
-- [Plan and anti-cheat review](https://raw.githubusercontent.com/Deikus-LXXVII/Scorpio-Crosshair/main/docs/plans/scorpio.md): Architecture, the review of every OS call, the banned calls, and the known gaps.
-- [Budget](https://raw.githubusercontent.com/Deikus-LXXVII/Scorpio-Crosshair/main/docs/budget.md): Measured memory, CPU time and file size, with the budgets that a check enforces.
+- [README](https://raw.githubusercontent.com/Deikus-LXXVII/Scorpio-Crosshair/main/README.md): Features, every OS call, install, OBS, FAQ, test status, building.
+- [README in Russian](https://raw.githubusercontent.com/Deikus-LXXVII/Scorpio-Crosshair/main/README.ru.md): A shorter Russian version.
+- [Plan and anti-cheat review](https://raw.githubusercontent.com/Deikus-LXXVII/Scorpio-Crosshair/main/docs/plans/scorpio.md): Architecture, the OS call review, banned calls, known gaps.
+- [Budget](https://raw.githubusercontent.com/Deikus-LXXVII/Scorpio-Crosshair/main/docs/budget.md): Measured memory, CPU and file size, with enforced budgets.
 
 ## Download and source
 
-- [Latest release](https://github.com/Deikus-LXXVII/Scorpio-Crosshair/releases/latest): The Windows installer, the Linux AppImage and the `.deb` package.
-- [Source code](https://github.com/Deikus-LXXVII/Scorpio-Crosshair): The repository on GitHub.
+- [Latest release](https://github.com/Deikus-LXXVII/Scorpio-Crosshair/releases/latest): Windows installer, Linux AppImage and `.deb`.
+- [Source code](https://github.com/Deikus-LXXVII/Scorpio-Crosshair): The GitHub repository.
 - [Licence](https://raw.githubusercontent.com/Deikus-LXXVII/Scorpio-Crosshair/main/LICENSE): PolyForm Noncommercial License 1.0.0.
 - [Website](https://deikus-lxxvii.github.io/Scorpio-Crosshair/): The landing page, with the FAQ as structured data.
 
 ## Optional
 
-- [Style and UX audit](https://raw.githubusercontent.com/Deikus-LXXVII/Scorpio-Crosshair/main/docs/style-audit.md): The decisions behind the settings window.
-- [Logo and brand files](https://raw.githubusercontent.com/Deikus-LXXVII/Scorpio-Crosshair/main/assets/brand/README.md): The Nodus sign, its files and its meaning.
+- [Style and UX audit](https://raw.githubusercontent.com/Deikus-LXXVII/Scorpio-Crosshair/main/docs/style-audit.md): Decisions behind the settings window.
+- [Logo and brand files](https://raw.githubusercontent.com/Deikus-LXXVII/Scorpio-Crosshair/main/assets/brand/README.md): The Nodus sign and its files.

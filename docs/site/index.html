@@ -102,7 +102,7 @@
 					"name": "Is a crosshair overlay bannable?",
 					"acceptedAnswer": {
 						"@type": "Answer",
-						"text": "It depends on the game's rules, and no overlay can promise that you will never be banned. Anti-cheats look for programs that read or change a game. Scorpio does neither. It is a separate transparent window on top of the game, and it never opens the game's process, reads its memory, hooks it, injects code or sends input. A game's terms can still forbid external crosshairs, so check the rules of the game that you play. No anti-cheat vendor has reviewed or approved Scorpio."
+						"text": "No overlay can promise that you will never be banned. Scorpio never reads or changes the game, but no anti-cheat vendor has approved it, and a game's rules can forbid external crosshairs."
 					}
 				},
 				{
@@ -110,7 +110,7 @@
 					"name": "Does Scorpio work with Vanguard, Easy Anti-Cheat, BattlEye or VAC?",
 					"acceptedAnswer": {
 						"@type": "Answer",
-						"text": "Nobody has tested Scorpio against a specific anti-cheat yet, and none of these vendors has reviewed or approved it. What is known is what Scorpio does on your computer: it never touches the game's process or the anti-cheat's process. Keep Hide from screen capture off."
+						"text": "Nobody has tested it against them yet, and none of these vendors has approved it."
 					}
 				},
 				{
@@ -118,7 +118,7 @@
 					"name": "Do CS2 crosshair codes work in Scorpio?",
 					"acceptedAnswer": {
 						"@type": "Answer",
-						"text": "Yes. Open the Crosshair tab and paste the code into Share code; codes start with CS or CSGO-. Scorpio draws the same crosshair over any game it detects, and Copy gives a code you can paste back. A dynamic crosshair is shown in its static resting style."
+						"text": "Yes. Paste the code into Share code on the Crosshair tab, and Copy gives you a code back. A dynamic crosshair shows in its static resting style."
 					}
 				},
 				{
@@ -126,15 +126,15 @@
 					"name": "Does Scorpio work on Linux?",
 					"acceptedAnswer": {
 						"@type": "Answer",
-						"text": "Scorpio is built for Linux with X11 or XWayland, as an AppImage and a .deb package. It is less proven there than on Windows: the X11 layer has run under a virtual X server, and the full app has not been tested on a Linux desktop or in a game yet. Native Wayland windows are not supported."
+						"text": "Yes, with X11 or XWayland, but it is less tested there than on Windows. Native Wayland windows are not supported."
 					}
 				},
 				{
 					"@type": "Question",
-					"name": "Does the crosshair show on my stream or recording?",
+					"name": "Does the crosshair show on my stream?",
 					"acceptedAnswer": {
 						"@type": "Answer",
-						"text": "With OBS Display Capture it does, because Display Capture records the screen. With OBS Game Capture it does not, until you add Scorpio's Browser source. The setup is five steps and is described on this page."
+						"text": "With OBS Display Capture, yes. With Game Capture, follow the OBS steps on this page."
 					}
 				},
 				{
@@ -142,7 +142,7 @@
 					"name": "Why does the crosshair not show over my game?",
 					"acceptedAnswer": {
 						"@type": "Answer",
-						"text": "First look at the title bar of the settings window. If it says \"Hidden by shortcut\", press the hide shortcut again. If Scorpio does not see the window as a game, add the game on the Games tab. If the game runs in exclusive fullscreen, switch it to borderless or windowed fullscreen, because Windows may not draw other windows over an exclusive fullscreen game. On Linux, Scorpio sees only X11 windows."
+						"text": "If the title bar says \"Hidden by shortcut\", press the hide shortcut again. Otherwise add the game on the Games tab, or switch the game from exclusive fullscreen to borderless."
 					}
 				},
 				{
@@ -150,31 +150,15 @@
 					"name": "Does Scorpio lower my frame rate or add input lag?",
 					"acceptedAnswer": {
 						"@type": "Answer",
-						"text": "Scorpio does not touch the game or its input. While it waits, it uses 0 ms of CPU time over 10 seconds and 6.9 MB of memory. Its effect on the frame rate inside a running game has not been measured yet."
+						"text": "Scorpio does not touch the game or its input. Its effect on the frame rate has not been measured yet."
 					}
 				},
 				{
 					"@type": "Question",
-					"name": "Can I use an image or a custom shape as a crosshair?",
+					"name": "Does Scorpio collect data?",
 					"acceptedAnswer": {
 						"@type": "Answer",
-						"text": "No. Scorpio's crosshairs are CS2-based only: five static styles and their settings."
-					}
-				},
-				{
-					"@type": "Question",
-					"name": "Does Scorpio collect data or go online?",
-					"acceptedAnswer": {
-						"@type": "Answer",
-						"text": "Scorpio has no telemetry and no account. It makes one kind of request: the update check to its releases on GitHub, and the download of an update. With automatic updates off, it checks only when you click Check for updates. The OBS source listens on your own computer only, and only while it is on."
-					}
-				},
-				{
-					"@type": "Question",
-					"name": "Is Scorpio open source?",
-					"acceptedAnswer": {
-						"@type": "Answer",
-						"text": "The source is public, and you can read it, change it and share your own versions for any non-commercial purpose. The licence is PolyForm Noncommercial 1.0.0, which forbids commercial use, so Scorpio is source-available and not open source in the OSI sense."
+						"text": "No. It has no telemetry and no account, and it goes online only to check for and download updates from GitHub."
 					}
 				}
 			]
@@ -201,7 +185,6 @@ img{display:block;max-width:100%;height:auto}
 .skip{position:absolute;left:var(--gutter);top:-60px;z-index:10;padding:8px 12px;background:var(--raised);font-size:13px}
 .skip:focus{top:8px}
 .wrap{max-width:1280px;margin:0 auto;padding:0 var(--gutter)}
-.caps{font:500 11px/1.6 var(--text);letter-spacing:.28em;text-transform:uppercase;color:var(--mute)}
 .link{color:var(--marble);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:4px;text-decoration-color:var(--line-ctl);transition:text-decoration-color .3s var(--ease)}
 .link:hover{text-decoration-color:var(--marble)}
 b{font-weight:400;color:var(--marble)}
@@ -222,7 +205,6 @@ kbd{display:inline-block;padding:1px 6px;font:400 12px/1.5 var(--text);letter-sp
 .inscr::before,.inscr::after{content:attr(data-t);position:absolute;inset:0;color:transparent;pointer-events:none}
 .inscr::before{text-shadow:0 2px 0 rgba(240,228,206,.28);-webkit-mask-image:radial-gradient(110% 260% at 42% 30%,#000,rgba(0,0,0,.17) 45%,transparent 72%);mask-image:radial-gradient(110% 260% at 42% 30%,#000,rgba(0,0,0,.17) 45%,transparent 72%)}
 .inscr::after{text-shadow:none;background:radial-gradient(110% 260% at 42% 30%,rgba(240,228,206,.72),rgba(240,228,206,.12) 45%,transparent 72%);-webkit-background-clip:text;background-clip:text}
-.hero-h .caps{margin-top:44px;font-size:12px}
 .lede{max-width:56ch;margin:28px auto 0;font-size:17px;color:var(--mute)}
 .cta{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:12px 32px;margin-top:40px}
 .btn{display:inline-flex;align-items:center;justify-content:center;height:52px;padding:0 28px;font:500 14px/1 var(--text);white-space:nowrap;color:var(--basalt);background:var(--marble);border:1px solid var(--marble);border-radius:2px;transition:transform .4s var(--ease),background-color .3s var(--ease),border-color .3s var(--ease)}
@@ -243,7 +225,6 @@ kbd{display:inline-block;padding:1px 6px;font:400 12px/1.5 var(--text);letter-sp
 .toc{display:flex;flex-wrap:wrap;gap:6px 34px;margin-top:40px;padding-bottom:22px;border-bottom:1px solid var(--line)}
 .toc a{display:inline-flex;gap:10px;align-items:baseline;padding:6px 0;font-size:14px;color:var(--marble);transition:color .3s var(--ease)}
 .toc a:hover,.toc a:focus-visible{color:var(--lit)}
-.toc i{font:400 13px/1 var(--display);font-style:normal;letter-spacing:.1em;color:var(--mute)}
 
 /* two-column blocks: copy 5, figure 7, alternating */
 .block{display:grid;grid-template-columns:5fr 7fr;gap:72px;align-items:center;padding-top:130px}
@@ -258,7 +239,6 @@ kbd{display:inline-block;padding:1px 6px;font:400 12px/1.5 var(--text);letter-sp
 
 /* document sections */
 .sec{padding-top:150px}
-.sec .num{font:400 15px/1 var(--display);letter-spacing:.2em;color:var(--porphyry-ink)}
 .sec h2{margin-top:14px;font:400 clamp(36px,3.4vw,50px)/1.05 var(--display)}
 .sec .lead{max-width:62ch;margin-top:22px;font-size:17px;color:var(--mute)}
 .sec .lead+.lead{margin-top:14px}
@@ -334,7 +314,6 @@ footer{margin-top:160px;border-top:1px solid var(--line)}
 		<svg class="hero-mark" viewBox="128 128 768 768" aria-hidden="true"><path fill="#ebe5da" d="M647.8 403.4L896 512L512 680L484.2 667.8L453.5 597.7L512 623.2L766.3 512L678.5 473.6ZM403.4 376.2L512 128L680 512L667.8 539.8L597.7 570.5L623.2 512L512 257.7L473.6 345.5ZM376.2 620.6L128 512L512 344L539.8 356.2L570.5 426.3L512 400.8L257.7 512L345.5 550.4ZM620.6 647.8L512 896L344 512L356.2 484.2L426.3 453.5L400.8 512L512 766.3L550.4 678.5Z"/><path fill="#c8435a" d="M468 512L512 468L556 512L512 556Z"/></svg>
 		<h1 class="hero-h">
 			<span class="inscr" data-t="Scorpio">Scorpio</span>
-			<span class="caps">Crosshair overlay for Windows and Linux</span>
 		</h1>
 		<p class="lede">Scorpio draws a <b>CS2-based crosshair</b> in its own window over your game. It shows the crosshair only while a game is in front, and it never opens, reads, hooks or injects into the game or its anti-cheat.</p>
 		<div class="cta">
@@ -351,60 +330,51 @@ footer{margin-top:160px;border-top:1px solid var(--line)}
 <div class="wrap">
 	<dl class="meta">
 		<div><dt>Systems</dt><dd>Windows 10 and 11. Linux with X11 or XWayland</dd></div>
-		<div><dt>Crosshair</dt><dd>CS2-based, five static styles; CS2 crosshair codes work</dd></div>
+		<div><dt>Crosshair</dt><dd>CS2-based crosshairs in five static styles. CS2 crosshair codes work</dd></div>
 		<div><dt>While it waits</dt><dd>6.9 MB of memory, 0 ms of CPU over 10 s</dd></div>
 		<div><dt>Licence</dt><dd>PolyForm Noncommercial 1.0.0, source-available</dd></div>
 	</dl>
 	<nav class="toc" aria-label="Contents">
-		<a href="#games"><i>01</i>Only over games</a>
-		<a href="#crosshair"><i>02</i>The crosshair</a>
-		<a href="#controls"><i>03</i>Controls</a>
-		<a href="#obs"><i>04</i>OBS</a>
-		<a href="#safety"><i>05</i>Anti-cheat safety</a>
-		<a href="#weight"><i>06</i>Weight</a>
-		<a href="#install"><i>07</i>Install</a>
-		<a href="#faq"><i>08</i>Questions</a>
-		<a href="#status"><i>09</i>What is tested</a>
+		<a href="#games">Only over games</a>
+		<a href="#crosshair">The crosshair</a>
+		<a href="#controls">Controls</a>
+		<a href="#obs">OBS</a>
+		<a href="#safety">Anti-cheat safety</a>
+		<a href="#weight">Weight</a>
+		<a href="#install">Install</a>
+		<a href="#faq">Questions</a>
+		<a href="#status">What is tested</a>
 	</nav>
 </div>
 
 <section class="block wrap" id="games" aria-labelledby="games-h">
 	<div class="copy">
-		<p class="caps">When it shows</p>
 		<h2 id="games-h">Only while a game is in front</h2>
-		<p>Scorpio waits in the tray. The crosshair appears when the window in front is a game, and it disappears at once when you switch away.</p>
-		<p>A window counts as a game when <b>you added it</b>, when it is <b>fullscreen</b>, or when <b>a launcher installed it</b>: Steam, Epic Games, GOG, Ubisoft Connect, EA, Battle.net, Riot and Xbox on Windows, and Steam, Heroic and Lutris on Linux.</p>
-		<p>An added game is matched on two of four checks: program name, program path, window title and window class.</p>
+		<p>The crosshair appears when a game is the window in front and disappears when you switch away. A game is a window <b>you added</b>, any <b>fullscreen</b> window, or a game from a launcher such as Steam, Epic Games or GOG.</p>
 	</div>
 	<figure class="shot"><img src="images/scorpio-game-detection.webp" width="1960" height="1400" loading="lazy" decoding="async" alt="Scorpio Games tab: two added games, one with its own crosshair, and switches for fullscreen windows and games from launchers"></figure>
 </section>
 
 <section class="block flip wrap" id="crosshair" aria-labelledby="crosshair-h">
 	<div class="copy">
-		<p class="caps">The crosshair</p>
-		<h2 id="crosshair-h">CS2-based crosshairs, and CS2 codes work</h2>
-		<p>Paste a <b>CS2 crosshair code</b> and Scorpio draws that crosshair; <b>Copy</b> gives a code you can paste back. There are five static styles with length, thickness, gap, centre dot, T shape, colour, opacity and outline.</p>
-		<p>Two things are finer than usual. Thickness moves in <b>half steps</b>, and the outline can be <b>1 to 6 pixels</b> wide.</p>
-		<p>Scorpio includes the crosshairs of 13 pro players, keeps your saved crosshairs, and gives an added game its own crosshair. It centres the crosshair exactly on the monitor of the game.</p>
+		<h2 id="crosshair-h">CS2 crosshair codes work in Scorpio</h2>
+		<p>Paste a share code to import a crosshair, and <b>Copy</b> to export yours. You get five static styles, thickness in half steps, an outline of 1 to 6 pixels, 13 pro player crosshairs and a crosshair per game.</p>
 	</div>
 	<figure class="shot"><img src="images/scorpio-saved-and-pro-crosshairs.webp" width="1960" height="1400" loading="lazy" decoding="async" alt="Scorpio Crosshair tab: a green crosshair in the preview at 4x, its share code, four saved crosshairs and pro player crosshairs"></figure>
 </section>
 
 <section class="block wrap" id="controls" aria-labelledby="controls-h">
 	<div class="copy">
-		<p class="caps">Controls</p>
 		<h2 id="controls-h">Hide while aiming, and six shortcuts</h2>
-		<p><b>Hide while aiming</b> is for scoped weapons. Scorpio hides the crosshair while you hold the aim button, or on each press. It reads the button through raw input, the way a game does, and sends nothing to the game.</p>
-		<p>Global shortcuts lock and unlock the position, centre the crosshair, hide it, step through saved crosshairs and add the game in front. The default for hide is <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>Alt</kbd> <kbd>H</kbd>.</p>
+		<p>Scorpio hides the crosshair while you hold the aim button, or on each press. It reads the button through raw input and sends nothing to the game. Global shortcuts lock, centre, hide and switch the crosshair, and add the game in front.</p>
 	</div>
 	<figure class="shot"><img src="images/scorpio-hide-while-aiming-and-shortcuts.webp" width="1960" height="1400" loading="lazy" decoding="async" alt="Scorpio Controls tab: the hide while aiming switch, the aim button, hold or toggle mode, and the six global shortcuts"></figure>
 </section>
 
 <section class="block flip wrap" id="obs" aria-labelledby="obs-h">
 	<div class="copy">
-		<p class="caps">Stream</p>
 		<h2 id="obs-h">The crosshair in OBS, also with Game Capture</h2>
-		<p>OBS Game Capture reads the frames of the game, so a crosshair in a separate window is never in the recording. Scorpio can serve the same crosshair to OBS as a <b>Browser source</b>.</p>
+		<p>Game Capture records only the game, so add Scorpio to OBS as a <b>Browser source</b>.</p>
 		<ol class="steps">
 			<li>In Scorpio, open the System tab and switch on <b>Show the crosshair in OBS</b>.</li>
 			<li>In OBS, add a Browser source above your game capture.</li>
@@ -412,39 +382,35 @@ footer{margin-top:160px;border-top:1px solid var(--line)}
 			<li>Set its width and height to your canvas size.</li>
 			<li>Keep it filling the whole canvas, with no transform.</li>
 		</ol>
-		<p>The server listens on your own computer only. While the switch is off, Scorpio opens no socket.</p>
 	</div>
 	<figure class="shot"><img src="images/scorpio-obs-browser-source.webp" width="1960" height="1400" loading="lazy" decoding="async" alt="Scorpio System tab: Show the crosshair in OBS is on, with three setup steps and the Browser source address"></figure>
 </section>
 
 <section class="sec wrap" id="safety" aria-labelledby="safety-h">
-	<p class="num" aria-hidden="true">05</p>
 	<h2 id="safety-h">It never touches the game or its anti-cheat</h2>
 	
-	<p class="lead">Scorpio is a separate window on top of the game. It works only with what the operating system tells every program about windows and input. It never opens another process, reads or writes its memory, injects code, installs a hook, sends synthetic input, loads a driver, or draws into the frames of the game.</p>
-	<p class="lead">No overlay can promise that you will never be banned, and <b>no anti-cheat vendor has reviewed or approved Scorpio</b>. A game's terms can forbid external crosshairs whatever the technique. This table is every operating system call that Scorpio makes, so you can judge for yourself.</p>
+	<p class="lead">Scorpio never opens another process, reads or writes its memory, injects code, installs a hook, sends synthetic input, loads a driver, or draws into the game's frames. No anti-cheat vendor has reviewed or approved it. The table lists every system call it makes.</p>
 	<div class="obj scroll" style="--tbl-min:820px" tabindex="0" role="region" aria-label="Operating system calls that Scorpio makes">
 		<table class="tbl">
 			<thead><tr><th scope="col">Need</th><th scope="col">Windows</th><th scope="col">Linux (X11)</th><th scope="col">Why it stays outside the game</th></tr></thead>
 			<tbody>
-				<tr><td>Which window is in front</td><td><code>SetWinEventHook</code>, out of context</td><td><code>_NET_ACTIVE_WINDOW</code> events</td><td>Nothing is loaded into another process. An event, not a poll</td></tr>
-				<tr><td>Title, class and size of the window</td><td><code>GetWindowTextW</code>, <code>GetClassNameW</code>, <code>GetWindowRect</code></td><td>Window manager properties</td><td>Window manager data. No process is opened</td></tr>
+				<tr><td>Which window is in front</td><td><code>SetWinEventHook</code>, out of context</td><td><code>_NET_ACTIVE_WINDOW</code> events</td><td>Nothing is loaded into another process</td></tr>
+				<tr><td>Title, class and size of the window</td><td><code>GetWindowTextW</code>, <code>GetClassNameW</code>, <code>GetWindowRect</code></td><td>Window manager properties</td><td>No process is opened</td></tr>
 				<tr><td>Path of the program</td><td><code>NtQuerySystemInformation</code></td><td><code>/proc/&lt;pid&gt;/exe</code></td><td>No process handle is opened</td></tr>
-				<tr><td>Aim button and hide key</td><td>Raw Input on Scorpio's own window</td><td>XInput2 raw events</td><td>The input API that games read. No hooks</td></tr>
-				<tr><td>Shortcuts</td><td><code>RegisterHotKey</code></td><td><code>XGrabKey</code></td><td>The standard API for global shortcuts</td></tr>
-				<tr><td>The crosshair</td><td>A layered, topmost, click-through window</td><td>An override-redirect ARGB window</td><td>A separate window. Nothing is drawn into the game</td></tr>
-				<tr><td>Crosshair in OBS, opt-in</td><td>HTTP server on <code>127.0.0.1:47117</code></td><td>The same</td><td>Talks only to OBS on the same computer</td></tr>
+				<tr><td>Aim button and hide key</td><td>Raw Input on Scorpio's own window</td><td>XInput2 raw events</td><td>No hooks</td></tr>
+				<tr><td>Shortcuts</td><td><code>RegisterHotKey</code></td><td><code>XGrabKey</code></td><td>The standard shortcut API</td></tr>
+				<tr><td>The crosshair</td><td>A layered, topmost, click-through window</td><td>An override-redirect ARGB window</td><td>Nothing is drawn into the game</td></tr>
+				<tr><td>Crosshair in OBS, opt-in</td><td>HTTP server on <code>127.0.0.1:47117</code></td><td>The same</td><td>Your own computer only</td></tr>
 			</tbody>
 		</table>
 	</div>
-	<p class="notice obj"><b>One switch is not risk-free: Hide from screen capture.</b> It is for Windows only and it is off by default. When it is on, screenshots, recordings and streams show the game without the crosshair. Cheat overlays use the same Windows call to hide from the screenshots that an anti-cheat takes, so an anti-cheat could take a closer look at Scorpio. Leave it off unless you need it.</p>
+	<p class="notice obj"><b>Leave Hide from screen capture off.</b> Cheat overlays use the same Windows call, so an anti-cheat could take a closer look at Scorpio.</p>
 </section>
 
 <section class="sec wrap" id="weight" aria-labelledby="weight-h">
-	<p class="num" aria-hidden="true">06</p>
 	<h2 id="weight-h">About 7 MB of memory and no CPU while it waits</h2>
 	
-	<p class="lead">Every input is an event, and nothing polls. The settings window is a web view that exists only while it is open. The figures were measured on Windows 11 with a release build, and a check fails when one of them grows by more than 25 %.</p>
+	<p class="lead">Measured on Windows 11 with a release build. A check fails if a figure grows by more than 25 %.</p>
 	<div class="obj stats">
 		<div><b>6.9 MB</b><span>Private memory, idle in the tray</span></div>
 		<div><b>0 ms</b><span>CPU time over 10 s idle</span></div>
@@ -454,66 +420,61 @@ footer{margin-top:160px;border-top:1px solid var(--line)}
 </section>
 
 <section class="sec wrap" id="install" aria-labelledby="install-h">
-	<p class="num" aria-hidden="true">07</p>
 	<h2 id="install-h">Install Scorpio on Windows or Linux</h2>
 	
-	<p class="lead">Every file is on the <a class="link" href="https://github.com/Deikus-LXXVII/Scorpio-Crosshair/releases/latest">latest release page</a>. After the install, Scorpio starts in the tray. Click the tray icon to open the settings window.</p>
+	<p class="lead">Get the files from the <a class="link" href="https://github.com/Deikus-LXXVII/Scorpio-Crosshair/releases/latest">latest release</a>.</p>
 	<div class="obj cells">
 		<div class="cell">
 			<h3>Windows 10 and 11</h3>
 			<ol>
-				<li>Download the file that ends in <code>-setup.exe</code>.</li>
-				<li>Run the installer. It installs for your user account and does not ask for administrator rights.</li>
+				<li>Download the <code>-setup.exe</code> file.</li>
+				<li>Run it. It needs no administrator rights.</li>
 				<li>Click the tray icon, paste a share code, and switch to your game.</li>
 			</ol>
-			<p>The installer is not signed with a Windows code-signing certificate, so SmartScreen can show a warning the first time.</p>
+			<p>The installer is unsigned, so SmartScreen may warn you the first time.</p>
 		</div>
 		<div class="cell">
 			<h3>Linux with X11 or XWayland</h3>
 			<ol>
-				<li>Download the <code>.AppImage</code> file, or the <code>.deb</code> file for Debian and Ubuntu.</li>
-				<li>Make the AppImage executable and run it, or install the package with <code>sudo apt install ./Scorpio_*.deb</code>.</li>
+				<li>Download the <code>.AppImage</code>, or the <code>.deb</code> for Debian and Ubuntu.</li>
+				<li>Make the AppImage executable and run it, or run <code>sudo apt install ./Scorpio_*.deb</code>.</li>
 				<li>Click the tray icon, paste a share code, and switch to your game.</li>
 			</ol>
-			<p>The AppImage updates itself. A game that runs as a native Wayland window is invisible to Scorpio.</p>
+			<p>Native Wayland windows are not supported.</p>
 		</div>
 	</div>
 </section>
 
 <section class="sec wrap" id="faq" aria-labelledby="faq-h">
-	<p class="num" aria-hidden="true">08</p>
 	<h2 id="faq-h">Questions</h2>
 	
 	<div class="obj faq">
-		<div><h3>Is a crosshair overlay bannable?</h3><p>It depends on the game's rules, and no overlay can promise that you will never be banned. Anti-cheats look for programs that read or change a game. Scorpio does neither. It is a separate transparent window on top of the game, and it never opens the game's process, reads its memory, hooks it, injects code or sends input. A game's terms can still forbid external crosshairs, so check the rules of the game that you play. No anti-cheat vendor has reviewed or approved Scorpio.</p></div>
-		<div><h3>Does Scorpio work with Vanguard, Easy Anti-Cheat, BattlEye or VAC?</h3><p>Nobody has tested Scorpio against a specific anti-cheat yet, and none of these vendors has reviewed or approved it. What is known is what Scorpio does on your computer: it never touches the game's process or the anti-cheat's process. Keep <b>Hide from screen capture</b> off.</p></div>
-		<div><h3>Do CS2 crosshair codes work in Scorpio?</h3><p>Yes. Open the <b>Crosshair</b> tab and paste the code into <b>Share code</b>; codes start with <code>CS</code> or <code>CSGO-</code>. Scorpio draws the same crosshair over any game it detects, and <b>Copy</b> gives a code you can paste back. A dynamic crosshair is shown in its static resting style.</p></div>
-		<div><h3>Does Scorpio work on Linux?</h3><p>Scorpio is built for Linux with X11 or XWayland, as an AppImage and a .deb package. It is less proven there than on Windows: the X11 layer has run under a virtual X server, and the full app has not been tested on a Linux desktop or in a game yet. Native Wayland windows are not supported.</p></div>
-		<div><h3>Does the crosshair show on my stream or recording?</h3><p>With OBS Display Capture it does, because Display Capture records the screen. With OBS Game Capture it does not, until you add Scorpio's Browser source. The setup is five steps and is described on this page.</p></div>
-		<div><h3>Why does the crosshair not show over my game?</h3><p>First look at the title bar of the settings window. If it says "Hidden by shortcut", press the hide shortcut again. If Scorpio does not see the window as a game, add the game on the <b>Games</b> tab. If the game runs in exclusive fullscreen, switch it to borderless or windowed fullscreen, because Windows may not draw other windows over an exclusive fullscreen game. On Linux, Scorpio sees only X11 windows.</p></div>
-		<div><h3>Does Scorpio lower my frame rate or add input lag?</h3><p>Scorpio does not touch the game or its input. While it waits, it uses 0 ms of CPU time over 10 seconds and 6.9 MB of memory. Its effect on the frame rate inside a running game has not been measured yet.</p></div>
-		<div><h3>Can I use an image or a custom shape as a crosshair?</h3><p>No. Scorpio's crosshairs are CS2-based only: five static styles and their settings.</p></div>
-		<div><h3>Does Scorpio collect data or go online?</h3><p>Scorpio has no telemetry and no account. It makes one kind of request: the update check to its releases on GitHub, and the download of an update. With automatic updates off, it checks only when you click <b>Check for updates</b>. The OBS source listens on your own computer only, and only while it is on.</p></div>
-		<div><h3>Is Scorpio open source?</h3><p>The source is public, and you can read it, change it and share your own versions for any non-commercial purpose. The licence is PolyForm Noncommercial 1.0.0, which forbids commercial use, so Scorpio is source-available and not open source in the OSI sense.</p></div>
+		<div><h3>Is a crosshair overlay bannable?</h3><p>No overlay can promise that you will never be banned. Scorpio never reads or changes the game, but no anti-cheat vendor has approved it, and a game's rules can forbid external crosshairs.</p></div>
+		<div><h3>Does Scorpio work with Vanguard, Easy Anti-Cheat, BattlEye or VAC?</h3><p>Nobody has tested it against them yet, and none of these vendors has approved it.</p></div>
+		<div><h3>Do CS2 crosshair codes work in Scorpio?</h3><p>Yes. Paste the code into <b>Share code</b> on the <b>Crosshair</b> tab, and <b>Copy</b> gives you a code back. A dynamic crosshair shows in its static resting style.</p></div>
+		<div><h3>Does Scorpio work on Linux?</h3><p>Yes, with X11 or XWayland, but it is less tested there than on Windows. Native Wayland windows are not supported.</p></div>
+		<div><h3>Does the crosshair show on my stream?</h3><p>With OBS Display Capture, yes. With Game Capture, follow <a class="link" href="#obs">the OBS steps</a> on this page.</p></div>
+		<div><h3>Why does the crosshair not show over my game?</h3><p>If the title bar says "Hidden by shortcut", press the hide shortcut again. Otherwise add the game on the <b>Games</b> tab, or switch the game from exclusive fullscreen to borderless.</p></div>
+		<div><h3>Does Scorpio lower my frame rate or add input lag?</h3><p>Scorpio does not touch the game or its input. Its effect on the frame rate has not been measured yet.</p></div>
+		<div><h3>Does Scorpio collect data?</h3><p>No. It has no telemetry and no account, and it goes online only to check for and download updates from GitHub.</p></div>
 	</div>
 </section>
 
 <section class="sec wrap" id="status" aria-labelledby="status-h">
-	<p class="num" aria-hidden="true">09</p>
 	<h2 id="status-h">What is tested and what is not</h2>
 	
-	<p class="lead">Scorpio is at version 0.1.0. This is the state on 21 November 2026. The screenshots on this page show the real settings window in headless Chromium with sample data.</p>
+	<p class="lead">Version 0.1.0 on 21 November 2026. The screenshots show the real settings window with sample data.</p>
 	<div class="obj scroll" style="--tbl-min:480px" tabindex="0" role="region" aria-label="What is tested">
 		<table class="tbl">
 			<thead><tr><th scope="col">Area</th><th scope="col">State</th></tr></thead>
 			<tbody>
-				<tr><td>Crosshair maths, share codes, game matching, launcher parsers</td><td>Unit tests</td></tr>
-				<tr><td>Windows build</td><td>Built, run and measured on Windows 11</td></tr>
-				<tr><td>Windows, inside a real game session</td><td>Not tested yet</td></tr>
-				<tr><td>Linux X11 layer</td><td>Run under a virtual X server. Not yet run on a Linux desktop</td></tr>
-				<tr><td>Crosshair in OBS</td><td>The local server has a test. Not tested inside OBS yet</td></tr>
-				<tr><td>Automatic updates</td><td>Written. Not yet exercised against a published release</td></tr>
-				<tr><td>Any specific anti-cheat</td><td>Not tested</td></tr>
+				<tr><td>Crosshair maths, share codes, game matching</td><td>Unit tests</td></tr>
+				<tr><td>Windows build</td><td>Run and measured on Windows 11</td></tr>
+				<tr><td>Inside a real game</td><td>Not tested yet</td></tr>
+				<tr><td>Linux</td><td>Virtual X server only</td></tr>
+				<tr><td>OBS</td><td>Local server tested, OBS not yet</td></tr>
+				<tr><td>Automatic updates</td><td>Not yet run against a release</td></tr>
+				<tr><td>Any anti-cheat</td><td>Not tested</td></tr>
 			</tbody>
 		</table>
 	</div>
