@@ -204,7 +204,7 @@ html.page::-webkit-scrollbar{display:none}
 .copy>*+*{margin-top:24px}
 .copy p{max-width:46ch;color:var(--mute)}
 .name{text-wrap:balance;font:400 var(--fs-h1)/1 var(--display);letter-spacing:.01em;color:var(--rest);transition:color .9s var(--ease),text-shadow .9s var(--ease)}
-.block.current .name,.block:has(.go:focus-visible) .name{color:var(--lit);text-shadow:var(--lit-glow-display)}
+.block.current .name,.block:has(.go:focus-visible) .name,.get.current .name,.get:has(.go:focus-visible) .name{color:var(--lit);text-shadow:var(--lit-glow-display)}
 .go{display:inline-block;padding:12px 0;font:500 11px/1 var(--text);letter-spacing:var(--track-caps);text-transform:uppercase;color:var(--mute);transition:color .5s var(--ease)}
 .go:hover,.go:focus-visible{color:var(--lit)}
 .go:focus-visible{outline:none;text-decoration:underline;text-underline-offset:8px;text-decoration-thickness:1px}
@@ -408,7 +408,6 @@ html.js .rv.in{opacity:1;transform:none}
 		</tbody>
 	</table>
 	<figure class="cmp obj" data-vs="3">
-		<p><b>Only Scorpio hides while you aim without global hooks,</b> which aimbots use too.</p>
 		<div class="vs" role="group" aria-label="Compare Scorpio with"><button type="button" data-vs="1" aria-pressed="false">Simple</button><button type="button" data-vs="2" aria-pressed="false">Crosshair Y</button><button type="button" data-vs="3" aria-pressed="true">CrossOver</button></div>
 		<table class="tbl">
 			<thead><tr><td></td><th scope="col">Scorpio</th><th scope="col">Simple Crosshair Overlay</th><th scope="col">Crosshair Y</th><th scope="col">CrossOver</th></tr></thead>
@@ -441,7 +440,7 @@ html.js .rv.in{opacity:1;transform:none}
 	<div class="copy rv">
 		<h2 class="name" id="efficiency-h">Efficiency</h2>
 		
-		<p><b>Light on memory and idle on the processor.</b> Simple Crosshair Overlay uses less memory but keeps the processor far busier.</p>
+		<p><b>A crosshair is a simple job, so Scorpio spends little on it.</b> Of these four apps, it is the only one light on both memory and the processor.</p>
 	</div>
 	<figure class="chart">
 			<table>
@@ -536,8 +535,18 @@ for ( const d of document.querySelectorAll( '.qa' ) ) {
 	if (!('IntersectionObserver' in window)) { document.querySelectorAll('.rv').forEach((el) => el.classList.add('in')); return }
 	const rv = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); rv.unobserve(e.target) } }), { threshold: .15 })
 	document.querySelectorAll('.rv').forEach((el) => rv.observe(el))
-	const lit = new IntersectionObserver((es) => es.forEach((e) => e.target.classList.toggle('current', e.isIntersecting)), { rootMargin: '-40% 0px -40% 0px' })
+	// A block lights while it crosses the middle of the screen. The download, last on the page, never gets there:
+	// it lights once it is wholly on screen, and then it alone is lit.
+	const get = document.querySelector('.get')
+	const middle = new Set()
+	let end = false
+	const paint = () => {
+		document.querySelectorAll('.block').forEach((el) => el.classList.toggle('current', !end && middle.has(el)))
+		get?.classList.toggle('current', end)
+	}
+	const lit = new IntersectionObserver((es) => { es.forEach((e) => e.isIntersecting ? middle.add(e.target) : middle.delete(e.target)); paint() }, { rootMargin: '-40% 0px -40% 0px' })
 	document.querySelectorAll('.block').forEach((el) => lit.observe(el))
+	if (get) new IntersectionObserver(([e]) => { end = e.isIntersecting; paint() }, { threshold: 1 }).observe(get)
 })()
 </script>
 </body>

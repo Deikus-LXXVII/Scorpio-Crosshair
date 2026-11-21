@@ -361,7 +361,7 @@ html.page::-webkit-scrollbar{display:none}
 .copy>*+*{margin-top:24px}
 .copy p{max-width:46ch;color:var(--mute)}
 .name{text-wrap:balance;font:400 var(--fs-h1)/1 var(--display);letter-spacing:.01em;color:var(--rest);transition:color .9s var(--ease),text-shadow .9s var(--ease)}
-.block.current .name,.block:has(.go:focus-visible) .name{color:var(--lit);text-shadow:var(--lit-glow-display)}
+.block.current .name,.block:has(.go:focus-visible) .name,.get.current .name,.get:has(.go:focus-visible) .name{color:var(--lit);text-shadow:var(--lit-glow-display)}
 .go{display:inline-block;padding:12px 0;font:500 11px/1 var(--text);letter-spacing:var(--track-caps);text-transform:uppercase;color:var(--mute);transition:color .5s var(--ease)}
 .go:hover,.go:focus-visible{color:var(--lit)}
 .go:focus-visible{outline:none;text-decoration:underline;text-underline-offset:8px;text-decoration-thickness:1px}
@@ -536,8 +536,18 @@ for ( const d of document.querySelectorAll( '.qa' ) ) {
 	if (!('IntersectionObserver' in window)) { document.querySelectorAll('.rv').forEach((el) => el.classList.add('in')); return }
 	const rv = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); rv.unobserve(e.target) } }), { threshold: .15 })
 	document.querySelectorAll('.rv').forEach((el) => rv.observe(el))
-	const lit = new IntersectionObserver((es) => es.forEach((e) => e.target.classList.toggle('current', e.isIntersecting)), { rootMargin: '-40% 0px -40% 0px' })
+	// A block lights while it crosses the middle of the screen. The download, last on the page, never gets there:
+	// it lights once it is wholly on screen, and then it alone is lit.
+	const get = document.querySelector('.get')
+	const middle = new Set()
+	let end = false
+	const paint = () => {
+		document.querySelectorAll('.block').forEach((el) => el.classList.toggle('current', !end && middle.has(el)))
+		get?.classList.toggle('current', end)
+	}
+	const lit = new IntersectionObserver((es) => { es.forEach((e) => e.isIntersecting ? middle.add(e.target) : middle.delete(e.target)); paint() }, { rootMargin: '-40% 0px -40% 0px' })
 	document.querySelectorAll('.block').forEach((el) => lit.observe(el))
+	if (get) new IntersectionObserver(([e]) => { end = e.isIntersecting; paint() }, { threshold: 1 }).observe(get)
 })()
 `
 
@@ -616,7 +626,6 @@ ${CALLS.map( ( [ need, how, tech ] ) => `\t\t\t<tr><th scope="row">${need}</th><
 		</tbody>
 	</table>
 	<figure class="cmp obj" data-vs="3">
-		<p><b>Only Scorpio hides while you aim without global hooks,</b> which aimbots use too.</p>
 		<div class="vs" role="group" aria-label="Compare Scorpio with">${CMP_APPS.slice( 1 ).map( ( a, i ) => `<button type="button" data-vs="${i + 1}" aria-pressed="${i === 2}">${a.replace( ' Crosshair Overlay', '' )}</button>` ).join( '' )}</div>
 		<table class="tbl">
 			<thead><tr><td></td>${CMP_APPS.map( a => `<th scope="col">${a}</th>` ).join( '' )}</tr></thead>
@@ -631,7 +640,7 @@ ${block( 'games', 'Only over&nbsp;games', `
 		<p>The crosshair shows while a game is in front and hides when you switch away. A game is one <b>you added</b>, any <b>fullscreen</b> window, or a game from a launcher such as Steam, Epic Games or GOG.</p>
 		<p>Keyboard shortcuts lock, centre and switch it.</p>`, shot( 'games' ), true )}
 ${block( 'efficiency', 'Efficiency', `
-		<p><b>Light on memory and idle on the processor.</b> Simple Crosshair Overlay uses less memory but keeps the processor far busier.</p>`, chart() )}
+		<p><b>A crosshair is a simple job, so Scorpio spends little on it.</b> Of these four apps, it is the only one light on both memory and the processor.</p>`, chart() )}
 ${block( 'obs', 'On stream', `
 		<p>OBS's Game Capture records only the game, so add the crosshair as a <b>Browser source</b>.</p>
 		<ol class="steps">
