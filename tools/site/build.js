@@ -5,7 +5,8 @@ const fs = require( 'fs' )
 const OUT = require( 'path' ).join( __dirname, '../../docs/site/index.html' )
 const SITE = 'https://scorpio.lxxvll.com/'
 const REPO = 'https://github.com/Deikus-LXXVII/Scorpio-Crosshair'
-const DOWNLOAD = REPO + '/releases/latest'
+// The universal Windows installer, the same file for every version (sent to Microsoft for SmartScreen).
+const DOWNLOAD = REPO + '/releases/tag/installer'
 // The released version, from the app's own config: the site is rebuilt after each release.
 const VERSION = JSON.parse( fs.readFileSync( require( 'path' ).join( __dirname, '../../src-tauri/tauri.conf.json' ), 'utf8' ) ).version
 const DATE = '2026-11-21'
@@ -672,7 +673,7 @@ ${FAQ.map( ( [ q, a ] ) => `\t\t<details class="qa"><summary>${q}<i aria-hidden=
 	<div class="get">
 		<h2 class="name" id="download-h">Download</h2>
 		<ol class="steps">
-			<li>On Windows 10 or 11, run the <code>-setup.exe</code>. It needs no administrator rights; Windows may warn you once, as it is unsigned.</li>
+			<li>On Windows 10 or 11, run <code>Scorpio_installer.exe</code>. It needs no administrator rights and updates Scorpio to the newest version on first start.</li>
 			<li>On Linux with X11 or XWayland, run the <code>.AppImage</code> or install the <code>.deb</code>.</li>
 			<li>Click the tray icon, make a crosshair or paste a code, and start your game.</li>
 		</ol>

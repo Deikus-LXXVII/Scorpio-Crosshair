@@ -153,8 +153,8 @@ A game's terms or a tournament's rules can forbid external crosshairs whatever t
 
 ### Windows
 
-1. Open the [latest release](https://github.com/Deikus-LXXVII/Scorpio-Crosshair/releases/latest) and download the file that ends in `-setup.exe`.
-2. Run the installer. It installs for your user account and does not ask for administrator rights.
+1. Download [`Scorpio_installer.exe`](https://github.com/Deikus-LXXVII/Scorpio-Crosshair/releases/tag/installer). It is the same file for every version.
+2. Run the installer. It installs for your user account and does not ask for administrator rights. A few seconds after the first start, Scorpio updates itself to the newest version.
 3. Scorpio starts in the tray. Click the tray icon to open the settings window.
 
 The installer is not signed with a Windows code-signing certificate, so Windows SmartScreen can show a warning the first time. The settings window uses Microsoft Edge WebView2. Windows 11 includes it, and the installer downloads it when it is missing.

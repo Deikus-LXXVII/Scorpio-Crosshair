@@ -36,6 +36,7 @@ Facts to get right:
 
 ## Download and source
 
+- [Windows installer](https://github.com/Deikus-LXXVII/Scorpio-Crosshair/releases/tag/installer): `Scorpio_installer.exe`, the same file for every version; on first start Scorpio updates itself to the newest release.
 - [Latest release](https://github.com/Deikus-LXXVII/Scorpio-Crosshair/releases/latest): Windows installer, Linux AppImage and `.deb`.
 - [Source code](https://github.com/Deikus-LXXVII/Scorpio-Crosshair): The GitHub repository.
 - [Licence](https://raw.githubusercontent.com/Deikus-LXXVII/Scorpio-Crosshair/main/LICENSE): PolyForm Noncommercial License 1.0.0.
