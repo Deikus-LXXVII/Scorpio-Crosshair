@@ -245,6 +245,8 @@ pub fn start(handle: &AppHandle, first_start: bool) {
     let handle = handle.clone();
     let spawned = std::thread::Builder::new().name("scorpio-updates".into()).spawn(move || {
         std::thread::sleep(if first_start { FIRST_START_CHECK } else { FIRST_CHECK });
+        // The first start's check stands for the loop's first one.
+        let mut checked = false;
         if first_start && !crate::settings_snapshot(&handle).update_manually {
             tauri::async_runtime::block_on(exclusive(&handle, async {
                 if matches!(check(&handle).await, UpdateState::Available { .. }) && !crate::game_in_front(&handle) {
@@ -252,11 +254,13 @@ pub fn start(handle: &AppHandle, first_start: bool) {
                     download_and_install(&handle).await;
                 }
             }));
+            on_focus(&handle, crate::game_in_front(&handle), false);
+            checked = true;
         }
         loop {
             let manual = crate::settings_snapshot(&handle).update_manually;
             let already = handle.state::<Updates>().found.lock().unwrap().is_some();
-            if !manual && !already {
+            if !std::mem::take(&mut checked) && !manual && !already {
                 tauri::async_runtime::block_on(exclusive(&handle, async {
                     check(&handle).await;
                 }));
