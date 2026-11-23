@@ -1,6 +1,6 @@
 [package]
 name = "scorpio"
-version = "0.1.4"
+version = "0.1.5"
 description = "A CS2 crosshair overlay for Windows and Linux that shows only while your game is in focus"
 license-file = "../LICENSE"
 edition = "2021"

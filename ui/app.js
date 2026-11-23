@@ -1070,6 +1070,11 @@ const start = async () => {
 
 	const tabs = Array.from( document.querySelectorAll( '.tabs [role="tab"]' ) )
 
+	// Windows can bring this window back in front by itself (when another
+	// program's window closes over a game); keys meant for the game must then
+	// reach no control.
+	window.addEventListener( 'blur', () => document.activeElement?.blur() )
+
 	for ( const t of tabs ) t.addEventListener( 'click', () => go( t.dataset.tab ) )
 	document.querySelector( '.tabs' ).addEventListener( 'keydown', event => {
 

@@ -365,10 +365,14 @@ impl App {
                         (Some(i), _) => (i + count - 1) % count,
                     };
                     self.saved_index = Some(index);
+                    let before = self.settings.clone();
                     let chosen = self.settings.saved[index].crosshair.clone();
                     *self.active_crosshair_mut() = chosen;
                     // A saved crosshair is a CS2 one: choosing it shows it.
                     self.active_image_mut().on = false;
+                    for change in crosshair_changes(&before, &self.settings) {
+                        log::info!("shortcut {key:?} changed {change}");
+                    }
                     effects.settings_changed = true;
                 }
             }
@@ -411,7 +415,10 @@ impl App {
     /// New settings from the settings window.
     pub fn replace_settings(&mut self, settings: Settings) -> Effects {
         let mut effects = Effects { settings_changed: true, ..Effects::default() };
-        self.settings = settings.validated();
+        let before = std::mem::replace(&mut self.settings, settings.validated());
+        for change in crosshair_changes(&before, &self.settings) {
+            log::info!("settings window changed {change}");
+        }
         // Decoded images no setting names any more (a replaced image, an old
         // size) are dropped; their files go at the next start.
         let used: Vec<String> = self.settings.image_files().into_iter().map(String::from).collect();
@@ -684,11 +691,56 @@ pub struct Status {
     pub exclusive: Option<String>,
 }
 
+/// What changed between two settings in the main crosshair and each game's
+/// own, one line each, for the log: a crosshair changed by surprise can then
+/// be traced to what changed it.
+pub fn crosshair_changes(before: &Settings, after: &Settings) -> Vec<String> {
+    fn shown(crosshair: Option<&Crosshair>, image: &Image) -> String {
+        let Some(c) = crosshair else { return "none (the main crosshair shows)".into() };
+        let [r, g, b] = c.color;
+        let picture = if image.on { ", image shown instead" } else { "" };
+        format!(
+            "style {} length {} thickness {} gap {} dot {} colour #{r:02x}{g:02x}{b:02x} alpha {} outline {}{picture}",
+            c.style, c.length, c.thickness, c.gap, c.dot, c.alpha, c.outline
+        )
+    }
+    let mut changes = Vec::new();
+    let mut note = |whose: &str, old: String, new: String| {
+        if old != new {
+            changes.push(format!("{whose}: {old} -> {new}"));
+        }
+    };
+    note("the main crosshair", shown(Some(&before.crosshair), &before.image), shown(Some(&after.crosshair), &after.image));
+    for game in &after.games {
+        // Matched by what identifies it, so a renamed or reordered game is the same game.
+        let Some(old) = before.games.iter().find(|old| old.fingerprint == game.fingerprint) else { continue };
+        let whose = format!("{}'s own crosshair", game.name);
+        note(&whose, shown(old.crosshair.as_ref(), &old.image), shown(game.crosshair.as_ref(), &game.image));
+    }
+    changes
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     const OWN: u32 = 7;
+
+    #[test]
+    fn a_changed_crosshair_is_logged_with_whose_it_is() {
+        let mut before = app().settings;
+        before.games[0].crosshair = Some(Crosshair::default());
+        let mut after = before.clone();
+        assert!(crosshair_changes(&before, &after).is_empty(), "nothing changed");
+        after.games[0].crosshair = None;
+        after.games[0].name = "Renamed".into();
+        let changes = crosshair_changes(&before, &after);
+        assert_eq!(changes.len(), 1, "{changes:?}");
+        assert!(changes[0].starts_with("Renamed's own crosshair: style "), "{}", changes[0]);
+        assert!(changes[0].ends_with("-> none (the main crosshair shows)"), "{}", changes[0]);
+        after.crosshair.gap += 1;
+        assert!(crosshair_changes(&before, &after)[0].starts_with("the main crosshair: "));
+    }
 
     fn window(pid: u32, name: &str, fullscreen: bool) -> WindowInfo {
         WindowInfo {
