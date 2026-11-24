@@ -716,3 +716,19 @@ ${FAQ.map( ( [ q, a ] ) => `\t\t<details class="qa"><summary>${q}<i aria-hidden=
 `
 fs.writeFileSync( OUT, html )
 console.log( OUT, html.length )
+
+// /favicon.ico for readers that never look at <link rel="icon">: the app's own
+// pixel-drawn 16, 32 and 48 px entries, taken out of its .ico.
+const appIco = fs.readFileSync( require( 'path' ).join( __dirname, '../../src-tauri/icons/icon.ico' ) )
+const entries = []
+for ( let i = 0; i < appIco.readUInt16LE( 4 ); i++ ) {
+	const at = 6 + 16 * i
+	if ( ![ 16, 32, 48 ].includes( appIco[at] ) ) continue
+	const offset = appIco.readUInt32LE( at + 12 )
+	entries.push( { head: Buffer.from( appIco.subarray( at, at + 16 ) ), data: appIco.subarray( offset, offset + appIco.readUInt32LE( at + 8 ) ) } )
+}
+if ( entries.length !== 3 ) throw new Error( 'icon.ico lacks its 16, 32 or 48 px entry' )
+let next = 6 + 16 * entries.length
+for ( const entry of entries ) { entry.head.writeUInt32LE( next, 12 ); next += entry.data.length }
+const head = Buffer.alloc( 6 ); head.writeUInt16LE( 1, 2 ); head.writeUInt16LE( entries.length, 4 )
+fs.writeFileSync( require( 'path' ).join( __dirname, '../../docs/site/favicon.ico' ), Buffer.concat( [ head, ...entries.map( e => e.head ), ...entries.map( e => e.data ) ] ) )
