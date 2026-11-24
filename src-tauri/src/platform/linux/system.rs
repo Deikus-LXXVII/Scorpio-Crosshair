@@ -56,7 +56,7 @@ pub fn system_facts() -> SystemFacts {
     let session_type = Some(std::env::var("XDG_SESSION_TYPE").unwrap_or_else(|_| "unknown".into()));
     let mut displays = Vec::new();
     let mut notes = Vec::new();
-    let mut compositor = None;
+    let compositor;
 
     if std::env::var_os("DISPLAY").is_some() {
         match RustConnection::connect(None) {
@@ -196,7 +196,7 @@ fn read_compositor(conn: &RustConnection, root: Window, screen_num: usize) -> St
             }
         }
         if let Some(reply) = conn
-            .get_property(false, win, AtomEnum::WM_CLASS.into(), AtomEnum::STRING.into(), 0, 1024)
+            .get_property(false, win, AtomEnum::WM_CLASS, AtomEnum::STRING, 0, 1024)
             .ok()
             .and_then(|c| c.reply().ok())
         {
@@ -206,7 +206,7 @@ fn read_compositor(conn: &RustConnection, root: Window, screen_num: usize) -> St
             }
         }
         if let Some(reply) = conn
-            .get_property(false, win, AtomEnum::WM_NAME.into(), AtomEnum::ANY.into(), 0, 1024)
+            .get_property(false, win, AtomEnum::WM_NAME, AtomEnum::ANY, 0, 1024)
             .ok()
             .and_then(|c| c.reply().ok())
         {
@@ -219,7 +219,7 @@ fn read_compositor(conn: &RustConnection, root: Window, screen_num: usize) -> St
     };
 
     let supporting_wm = supporting.and_then(|atom: Atom| {
-        let reply = conn.get_property(false, root, atom, AtomEnum::WINDOW.into(), 0, 1).ok()?.reply().ok()?;
+        let reply = conn.get_property(false, root, atom, AtomEnum::WINDOW, 0, 1).ok()?.reply().ok()?;
         let win = reply.value32()?.next().filter(|&w| w != 0)?;
         window_name(win)
     });
