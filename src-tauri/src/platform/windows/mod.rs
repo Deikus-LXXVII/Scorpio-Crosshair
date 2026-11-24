@@ -248,6 +248,7 @@ unsafe extern "system" fn location_changed(
     _thread: u32,
     _time: u32,
 ) {
+    super::counters::record_window_location();
     // The window itself (OBJID_WINDOW, CHILDID_SELF), not the caret, the
     // cursor or a control inside it.
     if object != 0 || child != 0 {
@@ -279,6 +280,7 @@ unsafe extern "system" fn foreground_changed(
     _thread: u32,
     _time: u32,
 ) {
+    super::counters::record_foreground();
     // Only the window itself (OBJID_WINDOW, CHILDID_SELF), not a part of it.
     if object == 0 && child == 0 {
         report_foreground(hwnd);
@@ -291,6 +293,7 @@ unsafe extern "system" fn sink_procedure(hwnd: HWND, message: u32, wparam: WPARA
         match message {
             WM_WAKE => drain_commands(state),
             WM_TIMER if wparam.0 == EXCLUSIVE_TIMER => {
+                super::counters::record_timer();
                 // The shell's own answer to "may I show a notification now":
                 // nothing here looks at or touches the game.
                 // SAFETY: no arguments; reads the shell's presentation state.
@@ -298,9 +301,13 @@ unsafe extern "system" fn sink_procedure(hwnd: HWND, message: u32, wparam: WPARA
                 let _ = state.events.send(Event::Exclusive(exclusive));
                 check_exclusive(state, (!exclusive).then(|| state.exclusive_check.get() + 1));
             }
-            WM_INPUT => state.listener.borrow_mut().read(lparam, |event| {
-                let _ = state.events.send(event);
-            }),
+            WM_TIMER => super::counters::record_timer(),
+            WM_INPUT => {
+                super::counters::record_raw_input();
+                state.listener.borrow_mut().read(lparam, |event| {
+                    let _ = state.events.send(event);
+                });
+            }
             _ => {}
         }
     });

@@ -2,10 +2,19 @@
 //! the core and the settings window can still be built and tested.
 
 use super::{Command, Event, Platform, Unsupported};
+use crate::report::{ProcessCost, SystemFacts};
 use std::sync::mpsc::{channel, Sender};
 
 pub fn start(_events: Sender<Event>) -> Result<Platform, Unsupported> {
     let (commands, _receiver) = channel::<Command>();
     std::mem::forget(_receiver);
     Ok(Platform { commands, wake: Box::new(|| {}), list_windows: Box::new(Vec::new) })
+}
+
+pub fn process_cost() -> ProcessCost {
+    ProcessCost::default()
+}
+
+pub fn system_facts() -> SystemFacts {
+    SystemFacts { notes: vec!["hardware and display facts are collected on Windows and Linux only".into()], ..Default::default() }
 }

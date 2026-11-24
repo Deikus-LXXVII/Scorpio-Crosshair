@@ -264,6 +264,11 @@ impl App {
         self.over_something()
     }
 
+    /// True while a recognised game (not Scorpio's own settings window) is in front.
+    pub fn game_in_front(&self) -> bool {
+        self.focus.visible && self.front.as_ref().is_some_and(|w| w.pid != self.own_pid)
+    }
+
     fn should_show(&self) -> bool {
         !self.locked || (self.over_something() && !self.hidden && !(self.settings.aim.hide && self.aiming))
     }

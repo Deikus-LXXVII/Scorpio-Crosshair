@@ -99,9 +99,11 @@ h2.t-h4 + .help.lede { margin: 0 0 12px; }
 .keybind[aria-invalid="true"] { border-color: var(--porphyry-hi); }
 .keybind .hint.value { color: var(--marble); }   /* a mouse button, named in words: the value, not a prompt */
 
-/* The problem report, read in full: 20 lines of 16 and the field's 8 above and below. */
-.dialog.wide { width: min(760px, 100%); }
-.report-body .textarea { display: block; width: 100%; height: 336px; margin-top: 16px; resize: none; overflow: auto; font: 400 var(--fs-small)/var(--lh-sm) var(--mono); white-space: pre; }
+/* The problem report, read in full: player notes above the monospace preview. */
+.dialog.wide { width: min(760px, 100%); max-height: calc(100vh - 56px); overflow-y: auto; }
+.report-body { display: flex; flex-direction: column; gap: 12px; }
+.report-body .report-what { height: 76px; min-height: 76px; resize: none; }
+.report-body .textarea.report { display: block; width: 100%; height: 224px; min-height: 160px; margin-top: 4px; resize: none; overflow: auto; font: 400 var(--fs-small)/var(--lh-sm) var(--mono); white-space: pre; }
 
 /* One line: 8 + 18 + 8 = 34. Each further line adds 18, so two lines make 52. */
 #toast { position: fixed; left: 50%; bottom: 28px; max-width: min(560px, calc(100% - 56px)); min-height: 0; padding: 8px 16px; transform: translateX(-50%); }

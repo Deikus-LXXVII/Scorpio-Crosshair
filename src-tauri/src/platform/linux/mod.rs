@@ -5,6 +5,7 @@
 mod describe;
 mod input;
 mod overlay;
+pub mod system;
 
 use super::{Command, Event, Geometry, Platform, Unsupported};
 use crate::core::focus::WindowInfo;
@@ -138,6 +139,7 @@ impl State {
     fn handle(&mut self, event: XEvent) {
         let reply = match &event {
             XEvent::PropertyNotify(e) if e.window == self.root && e.atom == self.atoms._NET_ACTIVE_WINDOW => {
+                super::counters::record_foreground();
                 self.refresh_foreground();
                 None
             }
@@ -146,6 +148,7 @@ impl State {
                 if Some(e.window) == self.active
                     && [self.atoms._NET_WM_NAME, self.atoms._NET_WM_STATE, u32::from(AtomEnum::WM_NAME)].contains(&e.atom) =>
             {
+                super::counters::record_foreground();
                 self.refresh_foreground();
                 None
             }
@@ -153,6 +156,7 @@ impl State {
             // managers send a synthetic ConfigureNotify to the client on a
             // move, and the frame's own reports every change.
             XEvent::ConfigureNotify(e) if self.followed.is_some_and(|(window, frame, _)| e.window == window || e.window == frame) => {
+                super::counters::record_window_location();
                 self.report_geometry();
                 None
             }
@@ -165,6 +169,13 @@ impl State {
                 // Mostly BadWindow from a window that closed while we read it.
                 log::debug!("X error: {e:?}");
                 None
+            }
+            XEvent::XinputRawButtonPress(_)
+            | XEvent::XinputRawButtonRelease(_)
+            | XEvent::XinputRawKeyPress(_)
+            | XEvent::XinputRawKeyRelease(_) => {
+                super::counters::record_raw_input();
+                self.input.handle(&event)
             }
             _ => self.input.handle(&event).or_else(|| self.overlay.handle(&self.conn, &event).unwrap_or_else(|e| {
                 log::warn!("overlay event failed: {e}");

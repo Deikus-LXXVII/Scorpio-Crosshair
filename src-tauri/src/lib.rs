@@ -65,6 +65,7 @@ struct Rest {
 /// the app lock held, so steps taken on two threads reach the overlay and
 /// OBS in the order the app decided them.
 fn deliver(state: &Shared, app: &App, effects: Effects) -> Rest {
+    platform::counters::set_game_in_front(app.game_in_front());
     let overlay_changed = !effects.commands.is_empty();
     for command in effects.commands {
         state.platform.send(command);
@@ -431,7 +432,10 @@ async fn problem_report(handle: AppHandle) -> String {
         );
         (app.settings.clone(), state)
     };
-    report::text(&report::gather(state, Ok(settings)))
+    let cost = report::CostFacts { process: platform::process_cost(), counters: platform::counters::snapshot() };
+    tauri::async_runtime::spawn_blocking(move || report::text(&report::gather(state, Ok(settings), Some(cost))))
+        .await
+        .unwrap_or_else(|error| format!("Scorpio problem report could not be gathered: {error}"))
 }
 
 /// Saves the report the player read, and says where.
@@ -497,7 +501,12 @@ async fn running_windows(handle: AppHandle) -> Vec<WindowInfo> {
 #[tauri::command]
 fn add_window(handle: AppHandle, window: WindowInfo) -> bool {
     let state = shared(&handle);
-    let added = state.app.lock().unwrap().add_game(&window);
+    let added = {
+        let mut app = state.app.lock().unwrap();
+        let added = app.add_game(&window);
+        platform::counters::set_game_in_front(app.game_in_front());
+        added
+    };
     if added {
         finish(&handle, Rest { settings_changed: true, status_changed: true });
     }
@@ -631,12 +640,19 @@ fn setup(handle: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 pub fn run() {
+    // `scorpio --system-facts` prints hardware, display and presentation JSON
+    // for the problem report and ends immediately; nothing else starts.
+    if std::env::args_os().skip(1).any(|arg| arg == "--system-facts") {
+        println!("{}", report::system_facts_json());
+        return;
+    }
     // `scorpio --report` prints the problem report and ends; nothing starts.
     if std::env::args_os().skip(1).any(|arg| arg == "--report") {
         platform::attach_console();
         println!("{}", report::from_files());
         return;
     }
+    platform::counters::init();
     if let Some(folder) = logging::paths::log_dir() {
         logging::start(&folder);
     }

@@ -26,11 +26,178 @@ mod stub;
 pub use self::stub::start;
 
 #[cfg(windows)]
-pub use self::windows::system::{attach_console, open_url, version as windows_version};
+pub use self::windows::system::{attach_console, open_url, process_cost, system_facts, version as windows_version};
 /// The program name and path of a process, from the system's process list
 /// (no handle is opened). For the probes.
 #[cfg(windows)]
 pub use self::windows::process_image;
+
+#[cfg(target_os = "linux")]
+pub use self::linux::system::{process_cost, system_facts};
+
+#[cfg(not(any(windows, target_os = "linux")))]
+pub use self::stub::{process_cost, system_facts};
+
+/// Relaxed wake-up counters and run timing for Scorpio's problem report.
+/// Incremented on the platform thread; no timers, threads or polling.
+pub mod counters {
+    use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+    use std::sync::{Mutex, OnceLock};
+    use std::time::{Duration, Instant};
+
+    static STARTED: OnceLock<Instant> = OnceLock::new();
+    static RAW_INPUT: AtomicU64 = AtomicU64::new(0);
+    static FOREGROUND: AtomicU64 = AtomicU64::new(0);
+    static WINDOW_LOCATION: AtomicU64 = AtomicU64::new(0);
+    static TIMERS: AtomicU64 = AtomicU64::new(0);
+    static RAW_SEC: AtomicU64 = AtomicU64::new(u64::MAX);
+    static RAW_IN_SEC: AtomicU64 = AtomicU64::new(0);
+    static RAW_PEAK_PER_SEC: AtomicU64 = AtomicU64::new(0);
+
+    static GAME_ACTIVE: AtomicBool = AtomicBool::new(false);
+    static GAME_TIME: Mutex<GameTime> = Mutex::new(GameTime { since: None, accumulated: Duration::ZERO });
+
+    struct GameTime {
+        since: Option<Instant>,
+        accumulated: Duration,
+    }
+
+    /// Snapshot of wake-up counts and durations since Scorpio started.
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+    pub struct Snapshot {
+        pub uptime: Duration,
+        pub game_in_front: Duration,
+        pub raw_input: u64,
+        pub raw_input_peak_per_sec: u64,
+        pub foreground: u64,
+        pub window_location: u64,
+        pub timers: u64,
+    }
+
+    pub fn init() {
+        let _ = STARTED.get_or_init(Instant::now);
+    }
+
+    fn started() -> Instant {
+        *STARTED.get_or_init(Instant::now)
+    }
+
+    pub fn record_raw_input() {
+        record_raw_input_at(&RAW_INPUT, &RAW_SEC, &RAW_IN_SEC, &RAW_PEAK_PER_SEC, started().elapsed().as_secs());
+    }
+
+    pub(crate) fn record_raw_input_at(
+        total: &AtomicU64,
+        cur_sec: &AtomicU64,
+        in_sec: &AtomicU64,
+        peak: &AtomicU64,
+        sec: u64,
+    ) {
+        total.fetch_add(1, Ordering::Relaxed);
+        let count = if cur_sec.load(Ordering::Relaxed) == sec {
+            in_sec.fetch_add(1, Ordering::Relaxed) + 1
+        } else {
+            cur_sec.store(sec, Ordering::Relaxed);
+            in_sec.store(1, Ordering::Relaxed);
+            1
+        };
+        if count > peak.load(Ordering::Relaxed) {
+            peak.fetch_max(count, Ordering::Relaxed);
+        }
+    }
+
+    pub fn record_foreground() {
+        FOREGROUND.fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub fn record_window_location() {
+        WINDOW_LOCATION.fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub fn record_timer() {
+        TIMERS.fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// Tracks transitions in and out of a game being in front without any timer.
+    pub fn set_game_in_front(active: bool) {
+        if GAME_ACTIVE.load(Ordering::Relaxed) == active {
+            return;
+        }
+        let mut state = GAME_TIME.lock().unwrap_or_else(|p| p.into_inner());
+        let now = Instant::now();
+        update_game_time(&mut state, active, now);
+        GAME_ACTIVE.store(active, Ordering::Relaxed);
+    }
+
+    fn update_game_time(state: &mut GameTime, active: bool, now: Instant) {
+        if state.since.is_some() == active {
+            return;
+        }
+        if active {
+            state.since = Some(now);
+        } else if let Some(since) = state.since.take() {
+            state.accumulated += now.saturating_duration_since(since);
+        }
+    }
+
+    pub fn snapshot() -> Snapshot {
+        let now = Instant::now();
+        let uptime = now.saturating_duration_since(started());
+        let game_in_front = {
+            let state = GAME_TIME.lock().unwrap_or_else(|p| p.into_inner());
+            state.accumulated + state.since.map_or(Duration::ZERO, |s| now.saturating_duration_since(s))
+        };
+        Snapshot {
+            uptime,
+            game_in_front,
+            raw_input: RAW_INPUT.load(Ordering::Relaxed),
+            raw_input_peak_per_sec: RAW_PEAK_PER_SEC.load(Ordering::Relaxed),
+            foreground: FOREGROUND.load(Ordering::Relaxed),
+            window_location: WINDOW_LOCATION.load(Ordering::Relaxed),
+            timers: TIMERS.load(Ordering::Relaxed),
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn raw_input_tracks_total_and_peak_per_second() {
+            let total = AtomicU64::new(0);
+            let sec = AtomicU64::new(u64::MAX);
+            let in_sec = AtomicU64::new(0);
+            let peak = AtomicU64::new(0);
+            for _ in 0..3 {
+                record_raw_input_at(&total, &sec, &in_sec, &peak, 0);
+            }
+            for _ in 0..7 {
+                record_raw_input_at(&total, &sec, &in_sec, &peak, 1);
+            }
+            for _ in 0..2 {
+                record_raw_input_at(&total, &sec, &in_sec, &peak, 5);
+            }
+            assert_eq!(total.load(Ordering::Relaxed), 12);
+            assert_eq!(peak.load(Ordering::Relaxed), 7);
+            assert_eq!(in_sec.load(Ordering::Relaxed), 2);
+        }
+
+        #[test]
+        fn game_time_accumulates_across_transitions() {
+            let t0 = Instant::now();
+            let mut state = GameTime { since: None, accumulated: Duration::ZERO };
+            update_game_time(&mut state, false, t0);
+            assert_eq!(state.accumulated, Duration::ZERO);
+            update_game_time(&mut state, true, t0);
+            update_game_time(&mut state, true, t0 + Duration::from_secs(2));
+            update_game_time(&mut state, false, t0 + Duration::from_secs(5));
+            assert_eq!(state.accumulated, Duration::from_secs(5));
+            update_game_time(&mut state, true, t0 + Duration::from_secs(10));
+            update_game_time(&mut state, false, t0 + Duration::from_secs(13));
+            assert_eq!(state.accumulated, Duration::from_secs(8));
+        }
+    }
+}
 
 /// Opens an address in the default browser.
 #[cfg(not(windows))]

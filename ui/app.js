@@ -973,33 +973,104 @@ const updatesBlock = () => {
 
 }
 
+const REPORT_WHAT_LIMIT = 4000
+const REPORT_CONTACT_LIMIT = 200
+
+// Matches `report::compose` in Rust: inserts the player's own fields right
+// after the header without altering the already-redacted body.
+const composeReport = ( base, description, contact ) => {
+
+	const desc = Array.from( description.trim() ).slice( 0, REPORT_WHAT_LIMIT ).join( '' )
+	const reach = Array.from( contact.trim() ).slice( 0, REPORT_CONTACT_LIMIT ).join( '' )
+
+	if ( !desc && !reach ) return base
+	const split = base.indexOf( '\n\n' )
+	const head = split === -1 ? '' : base.slice( 0, split + 1 )
+	const body = split === -1 ? base : base.slice( split + 2 )
+	const parts = []
+
+	if ( desc ) parts.push( `What happened:\n${desc}\n` )
+	if ( reach ) parts.push( `How to reach you:\n${reach}\n` )
+	return `${head}${head ? '\n' : ''}${parts.join( '\n' )}\n${body}`
+
+}
+
+let reportOpening = false
+
 // The report is shown in full before anything happens to it. Saving writes
 // it to Downloads; the GitHub issue opens in the browser and asks for that
 // file, so the report itself never goes into an address.
 const showReport = async () => {
 
-	const text = await invoke( 'problem_report' )
+	if ( reportOpening ) return
+	reportOpening = true
+	let base
+
+	try {
+
+		base = await invoke( 'problem_report' )
+
+	} finally {
+
+		reportOpening = false
+
+	}
+
+	const what = h( 'textarea.textarea.report-what#report-what', {
+		maxlength: String( REPORT_WHAT_LIMIT ),
+		rows: '3',
+		placeholder: t( 'What you were doing and what went wrong.' ),
+	} )
+	const contact = h( 'input.input#report-contact', {
+		maxlength: String( REPORT_CONTACT_LIMIT ),
+		placeholder: t( 'Optional: Discord name or e-mail' ),
+	} )
 	const area = h( 'textarea.textarea.report', { readonly: true, spellcheck: 'false', 'aria-label': t( 'The report' ) } )
 	let saved = null
+	let savedText = null
 
-	area.value = text
+	const refresh = () => {
+
+		area.value = composeReport( base, what.value, contact.value )
+
+	}
+
+	what.addEventListener( 'input', refresh )
+	contact.addEventListener( 'input', refresh )
+	refresh()
+
 	const saveFile = async () => {
 
-		if ( !saved ) saved = await invoke( 'save_report', { text } )
+		const text = area.value
+
+		if ( !saved || savedText !== text ) {
+
+			saved = await invoke( 'save_report', { text } )
+			savedText = text
+
+		}
 
 		return saved
 
 	}
 
 	const body = h( 'div.report-body', {},
-		h( 'p', { text: t( 'Version, system, settings and the end of the log. Your user folder and name are taken out.' ) } ),
+		h( 'p', { text: t( "Version, system, hardware, displays, Scorpio's cost, settings and the end of the log. Your user folder and name are taken out." ) } ),
+		h( 'div.field', {},
+			h( 'label.field-label', { for: 'report-what', text: t( 'What happened' ) } ),
+			what,
+		),
+		h( 'div.field', {},
+			h( 'label.field-label', { for: 'report-contact', text: t( 'How to reach you' ) } ),
+			contact,
+		),
 		area,
 	)
 	const close = dialog( t( 'Report a problem' ), body, [
 		h( 'button.btn.quiet', { type: 'button', text: t( 'Close' ), onclick: () => close() } ),
 		h( 'button.btn', { type: 'button', text: t( 'Copy' ), onclick: async () => {
 
-			await navigator.clipboard.writeText( text )
+			await navigator.clipboard.writeText( area.value )
 			toast( t( 'Report copied.' ) )
 
 		} } ),

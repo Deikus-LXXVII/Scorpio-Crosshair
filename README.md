@@ -297,7 +297,7 @@ Known gaps:
 
 ## Troubleshooting
 
-**Report a problem.** On the **System** tab, click **Show the report**. You see the whole report first: Scorpio's version, your system, your settings, and the last 200 lines of the log, with your user folder written as `~` and your user name as `<user>`. Then you can copy it, save it as a file in your Downloads folder, or click **Report on GitHub**, which saves the file and opens a new issue in your browser with a short text that asks you to attach it. Scorpio never sends anything by itself and has no telemetry.
+**Report a problem.** On the **System** tab, click **Show the report**. You can describe what happened and optionally leave a way to reach you, and you see the whole report first: Scorpio's version, your system, processor and memory, graphics cards, displays (resolution, refresh rate, HDR and overlay-plane support), presentation settings (HAGS, windowed-game optimisations, Game Mode and `__COMPAT_LAYER`, or session and compositor on Linux), Scorpio's own CPU time, private memory, uptime and wake-ups, your settings, and the last 200 lines of the log, with your user folder written as `~` and your user name as `<user>`. Then you can copy it, save it as a file in your Downloads folder, or click **Report on GitHub**, which saves the file and opens a new issue in your browser with a short text that asks you to attach it. Scorpio never sends anything by itself and has no telemetry.
 
 **Files.**
 

@@ -3,16 +3,105 @@
 //! GitHub issue themselves. Nothing is ever sent by Scorpio.
 //!
 //! The same text comes from `scorpio --report`, for the player's own tools.
+//! Hardware, display and presentation facts are gathered in a short-lived
+//! `scorpio --system-facts` child process so `dxgi.dll` is never imported by
+//! or loaded into the main Scorpio process.
 
 use crate::logging;
+use crate::platform::counters;
 use crate::store::Settings;
+use serde::{Deserialize, Serialize};
+use std::io::Read;
 use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
+use std::time::{Duration, Instant};
 
 pub const ISSUES: &str = "https://github.com/Deikus-LXXVII/Scorpio-Crosshair/issues/new";
 /// Log lines in a report.
 pub const LOG_LINES: usize = 200;
 /// A report the settings window may ask to save, at most.
 pub const TEXT_LIMIT: usize = 2 * 1024 * 1024;
+/// Maximum characters for "What happened".
+pub const DESCRIPTION_LIMIT: usize = 4000;
+/// Maximum characters for "How to reach you".
+pub const CONTACT_LIMIT: usize = 200;
+/// Timeout waiting for `scorpio --system-facts`.
+pub const SYSTEM_FACTS_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// Hardware, display and presentation facts printed as JSON by `--system-facts`.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct SystemFacts {
+    #[serde(default)]
+    pub processor: Option<String>,
+    #[serde(default)]
+    pub memory_mb: Option<u64>,
+    #[serde(default)]
+    pub gpus: Vec<GpuFact>,
+    #[serde(default)]
+    pub displays: Vec<DisplayFact>,
+    #[serde(default)]
+    pub presentation: PresentationFacts,
+    #[serde(default)]
+    pub notes: Vec<String>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct GpuFact {
+    pub name: String,
+    #[serde(default)]
+    pub dedicated_memory_mb: Option<u64>,
+    #[serde(default)]
+    pub driver: Option<String>,
+    #[serde(default)]
+    pub driver_version: Option<String>,
+    #[serde(default)]
+    pub software: bool,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct DisplayFact {
+    pub name: String,
+    pub width: u32,
+    pub height: u32,
+    #[serde(default)]
+    pub refresh_hz: Option<u32>,
+    #[serde(default)]
+    pub hdr: Option<bool>,
+    #[serde(default)]
+    pub overlay_planes: Option<bool>,
+    #[serde(default)]
+    pub primary: bool,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct PresentationFacts {
+    #[serde(default)]
+    pub hags: Option<String>,
+    #[serde(default)]
+    pub windowed_optimisations: Option<String>,
+    #[serde(default)]
+    pub game_mode: Option<String>,
+    #[serde(default)]
+    pub compat_layer: Option<String>,
+    #[serde(default)]
+    pub session_type: Option<String>,
+    #[serde(default)]
+    pub compositor: Option<String>,
+}
+
+/// Scorpio's own process CPU time and private memory usage.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct ProcessCost {
+    pub cpu_ms: Option<u64>,
+    pub private_memory_bytes: Option<u64>,
+}
+
+/// Scorpio's own resource cost and wake-up counts since start.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct CostFacts {
+    pub process: ProcessCost,
+    pub counters: counters::Snapshot,
+}
 
 /// What a report says, gathered at the boundary; `text` only formats it.
 pub struct Facts {
@@ -21,14 +110,119 @@ pub struct Facts {
     pub made: String,
     /// What the running app is doing, in a few lines; or why it is not known.
     pub state: String,
+    /// Hardware, displays and presentation settings from `scorpio --system-facts`.
+    pub system_facts: Result<SystemFacts, String>,
+    /// Scorpio's own cost and wake-ups since start; None for offline `--report`.
+    pub cost: Option<CostFacts>,
+    /// Optional player-typed description ("What happened"), unredacted.
+    pub description: String,
+    /// Optional player-typed contact ("How to reach you"), unredacted.
+    pub contact: String,
     /// The settings, or why they could not be read.
     pub settings: Result<Settings, String>,
     pub log: Vec<String>,
 }
 
-pub fn gather(state: String, settings: Result<Settings, String>) -> Facts {
+/// Prints the JSON payload for `scorpio --system-facts`.
+pub fn system_facts_json() -> String {
+    serde_json::to_string(&crate::platform::system_facts()).unwrap_or_else(|_| "{}".into())
+}
+
+/// Runs `scorpio --system-facts` in a child process with a short timeout.
+pub fn collect_system_facts() -> Result<SystemFacts, String> {
+    let exe = std::env::current_exe().map_err(|error| format!("could not locate scorpio executable: {error}"))?;
+    let mut cmd = Command::new(exe);
+    cmd.arg("--system-facts");
+    let stdout = run_child_with_timeout(cmd, SYSTEM_FACTS_TIMEOUT)?;
+    parse_system_facts(&stdout)
+}
+
+pub fn parse_system_facts(json: &str) -> Result<SystemFacts, String> {
+    let trimmed = json.trim();
+    if trimmed.is_empty() {
+        return Err("helper produced no output".into());
+    }
+    serde_json::from_str::<SystemFacts>(trimmed).map_err(|error| format!("helper returned invalid JSON: {error}"))
+}
+
+pub fn run_child_with_timeout(mut cmd: Command, timeout: Duration) -> Result<String, String> {
+    cmd.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    let mut child = cmd.spawn().map_err(|error| format!("could not start helper process: {error}"))?;
+    let stdout = child.stdout.take();
+    let stderr = child.stderr.take();
+    let out_reader = std::thread::spawn(move || {
+        let mut buf = Vec::new();
+        if let Some(mut pipe) = stdout {
+            let _ = pipe.read_to_end(&mut buf);
+        }
+        buf
+    });
+    let err_reader = std::thread::spawn(move || {
+        let mut buf = Vec::new();
+        if let Some(mut pipe) = stderr {
+            let _ = pipe.read_to_end(&mut buf);
+        }
+        buf
+    });
+
+    let deadline = Instant::now() + timeout;
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break status,
+            Ok(None) => {
+                if Instant::now() >= deadline {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    let _ = out_reader.join();
+                    let _ = err_reader.join();
+                    return Err(format!("timed out after {} s", timeout.as_secs()));
+                }
+                std::thread::sleep(Duration::from_millis(20));
+            }
+            Err(error) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                let _ = out_reader.join();
+                let _ = err_reader.join();
+                return Err(format!("could not wait for helper process: {error}"));
+            }
+        }
+    };
+
+    let out = out_reader.join().unwrap_or_default();
+    let err = err_reader.join().unwrap_or_default();
+    if !status.success() {
+        let detail = String::from_utf8_lossy(&err).trim().to_string();
+        return Err(if detail.is_empty() {
+            format!("helper exited with {status}")
+        } else {
+            format!("helper exited with {status}: {detail}")
+        });
+    }
+    String::from_utf8(out).map_err(|error| format!("helper output was not UTF-8: {error}"))
+}
+
+pub fn gather(state: String, settings: Result<Settings, String>, cost: Option<CostFacts>) -> Facts {
     let log = logging::paths::log_dir().map(|dir| logging::tail(&dir, LOG_LINES)).unwrap_or_default();
-    Facts { version: env!("CARGO_PKG_VERSION"), system: system(), made: logging::now(), state, settings, log }
+    let system_facts = collect_system_facts();
+    Facts {
+        version: env!("CARGO_PKG_VERSION"),
+        system: system(),
+        made: logging::now(),
+        state,
+        system_facts,
+        cost,
+        description: String::new(),
+        contact: String::new(),
+        settings,
+        log,
+    }
 }
 
 /// The report `scorpio --report` prints, made without starting the app.
@@ -39,39 +233,318 @@ pub fn from_files() -> String {
         Some(Err(error)) => Err(format!("the settings file is {error}")),
         None => Err("this system has no config folder".into()),
     };
-    text(&gather("Not known: made with --report, without the running app.".into(), settings))
+    text(&gather("Not known: made with --report, without the running app.".into(), settings, None))
 }
 
-/// The report, with the player's user folder and name taken out.
+/// The report, with the player's user folder and name taken out of the
+/// gathered sections; player-typed description and contact are shown as typed.
 pub fn text(facts: &Facts) -> String {
+    text_with_redaction(facts, dirs::home_dir().as_deref(), user_name().as_deref())
+}
+
+fn text_with_redaction(facts: &Facts, home: Option<&Path>, user: Option<&str>) -> String {
     let settings = match &facts.settings {
         Ok(settings) => serde_json::to_string_pretty(settings).unwrap_or_default(),
         Err(why) => format!("({why})"),
     };
     let log = if facts.log.is_empty() { "(the log is empty)".to_string() } else { facts.log.join("\n") };
-    let text = format!(
+    let head = format!(
         "Scorpio problem report\n\
-         Made {made}. Scorpio did not send it anywhere.\n\
-         \n\
-         Version: {version}\n\
+         Made {made}. Scorpio did not send it anywhere.\n",
+        made = facts.made,
+    );
+    let system_sections = format_system_facts(&facts.system_facts);
+    let cost_section = format_cost(facts.cost.as_ref());
+    let body = format!(
+        "Version: {version}\n\
          System: {system}\n\
          \n\
          Now:\n\
          {state}\n\
+         \n\
+         {system_sections}\
+         \n\
+         {cost_section}\
          \n\
          Settings ({paths}):\n\
          {settings}\n\
          \n\
          The last {count} lines of the log:\n\
          {log}\n",
-        made = facts.made,
         version = facts.version,
         system = facts.system,
         state = facts.state,
         paths = "your user folder is written as ~ and your user name as <user>",
         count = facts.log.len(),
     );
-    redact(&text, dirs::home_dir().as_deref(), user_name().as_deref())
+    let redacted = redact(&body, home, user);
+    compose(&head, &facts.description, &facts.contact, &redacted)
+}
+
+/// Combines the report header, optional player-typed fields (unredacted,
+/// clipped to their limits), and the redacted body. Matches `composeReport` in `ui/app.js`.
+pub fn compose(head: &str, description: &str, contact: &str, body: &str) -> String {
+    let mut out = String::from(head);
+    let description = clip(description.trim(), DESCRIPTION_LIMIT);
+    let contact = clip(contact.trim(), CONTACT_LIMIT);
+    if !description.is_empty() {
+        out.push_str("\nWhat happened:\n");
+        out.push_str(description);
+        out.push('\n');
+    }
+    if !contact.is_empty() {
+        out.push_str("\nHow to reach you:\n");
+        out.push_str(contact);
+        out.push('\n');
+    }
+    out.push('\n');
+    out.push_str(body);
+    out
+}
+
+fn clip(text: &str, max_chars: usize) -> &str {
+    match text.char_indices().nth(max_chars) {
+        Some((idx, _)) => &text[..idx],
+        None => text,
+    }
+}
+
+fn format_system_facts(facts: &Result<SystemFacts, String>) -> String {
+    match facts {
+        Err(why) => format!(
+            "Hardware, displays and presentation settings:\n\
+             (could not be gathered: {why})\n"
+        ),
+        Ok(sf) => {
+            let mut out = String::new();
+            out.push_str("Hardware:\n");
+            out.push_str(&format!("Processor: {}\n", sf.processor.as_deref().unwrap_or("unknown")));
+            out.push_str(&format!("Memory: {}\n", sf.memory_mb.map_or_else(|| "unknown".into(), format_mb)));
+
+            out.push_str("\nGraphics cards:\n");
+            if sf.gpus.is_empty() {
+                out.push_str("(none detected)\n");
+            } else {
+                for gpu in &sf.gpus {
+                    out.push_str("- ");
+                    out.push_str(&gpu.name);
+                    if gpu.software {
+                        out.push_str(" [software]");
+                    }
+                    if let Some(mb) = gpu.dedicated_memory_mb {
+                        out.push_str(&format!(", {} dedicated", format_mb(mb)));
+                    }
+                    match (gpu.driver.as_deref(), gpu.driver_version.as_deref()) {
+                        (Some(drv), Some(ver)) => out.push_str(&format!(", driver {drv} {ver}")),
+                        (Some(drv), None) => out.push_str(&format!(", driver {drv}")),
+                        (None, Some(ver)) => out.push_str(&format!(", driver {ver}")),
+                        (None, None) => {}
+                    }
+                    out.push('\n');
+                }
+            }
+
+            out.push_str("\nDisplays:\n");
+            if sf.displays.is_empty() {
+                out.push_str("(none detected)\n");
+            } else {
+                for display in &sf.displays {
+                    out.push_str(&format!("- {}: {}x{}", display.name, display.width, display.height));
+                    if let Some(hz) = display.refresh_hz {
+                        out.push_str(&format!(" @ {hz} Hz"));
+                    }
+                    if let Some(hdr) = display.hdr {
+                        out.push_str(if hdr { ", HDR on" } else { ", HDR off" });
+                    }
+                    if let Some(mpo) = display.overlay_planes {
+                        out.push_str(if mpo { ", overlay planes yes" } else { ", overlay planes no" });
+                    }
+                    if display.primary {
+                        out.push_str(" (primary)");
+                    }
+                    out.push('\n');
+                }
+            }
+
+            out.push_str("\nPresentation settings:\n");
+            let mut pres_lines = Vec::new();
+            if let Some(v) = &sf.presentation.hags {
+                pres_lines.push(format!("HAGS: {v}"));
+            }
+            if let Some(v) = &sf.presentation.windowed_optimisations {
+                pres_lines.push(format!("Windowed-game optimisations: {v}"));
+            }
+            if let Some(v) = &sf.presentation.game_mode {
+                pres_lines.push(format!("Game Mode: {v}"));
+            }
+            if let Some(v) = &sf.presentation.compat_layer {
+                pres_lines.push(format!("__COMPAT_LAYER: {v}"));
+            }
+            if let Some(v) = &sf.presentation.session_type {
+                pres_lines.push(format!("Session type: {v}"));
+            }
+            if let Some(v) = &sf.presentation.compositor {
+                pres_lines.push(format!("Compositor: {v}"));
+            }
+            if pres_lines.is_empty() {
+                out.push_str("(not available)\n");
+            } else {
+                for line in pres_lines {
+                    out.push_str(&line);
+                    out.push('\n');
+                }
+            }
+
+            if !sf.notes.is_empty() {
+                out.push_str("Notes: ");
+                out.push_str(&sf.notes.join("; "));
+                out.push('\n');
+            }
+            out
+        }
+    }
+}
+
+fn format_cost(cost: Option<&CostFacts>) -> String {
+    let Some(cost) = cost else {
+        return "Scorpio's cost:\n(not known: made without the running app)\n".into();
+    };
+    let cpu = cost.process.cpu_ms.map_or_else(|| "unknown".into(), format_cpu_ms);
+    let mem = cost
+        .process
+        .private_memory_bytes
+        .map_or_else(|| "unknown".into(), |bytes| format!("{:.1} MB", bytes as f64 / 1_048_576.0));
+    let c = cost.counters;
+    format!(
+        "Scorpio's cost:\n\
+         Uptime: {} (game in front: {})\n\
+         CPU time: {cpu}; private memory: {mem}\n\
+         Wake-ups: {} raw input (peak {}/s), {} foreground, {} window location, {} timers\n",
+        format_duration(c.uptime),
+        format_duration(c.game_in_front),
+        c.raw_input,
+        c.raw_input_peak_per_sec,
+        c.foreground,
+        c.window_location,
+        c.timers,
+    )
+}
+
+fn format_mb(mb: u64) -> String {
+    if mb >= 1024 {
+        format!("{:.1} GB ({mb} MB)", mb as f64 / 1024.0)
+    } else {
+        format!("{mb} MB")
+    }
+}
+
+fn format_cpu_ms(ms: u64) -> String {
+    if ms < 1000 {
+        format!("{ms} ms")
+    } else {
+        format!("{:.2} s", ms as f64 / 1000.0)
+    }
+}
+
+fn format_duration(duration: Duration) -> String {
+    let total = duration.as_secs();
+    let hours = total / 3600;
+    let minutes = (total % 3600) / 60;
+    let seconds = total % 60;
+    if hours > 0 {
+        format!("{hours}h {minutes}m {seconds}s")
+    } else if minutes > 0 {
+        format!("{minutes}m {seconds}s")
+    } else {
+        format!("{seconds}s")
+    }
+}
+
+/// Parses `DirectXUserGlobalSettings` (semicolon-separated `Key=Value` pairs)
+/// for `SwapEffectUpgradeEnable`, which controls Windows' windowed-game optimisations.
+#[allow(dead_code)]
+pub(crate) fn parse_directx_user_global_settings(raw: &str) -> Option<String> {
+    for part in raw.split(';') {
+        let Some((key, val)) = part.trim().split_once('=') else { continue };
+        if key.trim().eq_ignore_ascii_case("SwapEffectUpgradeEnable") {
+            return Some(match val.trim() {
+                "1" => "on (SwapEffectUpgradeEnable=1)".into(),
+                "0" => "off (SwapEffectUpgradeEnable=0)".into(),
+                other => format!("unknown (SwapEffectUpgradeEnable={other})"),
+            });
+        }
+    }
+    None
+}
+
+#[allow(dead_code)]
+pub(crate) fn parse_cpuinfo(content: &str) -> Option<String> {
+    for key in ["model name", "Hardware", "Processor"] {
+        for line in content.lines() {
+            if let Some((k, v)) = line.split_once(':') {
+                if k.trim().eq_ignore_ascii_case(key) {
+                    let v = v.trim();
+                    if !v.is_empty() {
+                        return Some(v.to_string());
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+#[allow(dead_code)]
+pub(crate) fn parse_meminfo_mb(content: &str) -> Option<u64> {
+    for line in content.lines() {
+        if let Some(rest) = line.strip_prefix("MemTotal:") {
+            let kb = rest.split_whitespace().next()?.parse::<u64>().ok()?;
+            return Some((kb + 512) / 1024);
+        }
+    }
+    None
+}
+
+/// Parses utime + stime (fields 14 and 15) from `/proc/self/stat`.
+#[allow(dead_code)]
+pub(crate) fn parse_proc_stat_ticks(content: &str) -> Option<u64> {
+    let after_comm = content.rsplit_once(')')?.1;
+    let mut fields = after_comm.split_whitespace();
+    // Field 3 (state) is index 0 -> field 14 (utime) is index 11, field 15 (stime) is index 12.
+    let utime = fields.nth(11)?.parse::<u64>().ok()?;
+    let stime = fields.next()?.parse::<u64>().ok()?;
+    Some(utime.saturating_add(stime))
+}
+
+/// Parses `Private_Clean + Private_Dirty` (in bytes) from `/proc/self/smaps_rollup`.
+#[allow(dead_code)]
+pub(crate) fn parse_smaps_rollup_private_bytes(content: &str) -> Option<u64> {
+    let mut found = false;
+    let mut total_kb = 0u64;
+    for line in content.lines() {
+        if let Some(rest) = line.strip_prefix("Private_Clean:").or_else(|| line.strip_prefix("Private_Dirty:")) {
+            if let Some(kb) = rest.split_whitespace().next().and_then(|n| n.parse::<u64>().ok()) {
+                total_kb = total_kb.saturating_add(kb);
+                found = true;
+            }
+        }
+    }
+    found.then_some(total_kb.saturating_mul(1024))
+}
+
+/// Fallback memory reader for `/proc/self/status` (`RssAnon`, else `VmRSS`).
+#[allow(dead_code)]
+pub(crate) fn parse_status_rss_bytes(content: &str) -> Option<u64> {
+    for key in ["RssAnon:", "VmRSS:"] {
+        for line in content.lines() {
+            if let Some(rest) = line.strip_prefix(key) {
+                if let Some(kb) = rest.split_whitespace().next().and_then(|n| n.parse::<u64>().ok()) {
+                    return Some(kb.saturating_mul(1024));
+                }
+            }
+        }
+    }
+    None
 }
 
 fn user_name() -> Option<String> {
@@ -176,6 +649,23 @@ pub fn system() -> String {
 mod tests {
     use super::*;
 
+    fn sample_facts() -> Facts {
+        let mut settings = Settings::default();
+        settings.games.push(crate::store::Game { name: "cs2".into(), ..Default::default() });
+        Facts {
+            version: "9.9.9",
+            system: "Testix 1".into(),
+            made: "2026-11-21T00:00:00Z".into(),
+            state: "Shown over cs2".into(),
+            system_facts: Ok(SystemFacts::default()),
+            cost: None,
+            description: String::new(),
+            contact: String::new(),
+            settings: Ok(settings),
+            log: vec!["a".into(), "b".into()],
+        }
+    }
+
     #[test]
     fn the_user_folder_and_name_are_taken_out() {
         let text = r#"path C:\Users\Lena\Games\cs2.exe, also c:\users\lena\x and "C:\\Users\\Lena\\y" and /home/lena/z, Lena"#;
@@ -192,16 +682,7 @@ mod tests {
 
     #[test]
     fn the_report_holds_the_facts_and_no_home_folder() {
-        let mut settings = Settings::default();
-        settings.games.push(crate::store::Game { name: "cs2".into(), ..Default::default() });
-        let facts = Facts {
-            version: "9.9.9",
-            system: "Testix 1".into(),
-            made: "2026-11-21T00:00:00Z".into(),
-            state: "Shown over cs2".into(),
-            settings: Ok(settings),
-            log: vec!["a".into(), "b".into()],
-        };
+        let facts = sample_facts();
         let text = text(&facts);
         assert!(text.starts_with("Scorpio problem report\n"));
         assert!(text.contains("Version: 9.9.9\nSystem: Testix 1\n\nNow:\nShown over cs2\n"));
@@ -219,5 +700,186 @@ mod tests {
         assert!(url.contains("scorpio-report-20261121.txt"));
         assert!(url.len() < 2000, "{}", url.len());
         assert!(!url.contains(' ') && !url.contains('\n'));
+    }
+
+    #[test]
+    fn new_sections_and_player_notes_format_and_keep_contact_unredacted() {
+        let mut facts = sample_facts();
+        facts.description = "FPS dropped 1% in CS2.".into();
+        facts.contact = "lena@example.com".into();
+        facts.log = vec![r"opened C:\Users\Lena\Games\cs2.exe for Lena".into()];
+        facts.system_facts = Ok(SystemFacts {
+            processor: Some("AMD Ryzen 7 7800X3D 8-Core Processor".into()),
+            memory_mb: Some(32768),
+            gpus: vec![
+                GpuFact {
+                    name: "NVIDIA GeForce RTX 4080".into(),
+                    dedicated_memory_mb: Some(16384),
+                    driver: None,
+                    driver_version: Some("32.0.15.6614".into()),
+                    software: false,
+                },
+                GpuFact {
+                    name: "Microsoft Basic Render Driver".into(),
+                    dedicated_memory_mb: Some(0),
+                    driver: None,
+                    driver_version: None,
+                    software: true,
+                },
+            ],
+            displays: vec![DisplayFact {
+                name: r"\\.\DISPLAY1".into(),
+                width: 2560,
+                height: 1440,
+                refresh_hz: Some(240),
+                hdr: Some(false),
+                overlay_planes: Some(true),
+                primary: true,
+            }],
+            presentation: PresentationFacts {
+                hags: Some("on (HwSchMode=2)".into()),
+                windowed_optimisations: Some("on (SwapEffectUpgradeEnable=1)".into()),
+                game_mode: Some("on".into()),
+                compat_layer: Some("not set".into()),
+                ..Default::default()
+            },
+            notes: Vec::new(),
+        });
+        facts.cost = Some(CostFacts {
+            process: ProcessCost { cpu_ms: Some(1250), private_memory_bytes: Some(7_340_032) },
+            counters: counters::Snapshot {
+                uptime: Duration::from_secs(3665),
+                game_in_front: Duration::from_secs(125),
+                raw_input: 14200,
+                raw_input_peak_per_sec: 1002,
+                foreground: 18,
+                window_location: 4,
+                timers: 3,
+            },
+        });
+
+        let report = text_with_redaction(&facts, Some(Path::new(r"C:\Users\Lena")), Some("Lena"));
+        assert!(report.contains("What happened:\nFPS dropped 1% in CS2.\n"));
+        assert!(report.contains("How to reach you:\nlena@example.com\n"), "contact is kept as typed");
+        assert!(report.contains(r"opened ~\Games\cs2.exe for <user>"), "rest of report is still redacted");
+        assert!(report.contains("Hardware:\nProcessor: AMD Ryzen 7 7800X3D 8-Core Processor\nMemory: 32.0 GB (32768 MB)\n"));
+        assert!(report.contains("- NVIDIA GeForce RTX 4080, 16.0 GB (16384 MB) dedicated, driver 32.0.15.6614\n"));
+        assert!(report.contains("- Microsoft Basic Render Driver [software], 0 MB dedicated\n"));
+        assert!(report.contains(r"- \\.\DISPLAY1: 2560x1440 @ 240 Hz, HDR off, overlay planes yes (primary)"));
+        assert!(report.contains("Presentation settings:\nHAGS: on (HwSchMode=2)\nWindowed-game optimisations: on (SwapEffectUpgradeEnable=1)\nGame Mode: on\n__COMPAT_LAYER: not set\n"));
+        assert!(report.contains("Scorpio's cost:\nUptime: 1h 1m 5s (game in front: 2m 5s)\nCPU time: 1.25 s; private memory: 7.0 MB\nWake-ups: 14200 raw input (peak 1002/s), 18 foreground, 4 window location, 3 timers\n"));
+    }
+
+    #[test]
+    fn failed_child_explains_why_and_keeps_the_rest_of_the_report() {
+        let mut facts = sample_facts();
+        facts.system_facts = Err("timed out after 5 s".into());
+        facts.cost = Some(CostFacts {
+            process: ProcessCost { cpu_ms: Some(42), private_memory_bytes: Some(7_000_000) },
+            counters: counters::Snapshot { uptime: Duration::from_secs(12), ..Default::default() },
+        });
+        let report = text_with_redaction(&facts, None, None);
+        assert!(report.contains("Hardware, displays and presentation settings:\n(could not be gathered: timed out after 5 s)\n"));
+        assert!(report.contains("CPU time: 42 ms"));
+        assert!(report.contains("\"name\": \"cs2\""));
+        assert!(report.contains("The last 2 lines of the log:\na\nb\n"));
+    }
+
+    #[test]
+    fn system_facts_json_parses_valid_and_rejects_garbled_or_empty() {
+        let original = SystemFacts {
+            processor: Some("Intel Core i7".into()),
+            memory_mb: Some(16384),
+            gpus: vec![GpuFact {
+                name: "card0 (0x1002:0x744c)".into(),
+                dedicated_memory_mb: Some(24576),
+                driver: Some("amdgpu".into()),
+                driver_version: None,
+                software: false,
+            }],
+            displays: vec![DisplayFact {
+                name: "DP-1".into(),
+                width: 2560,
+                height: 1440,
+                refresh_hz: Some(144),
+                hdr: None,
+                overlay_planes: None,
+                primary: true,
+            }],
+            presentation: PresentationFacts {
+                session_type: Some("x11".into()),
+                compositor: Some("picom".into()),
+                ..Default::default()
+            },
+            notes: Vec::new(),
+        };
+        let json = serde_json::to_string(&original).unwrap();
+        assert_eq!(parse_system_facts(&json).unwrap(), original);
+        assert_eq!(parse_system_facts("{}").unwrap(), SystemFacts::default());
+        assert!(parse_system_facts("").unwrap_err().contains("no output"));
+        assert!(parse_system_facts("not json at all").unwrap_err().contains("invalid JSON"));
+        assert!(parse_system_facts("{\"gpus\": \"wrong\"}").unwrap_err().contains("invalid JSON"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn child_runner_handles_success_failure_garbled_and_timeout() {
+        let mut ok_cmd = Command::new("sh");
+        ok_cmd.args(["-c", r#"printf '{"processor":"Test CPU","memory_mb":8192}\n'"#]);
+        let stdout = run_child_with_timeout(ok_cmd, Duration::from_secs(2)).unwrap();
+        let parsed = parse_system_facts(&stdout).unwrap();
+        assert_eq!(parsed.processor.as_deref(), Some("Test CPU"));
+        assert_eq!(parsed.memory_mb, Some(8192));
+
+        let mut fail_cmd = Command::new("sh");
+        fail_cmd.args(["-c", "echo boom >&2; exit 2"]);
+        let err = run_child_with_timeout(fail_cmd, Duration::from_secs(2)).unwrap_err();
+        assert!(err.contains("boom"), "{err}");
+
+        let mut garbled_cmd = Command::new("sh");
+        garbled_cmd.args(["-c", "printf '<<<garbled>>>'"]);
+        let out = run_child_with_timeout(garbled_cmd, Duration::from_secs(2)).unwrap();
+        assert!(parse_system_facts(&out).is_err());
+
+        let mut slow_cmd = Command::new("sh");
+        slow_cmd.args(["-c", "sleep 5"]);
+        let err = run_child_with_timeout(slow_cmd, Duration::from_millis(120)).unwrap_err();
+        assert!(err.contains("timed out"), "{err}");
+    }
+
+    #[test]
+    fn parsers_read_directx_and_proc_files() {
+        assert_eq!(
+            parse_directx_user_global_settings("VRROptimizeEnable=0;SwapEffectUpgradeEnable=1;").as_deref(),
+            Some("on (SwapEffectUpgradeEnable=1)")
+        );
+        assert_eq!(
+            parse_directx_user_global_settings("SwapEffectUpgradeEnable=0").as_deref(),
+            Some("off (SwapEffectUpgradeEnable=0)")
+        );
+        assert_eq!(parse_directx_user_global_settings("VRROptimizeEnable=1"), None);
+
+        assert_eq!(
+            parse_cpuinfo("processor\t: 0\nmodel name\t: AMD Ryzen 9 7950X\n").as_deref(),
+            Some("AMD Ryzen 9 7950X")
+        );
+        assert_eq!(parse_meminfo_mb("MemTotal:       32864256 kB\nMemFree: 1000 kB\n"), Some(32094));
+        assert_eq!(parse_proc_stat_ticks("1234 (scorpio (1)) S 1 2 3 4 5 6 7 8 9 10 150 25 0 0 20 0"), Some(175));
+        assert_eq!(
+            parse_smaps_rollup_private_bytes("Rss: 12000 kB\nPrivate_Clean: 1000 kB\nPrivate_Dirty: 6000 kB\n"),
+            Some(7_000 * 1024)
+        );
+        assert_eq!(parse_status_rss_bytes("Name:\tscorpio\nVmRSS:\t8000 kB\nRssAnon:\t5000 kB\n"), Some(5000 * 1024));
+    }
+
+    #[test]
+    fn compose_clips_player_fields_to_their_limits() {
+        let long_desc = "a".repeat(DESCRIPTION_LIMIT + 50);
+        let long_contact = "b".repeat(CONTACT_LIMIT + 20);
+        let out = compose("Head\n", &long_desc, &long_contact, "Body\n");
+        let desc_line = out.split("What happened:\n").nth(1).unwrap().lines().next().unwrap();
+        let contact_line = out.split("How to reach you:\n").nth(1).unwrap().lines().next().unwrap();
+        assert_eq!(desc_line.chars().count(), DESCRIPTION_LIMIT);
+        assert_eq!(contact_line.chars().count(), CONTACT_LIMIT);
     }
 }
