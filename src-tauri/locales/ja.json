@@ -206,7 +206,6 @@
   "Use this crosshair": "このクロスヘアを使用",
   "Version": "バージョン",
   "Version {version}": "バージョン {version}",
-  "Version, system, hardware, displays, Scorpio's cost, settings and the end of the log. Your user folder and name are taken out.": "バージョン、システム、ハードウェア、ディスプレイ、Scorpio の負荷、設定、ログの末尾です。ユーザーフォルダーとユーザー名は取り除かれています。",
   "What happened": "何が起きたか",
   "What you were doing and what went wrong.": "何をしていたかと、どこがうまくいかなかったか。",
   "When pressed": "押したときの動作",
@@ -223,5 +222,15 @@
   "{x} px left and {y} px down from the centre.": "中心から左に {x} px、下に {y} px。",
   "{x} px left and {y} px up from the centre.": "中心から左に {x} px、上に {y} px。",
   "{x} px right and {y} px down from the centre.": "中心から右に {x} px、下に {y} px。",
-  "{x} px right and {y} px up from the centre.": "中心から右に {x} px、上に {y} px。"
+  "{x} px right and {y} px up from the centre.": "中心から右に {x} px、上に {y} px。",
+  "Open the report again.": "レポートを開き直してください。",
+  "Send": "送信",
+  "Sent": "送信済み",
+  "Sent as {id}. Keep this number if you write to us about it.": "{id} として送信しました。この件で連絡する場合はこの番号を控えてください。",
+  "The report is too long to send. Save it and attach it on GitHub.": "レポートが長すぎて送信できません。保存して GitHub に添付してください。",
+  "The report service could not be reached. Save the report and attach it on GitHub.": "レポートサービスに接続できません。レポートを保存して GitHub に添付してください。",
+  "The report service did not take the report. Save it and attach it on GitHub.": "レポートサービスがレポートを受け付けませんでした。保存して GitHub に添付してください。",
+  "Too many reports from this network. Try again in an hour.": "このネットワークからのレポートが多すぎます。1 時間後にもう一度お試しください。",
+  "Version, system, hardware, displays, Scorpio's cost, settings and the end of the log. Your user folder and name are taken out. Nothing is sent until you press Send.": "バージョン、システム、ハードウェア、ディスプレイ、Scorpio の負荷、設定、ログの末尾。ユーザーフォルダーとユーザー名は取り除かれます。「送信」を押すまで何も送信されません。",
+  "Write what happened first.": "まず何が起きたかを書いてください。"
 }

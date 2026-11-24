@@ -70,7 +70,7 @@ fn plain(error: &str) -> String {
 }
 
 /// Mozilla's root certificates, bundled with Scorpio.
-fn bundled_roots() -> Vec<reqwest::Certificate> {
+pub(crate) fn bundled_roots() -> Vec<reqwest::Certificate> {
     let roots = webpki_root_certs::TLS_SERVER_ROOT_CERTS.iter();
     roots.filter_map(|der| reqwest::Certificate::from_der(der).ok()).collect()
 }

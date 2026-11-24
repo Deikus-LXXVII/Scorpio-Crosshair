@@ -206,7 +206,6 @@
   "Use this crosshair": "이 크로스헤어 사용",
   "Version": "버전",
   "Version {version}": "버전 {version}",
-  "Version, system, hardware, displays, Scorpio's cost, settings and the end of the log. Your user folder and name are taken out.": "버전, 시스템, 하드웨어, 디스플레이, Scorpio의 리소스 사용량, 설정, 로그의 마지막 부분입니다. 사용자 폴더와 이름은 제거됩니다.",
   "What happened": "무슨 일이 있었나요",
   "What you were doing and what went wrong.": "무엇을 하고 있었는지, 어떤 문제가 생겼는지 적어 주세요.",
   "When pressed": "누를 때",
@@ -223,5 +222,15 @@
   "{x} px left and {y} px down from the centre.": "중앙에서 왼쪽으로 {x} px, 아래로 {y} px.",
   "{x} px left and {y} px up from the centre.": "중앙에서 왼쪽으로 {x} px, 위로 {y} px.",
   "{x} px right and {y} px down from the centre.": "중앙에서 오른쪽으로 {x} px, 아래로 {y} px.",
-  "{x} px right and {y} px up from the centre.": "중앙에서 오른쪽으로 {x} px, 위로 {y} px."
+  "{x} px right and {y} px up from the centre.": "중앙에서 오른쪽으로 {x} px, 위로 {y} px.",
+  "Open the report again.": "보고서를 다시 여세요.",
+  "Send": "보내기",
+  "Sent": "보냄",
+  "Sent as {id}. Keep this number if you write to us about it.": "{id} 번호로 보냈습니다. 이 일로 연락하실 때 이 번호를 알려 주세요.",
+  "The report is too long to send. Save it and attach it on GitHub.": "보고서가 너무 길어 보낼 수 없습니다. 저장한 뒤 GitHub에 첨부하세요.",
+  "The report service could not be reached. Save the report and attach it on GitHub.": "보고서 서비스에 연결할 수 없습니다. 보고서를 저장한 뒤 GitHub에 첨부하세요.",
+  "The report service did not take the report. Save it and attach it on GitHub.": "보고서 서비스가 보고서를 받지 않았습니다. 저장한 뒤 GitHub에 첨부하세요.",
+  "Too many reports from this network. Try again in an hour.": "이 네트워크에서 보낸 보고서가 너무 많습니다. 한 시간 뒤에 다시 시도하세요.",
+  "Version, system, hardware, displays, Scorpio's cost, settings and the end of the log. Your user folder and name are taken out. Nothing is sent until you press Send.": "버전, 시스템, 하드웨어, 디스플레이, Scorpio의 부하, 설정과 로그의 끝부분. 사용자 폴더와 이름은 지워집니다. 보내기를 누르기 전에는 아무것도 보내지 않습니다.",
+  "Write what happened first.": "먼저 무슨 일이 있었는지 적어 주세요."
 }

@@ -1,6 +1,7 @@
 //! "Report a problem": a plain text the player reads in full before
-//! anything leaves the computer, and then copies, saves, or attaches to a
-//! GitHub issue themselves. Nothing is ever sent by Scorpio.
+//! anything leaves the computer, and then copies, saves, attaches to a
+//! GitHub issue, or sends with Send to Scorpio's own report service
+//! (`REPORTS`). Nothing is sent without that press.
 //!
 //! The same text comes from `scorpio --report`, for the player's own tools.
 //! Hardware, display and presentation facts are gathered in a short-lived
@@ -17,6 +18,10 @@ use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 pub const ISSUES: &str = "https://github.com/Deikus-LXXVII/Scorpio-Crosshair/issues/new";
+/// Scorpio's own report service (`server/reports`), for Send.
+pub const REPORTS: &str = "https://reports.lxxvll.com/v1/reports";
+/// The service takes 512 KB; a report is far smaller (200 log lines).
+const SEND_LIMIT: usize = 500 * 1024;
 /// Log lines in a report.
 pub const LOG_LINES: usize = 200;
 /// A report the settings window may ask to save, at most.
@@ -243,6 +248,30 @@ pub fn text(facts: &Facts) -> String {
 }
 
 fn text_with_redaction(facts: &Facts, home: Option<&Path>, user: Option<&str>) -> String {
+    draft_with_redaction(facts, home, user).with(&facts.description, &facts.contact)
+}
+
+/// A report made and redacted, waiting for the player's notes: what the
+/// dialog shows, and what Send sends, is always `with` of the same draft.
+#[derive(Clone, Debug)]
+pub struct Draft {
+    head: String,
+    body: String,
+    pub version: &'static str,
+    pub system: String,
+}
+
+impl Draft {
+    pub fn with(&self, description: &str, contact: &str) -> String {
+        compose(&self.head, description, contact, &self.body)
+    }
+}
+
+pub fn draft(facts: &Facts) -> Draft {
+    draft_with_redaction(facts, dirs::home_dir().as_deref(), user_name().as_deref())
+}
+
+fn draft_with_redaction(facts: &Facts, home: Option<&Path>, user: Option<&str>) -> Draft {
     let settings = match &facts.settings {
         Ok(settings) => serde_json::to_string_pretty(settings).unwrap_or_default(),
         Err(why) => format!("({why})"),
@@ -250,7 +279,7 @@ fn text_with_redaction(facts: &Facts, home: Option<&Path>, user: Option<&str>) -
     let log = if facts.log.is_empty() { "(the log is empty)".to_string() } else { facts.log.join("\n") };
     let head = format!(
         "Scorpio problem report\n\
-         Made {made}. Scorpio did not send it anywhere.\n",
+         Made {made}.\n",
         made = facts.made,
     );
     let system_sections = format_system_facts(&facts.system_facts);
@@ -277,12 +306,11 @@ fn text_with_redaction(facts: &Facts, home: Option<&Path>, user: Option<&str>) -
         paths = "your user folder is written as ~ and your user name as <user>",
         count = facts.log.len(),
     );
-    let redacted = redact(&body, home, user);
-    compose(&head, &facts.description, &facts.contact, &redacted)
+    Draft { head, body: redact(&body, home, user), version: facts.version, system: facts.system.clone() }
 }
 
 /// Combines the report header, optional player-typed fields (unredacted,
-/// clipped to their limits), and the redacted body. Matches `composeReport` in `ui/app.js`.
+/// clipped to their limits), and the redacted body.
 pub fn compose(head: &str, description: &str, contact: &str, body: &str) -> String {
     let mut out = String::from(head);
     let description = clip(description.trim(), DESCRIPTION_LIMIT);
@@ -591,6 +619,66 @@ fn replace_ignoring_case(text: &str, from: &str, to: &str, whole_word: bool) -> 
     out
 }
 
+/// What Send posts: the report exactly as the dialog shows it, and the
+/// fields the service lists reports by.
+pub fn payload(draft: &Draft, description: &str, contact: &str) -> Result<Vec<u8>, String> {
+    let description = clip(description.trim(), DESCRIPTION_LIMIT);
+    if description.is_empty() {
+        return Err(crate::i18n::tr("Write what happened first.", &[]));
+    }
+    let text = draft.with(description, contact);
+    if text.len() > SEND_LIMIT {
+        return Err(crate::i18n::tr("The report is too long to send. Save it and attach it on GitHub.", &[]));
+    }
+    let body = serde_json::json!({
+        "version": draft.version,
+        "system": draft.system,
+        "description": description,
+        "contact": clip(contact.trim(), CONTACT_LIMIT),
+        "text": text,
+    });
+    Ok(body.to_string().into_bytes())
+}
+
+/// Sends a report the player read and asked to send; the report's number.
+/// The bundled root certificates first, then the system's (an antivirus or
+/// proxy that re-signs HTTPS), as for updates.
+pub async fn send(payload: Vec<u8>) -> Result<String, String> {
+    send_to(REPORTS, payload).await
+}
+
+async fn send_to(url: &str, payload: Vec<u8>) -> Result<String, String> {
+    // reqwest is built without a TLS provider; the updater installs ring the
+    // same way, on its first check, which may not have happened yet.
+    if rustls::crypto::CryptoProvider::get_default().is_none() {
+        let _ = rustls::crypto::ring::default_provider().install_default();
+    }
+    let post = |client: reqwest::Client| {
+        client.post(url).header("Content-Type", "application/json").timeout(Duration::from_secs(20)).body(payload.clone()).send()
+    };
+    let bundled = reqwest::Client::builder().tls_certs_only(crate::update::bundled_roots()).build().map_err(|e| e.to_string())?;
+    let response = match post(bundled).await {
+        Ok(response) => response,
+        Err(_) => post(reqwest::Client::new()).await.map_err(|error| {
+            log::warn!("report not sent: {error}");
+            crate::i18n::tr("The report service could not be reached. Save the report and attach it on GitHub.", &[])
+        })?,
+    };
+    let status = response.status().as_u16();
+    let answer: serde_json::Value = response.bytes().await.ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default();
+    match (status, answer.get("id").and_then(|id| id.as_str())) {
+        (201, Some(id)) if id.starts_with("SCR-") && id.len() <= 16 => {
+            log::info!("problem report sent as {id}");
+            Ok(id.to_string())
+        }
+        (429, _) => Err(crate::i18n::tr("Too many reports from this network. Try again in an hour.", &[])),
+        _ => {
+            log::warn!("report service answered {status}: {answer}");
+            Err(crate::i18n::tr("The report service did not take the report. Save it and attach it on GitHub.", &[]))
+        }
+    }
+}
+
 /// The GitHub page for a new issue, with a short body: an address has a
 /// length limit, so the report itself is attached as a file.
 pub fn issue_url(version: &str, system: &str, file: &str) -> String {
@@ -882,4 +970,74 @@ mod tests {
         assert_eq!(desc_line.chars().count(), DESCRIPTION_LIMIT);
         assert_eq!(contact_line.chars().count(), CONTACT_LIMIT);
     }
+
+    fn sample_draft() -> Draft {
+        Draft { head: "Scorpio problem report\nMade now.\n".into(), body: "Version: 9.9.9\n".into(), version: "9.9.9", system: "Testix 1".into() }
+    }
+
+    #[test]
+    fn send_posts_exactly_the_shown_text() {
+        let draft = sample_draft();
+        assert!(payload(&draft, "   ", "x").is_err(), "nothing is sent without a description");
+        let body: serde_json::Value = serde_json::from_slice(&payload(&draft, " FPS drops ", " me@example.com ").unwrap()).unwrap();
+        assert_eq!(body["text"], draft.with(" FPS drops ", " me@example.com "), "the text is the one the dialog shows");
+        assert_eq!(body["description"], "FPS drops");
+        assert_eq!(body["contact"], "me@example.com");
+        assert_eq!(body["version"], "9.9.9");
+        assert_eq!(body["system"], "Testix 1");
+        let huge = Draft { body: "x".repeat(SEND_LIMIT), ..sample_draft() };
+        assert!(payload(&huge, "a", "").is_err(), "too long to send");
+    }
+
+    /// One HTTP exchange on a local port: the request it got, and `answer` sent back.
+    fn one_answer(answer: &'static str) -> (String, std::thread::JoinHandle<String>) {
+        use std::io::Write;
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/v1/reports", listener.local_addr().unwrap());
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            stream.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+            let mut got = Vec::new();
+            let mut buf = [0u8; 4096];
+            loop {
+                let n = stream.read(&mut buf).unwrap_or(0);
+                got.extend_from_slice(&buf[..n]);
+                let text = String::from_utf8_lossy(&got).to_string();
+                if let Some(end) = text.find("\r\n\r\n") {
+                    let length: usize = text.lines().find_map(|l| l.to_ascii_lowercase().strip_prefix("content-length:").map(|v| v.trim().parse().unwrap())).unwrap_or(0);
+                    if got.len() >= end + 4 + length || n == 0 {
+                        break;
+                    }
+                }
+                if n == 0 {
+                    break;
+                }
+            }
+            let _ = stream.write_all(answer.as_bytes());
+            String::from_utf8_lossy(&got).to_string()
+        });
+        (url, server)
+    }
+
+    #[test]
+    fn send_reads_the_number_and_turns_refusals_into_advice() {
+        let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+        let body = payload(&sample_draft(), "FPS drops", "").unwrap();
+
+        let (url, server) = one_answer("HTTP/1.1 201 Created\r\nContent-Type: application/json\r\nContent-Length: 20\r\nConnection: close\r\n\r\n{\"id\": \"SCR-F3MZNA\"}");
+        assert_eq!(runtime.block_on(send_to(&url, body.clone())), Ok("SCR-F3MZNA".into()));
+        let request = server.join().unwrap();
+        assert!(request.starts_with("POST /v1/reports "), "{request}");
+        assert!(request.to_ascii_lowercase().contains("content-type: application/json"));
+        assert!(request.contains("\"description\":\"FPS drops\""));
+
+        let (url, server) = one_answer("HTTP/1.1 429 Too Many Requests\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}");
+        assert!(runtime.block_on(send_to(&url, body.clone())).unwrap_err().contains("Try again in an hour"));
+        server.join().unwrap();
+
+        let (url, server) = one_answer("HTTP/1.1 201 Created\r\nContent-Length: 24\r\nConnection: close\r\n\r\n{\"id\": \"<script>x</sc\"}");
+        assert!(runtime.block_on(send_to(&url, body)).is_err(), "an answer that is not a report number is not shown");
+        server.join().unwrap();
+    }
+
 }

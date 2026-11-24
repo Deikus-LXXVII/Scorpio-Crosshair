@@ -209,7 +209,6 @@
   "Use this crosshair": "Использовать этот прицел",
   "Version": "Версия",
   "Version {version}": "Версия {version}",
-  "Version, system, hardware, displays, Scorpio's cost, settings and the end of the log. Your user folder and name are taken out.": "Версия, система, железо, мониторы, нагрузка Scorpio, настройки и конец журнала. Папка и имя пользователя из него убраны.",
   "What happened": "Что случилось",
   "What you were doing and what went wrong.": "Что вы делали и что пошло не так.",
   "When pressed": "При нажатии",
@@ -226,5 +225,15 @@
   "{x} px left and {y} px down from the centre.": "На {x} px левее и на {y} px ниже центра.",
   "{x} px left and {y} px up from the centre.": "На {x} px левее и на {y} px выше центра.",
   "{x} px right and {y} px down from the centre.": "На {x} px правее и на {y} px ниже центра.",
-  "{x} px right and {y} px up from the centre.": "На {x} px правее и на {y} px выше центра."
+  "{x} px right and {y} px up from the centre.": "На {x} px правее и на {y} px выше центра.",
+  "Open the report again.": "Откройте репорт заново.",
+  "Send": "Отправить",
+  "Sent": "Отправлено",
+  "Sent as {id}. Keep this number if you write to us about it.": "Отправлено под номером {id}. Сохраните его, если будете писать нам об этом.",
+  "The report is too long to send. Save it and attach it on GitHub.": "Репорт слишком длинный для отправки. Сохраните его и приложите на GitHub.",
+  "The report service could not be reached. Save the report and attach it on GitHub.": "Не удалось связаться со службой репортов. Сохраните репорт и приложите его на GitHub.",
+  "The report service did not take the report. Save it and attach it on GitHub.": "Служба репортов не приняла репорт. Сохраните его и приложите на GitHub.",
+  "Too many reports from this network. Try again in an hour.": "Слишком много репортов из этой сети. Попробуйте через час.",
+  "Version, system, hardware, displays, Scorpio's cost, settings and the end of the log. Your user folder and name are taken out. Nothing is sent until you press Send.": "Версия, система, железо, мониторы, нагрузка Scorpio, настройки и конец журнала. Папка и имя пользователя из него убраны. Ничего не отправляется, пока вы не нажмёте «Отправить».",
+  "Write what happened first.": "Сначала напишите, что случилось."
 }

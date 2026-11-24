@@ -209,7 +209,6 @@
   "Use this crosshair": "Użyj tego celownika",
   "Version": "Wersja",
   "Version {version}": "Wersja {version}",
-  "Version, system, hardware, displays, Scorpio's cost, settings and the end of the log. Your user folder and name are taken out.": "Wersja, system, sprzęt, ekrany, zużycie Scorpio, ustawienia i koniec dziennika. Folder i nazwa użytkownika zostały usunięte.",
   "What happened": "Co się stało",
   "What you were doing and what went wrong.": "Co robiłeś i co poszło nie tak.",
   "When pressed": "Po naciśnięciu",
@@ -226,5 +225,15 @@
   "{x} px left and {y} px down from the centre.": "{x} px w lewo i {y} px w dół od środka.",
   "{x} px left and {y} px up from the centre.": "{x} px w lewo i {y} px w górę od środka.",
   "{x} px right and {y} px down from the centre.": "{x} px w prawo i {y} px w dół od środka.",
-  "{x} px right and {y} px up from the centre.": "{x} px w prawo i {y} px w górę od środka."
+  "{x} px right and {y} px up from the centre.": "{x} px w prawo i {y} px w górę od środka.",
+  "Open the report again.": "Otwórz raport ponownie.",
+  "Send": "Wyślij",
+  "Sent": "Wysłano",
+  "Sent as {id}. Keep this number if you write to us about it.": "Wysłano jako {id}. Zachowaj ten numer, jeśli napiszesz do nas w tej sprawie.",
+  "The report is too long to send. Save it and attach it on GitHub.": "Raport jest za długi do wysłania. Zapisz go i dołącz na GitHubie.",
+  "The report service could not be reached. Save the report and attach it on GitHub.": "Nie udało się połączyć z usługą raportów. Zapisz raport i dołącz go na GitHubie.",
+  "The report service did not take the report. Save it and attach it on GitHub.": "Usługa raportów nie przyjęła raportu. Zapisz go i dołącz na GitHubie.",
+  "Too many reports from this network. Try again in an hour.": "Za dużo raportów z tej sieci. Spróbuj za godzinę.",
+  "Version, system, hardware, displays, Scorpio's cost, settings and the end of the log. Your user folder and name are taken out. Nothing is sent until you press Send.": "Wersja, system, sprzęt, monitory, obciążenie Scorpio, ustawienia i koniec dziennika. Twój folder i nazwa użytkownika są usunięte. Nic nie jest wysyłane, dopóki nie naciśniesz Wyślij.",
+  "Write what happened first.": "Najpierw napisz, co się stało."
 }

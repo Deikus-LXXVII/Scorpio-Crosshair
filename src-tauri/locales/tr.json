@@ -207,7 +207,6 @@
   "Use this crosshair": "Bu nişangahı kullan",
   "Version": "Sürüm",
   "Version {version}": "Sürüm {version}",
-  "Version, system, hardware, displays, Scorpio's cost, settings and the end of the log. Your user folder and name are taken out.": "Sürüm, sistem, donanım, ekranlar, Scorpio'nun tüketimi, ayarlar ve günlüğün sonu. Kullanıcı klasörünüz ve adınız çıkarılır.",
   "What happened": "Ne oldu",
   "What you were doing and what went wrong.": "Ne yapıyordun ve ne ters gitti.",
   "When pressed": "Basıldığında",
@@ -224,5 +223,15 @@
   "{x} px left and {y} px down from the centre.": "Merkezden {x} px sola ve {y} px aşağı.",
   "{x} px left and {y} px up from the centre.": "Merkezden {x} px sola ve {y} px yukarı.",
   "{x} px right and {y} px down from the centre.": "Merkezden {x} px sağa ve {y} px aşağı.",
-  "{x} px right and {y} px up from the centre.": "Merkezden {x} px sağa ve {y} px yukarı."
+  "{x} px right and {y} px up from the centre.": "Merkezden {x} px sağa ve {y} px yukarı.",
+  "Open the report again.": "Raporu yeniden açın.",
+  "Send": "Gönder",
+  "Sent": "Gönderildi",
+  "Sent as {id}. Keep this number if you write to us about it.": "{id} numarasıyla gönderildi. Bize bununla ilgili yazarsanız bu numarayı saklayın.",
+  "The report is too long to send. Save it and attach it on GitHub.": "Rapor göndermek için çok uzun. Kaydedip GitHub'a ekleyin.",
+  "The report service could not be reached. Save the report and attach it on GitHub.": "Rapor servisine ulaşılamadı. Raporu kaydedip GitHub'a ekleyin.",
+  "The report service did not take the report. Save it and attach it on GitHub.": "Rapor servisi raporu kabul etmedi. Kaydedip GitHub'a ekleyin.",
+  "Too many reports from this network. Try again in an hour.": "Bu ağdan çok fazla rapor geldi. Bir saat sonra tekrar deneyin.",
+  "Version, system, hardware, displays, Scorpio's cost, settings and the end of the log. Your user folder and name are taken out. Nothing is sent until you press Send.": "Sürüm, sistem, donanım, ekranlar, Scorpio'nun yükü, ayarlar ve günlüğün sonu. Kullanıcı klasörünüz ve adınız çıkarıldı. Gönder'e basana kadar hiçbir şey gönderilmez.",
+  "Write what happened first.": "Önce ne olduğunu yazın."
 }

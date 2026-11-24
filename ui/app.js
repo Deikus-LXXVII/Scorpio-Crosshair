@@ -976,30 +976,12 @@ const updatesBlock = () => {
 const REPORT_WHAT_LIMIT = 4000
 const REPORT_CONTACT_LIMIT = 200
 
-// Matches `report::compose` in Rust: inserts the player's own fields right
-// after the header without altering the already-redacted body.
-const composeReport = ( base, description, contact ) => {
-
-	const desc = Array.from( description.trim() ).slice( 0, REPORT_WHAT_LIMIT ).join( '' )
-	const reach = Array.from( contact.trim() ).slice( 0, REPORT_CONTACT_LIMIT ).join( '' )
-
-	if ( !desc && !reach ) return base
-	const split = base.indexOf( '\n\n' )
-	const head = split === -1 ? '' : base.slice( 0, split + 1 )
-	const body = split === -1 ? base : base.slice( split + 2 )
-	const parts = []
-
-	if ( desc ) parts.push( `What happened:\n${desc}\n` )
-	if ( reach ) parts.push( `How to reach you:\n${reach}\n` )
-	return `${head}${head ? '\n' : ''}${parts.join( '\n' )}\n${body}`
-
-}
-
 let reportOpening = false
 
-// The report is shown in full before anything happens to it. Saving writes
-// it to Downloads; the GitHub issue opens in the browser and asks for that
-// file, so the report itself never goes into an address.
+// The report is shown in full before anything happens to it. Rust makes the
+// text with the player's notes, so what is shown is what is copied, saved
+// and sent. Send posts it to Scorpio's report service; Save and GitHub keep
+// it on this computer until the player attaches it.
 const showReport = async () => {
 
 	if ( reportOpening ) return
@@ -1009,6 +991,11 @@ const showReport = async () => {
 	try {
 
 		base = await invoke( 'problem_report' )
+
+	} catch ( error ) {
+
+		failed( error )
+		return
 
 	} finally {
 
@@ -1026,22 +1013,37 @@ const showReport = async () => {
 		placeholder: t( 'Optional: Discord name or e-mail' ),
 	} )
 	const area = h( 'textarea.textarea.report', { readonly: true, spellcheck: 'false', 'aria-label': t( 'The report' ) } )
+	const sentLine = h( 'p.report-sent' )
+	sentLine.hidden = true
 	let saved = null
 	let savedText = null
+	let sentId = null
+	let asked = 0
 
-	const refresh = () => {
+	area.value = base
+	// Answers can come back out of order while typing: only the newest is shown.
+	const refresh = async () => {
 
-		area.value = composeReport( base, what.value, contact.value )
+		const mine = ++asked
+		const text = await invoke( 'compose_report', { description: what.value, contact: contact.value } )
+
+		if ( mine === asked ) area.value = text
 
 	}
+	const notes = () => ( { description: what.value, contact: contact.value } )
 
 	what.addEventListener( 'input', refresh )
 	contact.addEventListener( 'input', refresh )
-	refresh()
 
+	const current = async () => {
+
+		await refresh()
+		return area.value
+
+	}
 	const saveFile = async () => {
 
-		const text = area.value
+		const text = await current()
 
 		if ( !saved || savedText !== text ) {
 
@@ -1054,8 +1056,42 @@ const showReport = async () => {
 
 	}
 
+	const send = h( 'button.btn.primary', { type: 'button', text: t( 'Send' ) } )
+
+	send.onclick = async () => {
+
+		if ( sentId ) return
+		if ( !what.value.trim() ) {
+
+			toast( t( 'Write what happened first.' ) )
+			what.focus()
+			return
+
+		}
+
+		send.disabled = true
+
+		try {
+
+			await current()
+			sentId = await invoke( 'send_report', notes() )
+			what.readOnly = true
+			contact.readOnly = true
+			sentLine.textContent = t( 'Sent as {id}. Keep this number if you write to us about it.', { id: sentId } )
+			sentLine.hidden = false
+			send.textContent = t( 'Sent' )
+
+		} catch ( error ) {
+
+			send.disabled = false
+			failed( error )
+
+		}
+
+	}
+
 	const body = h( 'div.report-body', {},
-		h( 'p', { text: t( "Version, system, hardware, displays, Scorpio's cost, settings and the end of the log. Your user folder and name are taken out." ) } ),
+		h( 'p', { text: t( "Version, system, hardware, displays, Scorpio's cost, settings and the end of the log. Your user folder and name are taken out. Nothing is sent until you press Send." ) } ),
 		h( 'div.field', {},
 			h( 'label.field-label', { for: 'report-what', text: t( 'What happened' ) } ),
 			what,
@@ -1065,12 +1101,13 @@ const showReport = async () => {
 			contact,
 		),
 		area,
+		sentLine,
 	)
 	const close = dialog( t( 'Report a problem' ), body, [
 		h( 'button.btn.quiet', { type: 'button', text: t( 'Close' ), onclick: () => close() } ),
 		h( 'button.btn', { type: 'button', text: t( 'Copy' ), onclick: async () => {
 
-			await navigator.clipboard.writeText( area.value )
+			await navigator.clipboard.writeText( await current() )
 			toast( t( 'Report copied.' ) )
 
 		} } ),
@@ -1087,7 +1124,7 @@ const showReport = async () => {
 			}
 
 		} } ),
-		h( 'button.btn.primary', { type: 'button', text: t( 'Report on GitHub' ), onclick: async () => {
+		h( 'button.btn', { type: 'button', text: t( 'Report on GitHub' ), onclick: async () => {
 
 			try {
 
@@ -1103,6 +1140,7 @@ const showReport = async () => {
 			}
 
 		} } ),
+		send,
 	], { wide: true } )
 
 }

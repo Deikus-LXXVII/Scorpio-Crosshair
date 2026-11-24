@@ -209,7 +209,6 @@
   "Use this crosshair": "Використати цей приціл",
   "Version": "Версія",
   "Version {version}": "Версія {version}",
-  "Version, system, hardware, displays, Scorpio's cost, settings and the end of the log. Your user folder and name are taken out.": "Версія, система, залізо, монітори, навантаження Scorpio, налаштування й кінець журналу. Теку й ім’я користувача з нього прибрано.",
   "What happened": "Що сталося",
   "What you were doing and what went wrong.": "Що ви робили та що пішло не так.",
   "When pressed": "Під час натискання",
@@ -226,5 +225,15 @@
   "{x} px left and {y} px down from the centre.": "На {x} px лівіше і на {y} px нижче від центру.",
   "{x} px left and {y} px up from the centre.": "На {x} px лівіше і на {y} px вище від центру.",
   "{x} px right and {y} px down from the centre.": "На {x} px правіше і на {y} px нижче від центру.",
-  "{x} px right and {y} px up from the centre.": "На {x} px правіше і на {y} px вище від центру."
+  "{x} px right and {y} px up from the centre.": "На {x} px правіше і на {y} px вище від центру.",
+  "Open the report again.": "Відкрийте звіт заново.",
+  "Send": "Надіслати",
+  "Sent": "Надіслано",
+  "Sent as {id}. Keep this number if you write to us about it.": "Надіслано під номером {id}. Збережіть його, якщо писатимете нам про це.",
+  "The report is too long to send. Save it and attach it on GitHub.": "Звіт задовгий для надсилання. Збережіть його й додайте на GitHub.",
+  "The report service could not be reached. Save the report and attach it on GitHub.": "Не вдалося зв'язатися зі службою звітів. Збережіть звіт і додайте його на GitHub.",
+  "The report service did not take the report. Save it and attach it on GitHub.": "Служба звітів не прийняла звіт. Збережіть його й додайте на GitHub.",
+  "Too many reports from this network. Try again in an hour.": "Забагато звітів із цієї мережі. Спробуйте за годину.",
+  "Version, system, hardware, displays, Scorpio's cost, settings and the end of the log. Your user folder and name are taken out. Nothing is sent until you press Send.": "Версія, система, залізо, монітори, навантаження Scorpio, налаштування й кінець журналу. Теку та ім'я користувача з нього прибрано. Нічого не надсилається, доки ви не натиснете «Надіслати».",
+  "Write what happened first.": "Спершу напишіть, що сталося."
 }

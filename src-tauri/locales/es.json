@@ -208,7 +208,6 @@
   "Use this crosshair": "Usar esta mira",
   "Version": "Versión",
   "Version {version}": "Versión {version}",
-  "Version, system, hardware, displays, Scorpio's cost, settings and the end of the log. Your user folder and name are taken out.": "Versión, sistema, hardware, pantallas, consumo de Scorpio, ajustes y el final del registro. Se quitan tu carpeta y tu nombre de usuario.",
   "What happened": "Qué ocurrió",
   "What you were doing and what went wrong.": "Qué estabas haciendo y qué salió mal.",
   "When pressed": "Al pulsar",
@@ -225,5 +224,15 @@
   "{x} px left and {y} px down from the centre.": "{x} px a la izquierda y {y} px por debajo del centro.",
   "{x} px left and {y} px up from the centre.": "{x} px a la izquierda y {y} px por encima del centro.",
   "{x} px right and {y} px down from the centre.": "{x} px a la derecha y {y} px por debajo del centro.",
-  "{x} px right and {y} px up from the centre.": "{x} px a la derecha y {y} px por encima del centro."
+  "{x} px right and {y} px up from the centre.": "{x} px a la derecha y {y} px por encima del centro.",
+  "Open the report again.": "Vuelve a abrir el informe.",
+  "Send": "Enviar",
+  "Sent": "Enviado",
+  "Sent as {id}. Keep this number if you write to us about it.": "Enviado como {id}. Guarda este número si nos escribes sobre ello.",
+  "The report is too long to send. Save it and attach it on GitHub.": "El informe es demasiado largo para enviarlo. Guárdalo y adjúntalo en GitHub.",
+  "The report service could not be reached. Save the report and attach it on GitHub.": "No se pudo contactar con el servicio de informes. Guarda el informe y adjúntalo en GitHub.",
+  "The report service did not take the report. Save it and attach it on GitHub.": "El servicio de informes no aceptó el informe. Guárdalo y adjúntalo en GitHub.",
+  "Too many reports from this network. Try again in an hour.": "Demasiados informes desde esta red. Inténtalo dentro de una hora.",
+  "Version, system, hardware, displays, Scorpio's cost, settings and the end of the log. Your user folder and name are taken out. Nothing is sent until you press Send.": "Versión, sistema, hardware, pantallas, consumo de Scorpio, ajustes y el final del registro. Se quitan tu carpeta y tu nombre de usuario. No se envía nada hasta que pulses Enviar.",
+  "Write what happened first.": "Primero escribe qué pasó."
 }

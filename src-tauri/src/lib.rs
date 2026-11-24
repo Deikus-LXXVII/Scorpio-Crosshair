@@ -49,6 +49,8 @@ struct Shared {
     trusted: bool,
     /// When this run started reading the settings, to find its own copy.
     started: u64,
+    /// The report last shown in the settings window, before the player's notes.
+    report: Mutex<Option<report::Draft>>,
 }
 
 fn shared(handle: &AppHandle) -> tauri::State<'_, Shared> {
@@ -405,7 +407,7 @@ async fn image_file(handle: AppHandle, name: String) -> Result<tauri::ipc::Respo
 
 /// The problem report, for the player to read before anything leaves.
 #[tauri::command]
-async fn problem_report(handle: AppHandle) -> String {
+async fn problem_report(handle: AppHandle) -> Result<String, String> {
     let (settings, state) = {
         let shared = shared(&handle);
         let app = shared.app.lock().unwrap();
@@ -433,9 +435,27 @@ async fn problem_report(handle: AppHandle) -> String {
         (app.settings.clone(), state)
     };
     let cost = report::CostFacts { process: platform::process_cost(), counters: platform::counters::snapshot() };
-    tauri::async_runtime::spawn_blocking(move || report::text(&report::gather(state, Ok(settings), Some(cost))))
+    let draft = tauri::async_runtime::spawn_blocking(move || report::draft(&report::gather(state, Ok(settings), Some(cost))))
         .await
-        .unwrap_or_else(|error| format!("Scorpio problem report could not be gathered: {error}"))
+        .map_err(|error| format!("Scorpio problem report could not be gathered: {error}"))?;
+    let text = draft.with("", "");
+    *shared(&handle).report.lock().unwrap() = Some(draft);
+    Ok(text)
+}
+
+/// The shown report with the player's notes, made here so that what is
+/// shown, copied, saved and sent is one text.
+#[tauri::command]
+fn compose_report(handle: AppHandle, description: String, contact: String) -> Result<String, String> {
+    let draft = shared(&handle).report.lock().unwrap().clone();
+    draft.map(|draft| draft.with(&description, &contact)).ok_or_else(|| i18n::tr("Open the report again.", &[]))
+}
+
+/// Sends the shown report to Scorpio's report service; its number.
+#[tauri::command]
+async fn send_report(handle: AppHandle, description: String, contact: String) -> Result<String, String> {
+    let draft = shared(&handle).report.lock().unwrap().clone().ok_or_else(|| i18n::tr("Open the report again.", &[]))?;
+    report::send(report::payload(&draft, &description, &contact)?).await
 }
 
 /// Saves the report the player read, and says where.
@@ -572,7 +592,7 @@ fn setup(handle: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(display) = primary_display(handle) {
         app.display = display;
     }
-    handle.manage(Shared { app: Mutex::new(app), platform, path, images, hotkeys: Mutex::new(HashMap::new()), tray, saving: Mutex::new(()), obs: obs::Obs::default(), trusted, started });
+    handle.manage(Shared { app: Mutex::new(app), platform, path, images, hotkeys: Mutex::new(HashMap::new()), tray, saving: Mutex::new(()), obs: obs::Obs::default(), trusted, started, report: Mutex::new(None) });
 
     TrayIconBuilder::with_id("scorpio")
         .icon(handle.default_window_icon().cloned().ok_or("no icon")?)
@@ -715,6 +735,8 @@ pub fn run() {
             image_file,
             problem_report,
             save_report,
+            compose_report,
+            send_report,
             open_issue
         ])
         .setup(|app| {

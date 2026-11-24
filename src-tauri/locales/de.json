@@ -207,7 +207,6 @@
   "Use this crosshair": "Dieses Fadenkreuz verwenden",
   "Version": "Version",
   "Version {version}": "Version {version}",
-  "Version, system, hardware, displays, Scorpio's cost, settings and the end of the log. Your user folder and name are taken out.": "Version, System, Hardware, Bildschirme, Scorpios Verbrauch, Einstellungen und das Ende des Protokolls. Benutzerordner und Benutzername sind entfernt.",
   "What happened": "Was passiert ist",
   "What you were doing and what went wrong.": "Was du getan hast und was schiefgelaufen ist.",
   "When pressed": "Beim Drücken",
@@ -224,5 +223,15 @@
   "{x} px left and {y} px down from the centre.": "{x} px links und {y} px unter der Mitte.",
   "{x} px left and {y} px up from the centre.": "{x} px links und {y} px über der Mitte.",
   "{x} px right and {y} px down from the centre.": "{x} px rechts und {y} px unter der Mitte.",
-  "{x} px right and {y} px up from the centre.": "{x} px rechts und {y} px über der Mitte."
+  "{x} px right and {y} px up from the centre.": "{x} px rechts und {y} px über der Mitte.",
+  "Open the report again.": "Öffne den Bericht erneut.",
+  "Send": "Senden",
+  "Sent": "Gesendet",
+  "Sent as {id}. Keep this number if you write to us about it.": "Gesendet als {id}. Behalte diese Nummer, falls du uns dazu schreibst.",
+  "The report is too long to send. Save it and attach it on GitHub.": "Der Bericht ist zu lang zum Senden. Speichere ihn und hänge ihn auf GitHub an.",
+  "The report service could not be reached. Save the report and attach it on GitHub.": "Der Berichtsdienst ist nicht erreichbar. Speichere den Bericht und hänge ihn auf GitHub an.",
+  "The report service did not take the report. Save it and attach it on GitHub.": "Der Berichtsdienst hat den Bericht nicht angenommen. Speichere ihn und hänge ihn auf GitHub an.",
+  "Too many reports from this network. Try again in an hour.": "Zu viele Berichte aus diesem Netzwerk. Versuche es in einer Stunde erneut.",
+  "Version, system, hardware, displays, Scorpio's cost, settings and the end of the log. Your user folder and name are taken out. Nothing is sent until you press Send.": "Version, System, Hardware, Bildschirme, Scorpios Last, Einstellungen und das Ende des Protokolls. Dein Benutzerordner und -name sind entfernt. Nichts wird gesendet, bis du auf Senden drückst.",
+  "Write what happened first.": "Schreibe zuerst, was passiert ist."
 }
