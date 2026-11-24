@@ -182,6 +182,7 @@ def full(path):
         return False
     db = connect(path)
     try:
+        purge(db)
         pages = db.execute("pragma page_count").fetchone()[0] - db.execute("pragma freelist_count").fetchone()[0]
         return pages * db.execute("pragma page_size").fetchone()[0] > FULL_BYTES
     finally:
@@ -225,6 +226,8 @@ def handler(path, limits, busy=None):
                 data = b""
                 while len(data) <= MAX_DRAIN:
                     size = int(self.rfile.readline(64).split(b";")[0].strip() or b"0", 16)
+                    if size < 0:
+                        raise ValueError("negative chunk size")
                     if size == 0:
                         self.rfile.readline(64)
                         break
@@ -242,21 +245,33 @@ def handler(path, limits, busy=None):
 
         def do_GET(self):
             if self.path == "/v1/health":
-                self.reply(200, {"ok": True})
+                self.answered(lambda: self.reply(200, {"ok": True}))
             else:
-                self.reply(404, {"error": "not found"})
+                self.answered(lambda: self.reply(404, {"error": "not found"}))
 
         def refuse_method(self):
-            self.body()
-            self.reply(405, {"error": "not allowed"})
+            self.answered(lambda: self.reply(405, {"error": "not allowed"}))
 
-        do_PUT = do_PATCH = do_DELETE = do_OPTIONS = refuse_method
+        do_PUT = do_PATCH = do_DELETE = do_OPTIONS = do_HEAD = refuse_method
+
+        def answered(self, then):
+            """Reads the body, then answers; a body that cannot be read gets a 400."""
+            try:
+                self.body()
+            except (BrokenPipeError, ConnectionResetError, TimeoutError) as error:
+                self.log_message("connection lost: %s", type(error).__name__)
+                return
+            except ValueError:
+                return self.reply(400, {"error": "unreadable body"})
+            then()
 
         def do_POST(self):
             try:
                 self.take()
             except (BrokenPipeError, ConnectionResetError, TimeoutError) as error:
                 self.log_message("connection lost: %s", type(error).__name__)
+            except ValueError:
+                self.reply(400, {"error": "unreadable body"})
             except Exception as error:  # an answer, never a dropped connection
                 self.log_message("failed: %s", type(error).__name__)
                 try:

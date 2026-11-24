@@ -100,6 +100,11 @@ the site says the same.
   (journald) would hold the address of a caller that tried then.
 - Step 3 done in code (d7f27b4) and public text; the site and `llms.txt`
   go live with the release, since 0.1.5 has no Send.
+- Three Neon review rounds (ee5ef23, 9ddc411 + d7f27b4, 31e979a + 2bd9d4d);
+  every confirmed finding fixed. Left as is, inferred only: more than ~60
+  callers at once could reach the unit's TasksMax=64 and get a dropped
+  connection (Caddy would then log that caller's address); with Caddy
+  buffering each body, the service's connections last milliseconds.
 - Left: a send from the gaming PC, `tools/measure-windows.ps1`, release 0.1.6.
 
 ## Open

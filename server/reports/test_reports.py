@@ -172,14 +172,24 @@ class Server(unittest.TestCase):
         self.assertEqual([post(["10.0.0.%d" % n, "203.0.113.5"]) for n in range(4)], [201, 201, 201, 429], "a forged first header changes nothing")
         self.assertEqual(reports.address_key("::ffff:203.0.113.5"), "203.0.113.5")
 
-    def test_a_full_database_refuses_and_freed_room_counts(self):
-        reports.store(self.db, {**GOOD, "text": "x" * 200_000}, now=1_000_000)
+    def test_a_full_database_refuses_until_the_old_reports_are_gone(self):
         with mock.patch.object(reports, "FULL_BYTES", 100_000):
-            self.assertEqual(self.post(GOOD)[0], 503, "over the ceiling")
-            with contextlib.closing(reports.connect(self.db)) as db:
-                reports.purge(db)
-            self.assertGreater(os.path.getsize(self.db), 100_000, "the file keeps its size")
-            self.assertEqual(self.post(GOOD, address="198.51.100.9")[0], 201, "but the freed pages are room again")
+            reports.store(self.db, {**GOOD, "text": "x" * 200_000})
+            self.assertEqual(self.post(GOOD)[0], 503, "over the ceiling with a live report")
+        with contextlib.closing(reports.connect(self.db)) as db, db:
+            db.execute("update reports set received = 1000000")
+        with mock.patch.object(reports, "FULL_BYTES", 100_000):
+            self.assertEqual(self.post(GOOD, address="198.51.100.9")[0], 201, "the service itself purges the expired one and has room")
+        self.assertGreater(os.path.getsize(self.db), 100_000, "though the file kept its size")
+
+    def test_broken_chunks_and_other_methods_get_answers(self):
+        for size in (b"-1", b"ZZZ"):
+            status, _ = self.raw(b"POST /v1/reports HTTP/1.1\r\nHost: x\r\nTransfer-Encoding: chunked\r\n\r\n" + size + b"\r\nabc\r\n0\r\n\r\n")
+            self.assertEqual(status, "400", size)
+        status, _ = self.raw(b"PUT /v1/reports HTTP/1.1\r\nHost: x\r\nTransfer-Encoding: chunked\r\n\r\nZZZ\r\n\r\n")
+        self.assertEqual(status, "400")
+        status, _ = self.raw(b"HEAD /v1/reports HTTP/1.1\r\nHost: x\r\n\r\n")
+        self.assertEqual(status, "405")
 
 class Keeping(unittest.TestCase):
     def test_reports_older_than_180_days_are_deleted(self):

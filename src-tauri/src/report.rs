@@ -693,8 +693,16 @@ async fn send_to(url: &str, payload: Vec<u8>) -> Result<String, String> {
         }
     };
     let status = response.status().as_u16();
-    let small = response.content_length().is_some_and(|length| length <= 4096);
-    let answer: serde_json::Value = if small { response.bytes().await.ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default() } else { Default::default() };
+    // The answer is a few bytes; read at most 4 KB of it, with or without a length.
+    let mut response = response;
+    let mut bytes = Vec::new();
+    while let Ok(Some(chunk)) = response.chunk().await {
+        bytes.extend_from_slice(&chunk);
+        if bytes.len() > 4096 {
+            break;
+        }
+    }
+    let answer: serde_json::Value = serde_json::from_slice(&bytes).unwrap_or_default();
     match (status, answer.get("id").and_then(|id| id.as_str())) {
         (201, Some(id)) if is_report_id(id) => {
             log::info!("problem report sent as {id}");
@@ -1098,6 +1106,10 @@ mod tests {
         assert!(request.starts_with("POST /v1/reports "), "{request}");
         assert!(request.to_ascii_lowercase().contains("content-type: application/json"));
         assert!(request.contains("\"description\":\"FPS drops\""));
+
+        let (url, server) = one_answer("HTTP/1.1 201 Created\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n14\r\n{\"id\": \"SCR-F3MZNA\"}\r\n0\r\n\r\n");
+        assert_eq!(runtime.block_on(send_to(&url, body.clone())), Ok("SCR-F3MZNA".into()), "an answer without a length is read too");
+        server.join().unwrap();
 
         let (url, server) = one_answer("HTTP/1.1 429 Too Many Requests\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}");
         assert!(runtime.block_on(send_to(&url, body.clone())).unwrap_err().contains("Try again in an hour"));
