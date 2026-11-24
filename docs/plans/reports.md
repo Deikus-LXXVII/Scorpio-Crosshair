@@ -87,9 +87,22 @@ the site says the same.
    read it back with `tools/reports.sh`.
 4. Release 0.1.6.
 
+## Progress (2026-11-24)
+
+- Step 1 done (Neon, 6cc4e8e; Linux build fixed in f6008c1). Checked here:
+  tests on macOS and Ubuntu, `cargo xwin build` with no `dxgi.dll` import,
+  `--system-facts` on the VPS. Not yet run on the gaming PC.
+- Step 2 done: deployed to the VPS (`usa-vps`), hardened after a Neon
+  review (9ddc411). Limits as built: 10 attempts an hour per address or
+  IPv6 /64, 200 stored reports a day, 4 requests at once, 1 GB ceiling.
+  Every request gets an answer, so Caddy logs no upstream error with the
+  caller's address; if the service itself is down, Caddy's error log
+  (journald) would hold the address of a caller that tried then.
+- Step 3 done in code (d7f27b4) and public text; the site and `llms.txt`
+  go live with the release, since 0.1.5 has no Send.
+- Left: a send from the gaming PC, `tools/measure-windows.ps1`, release 0.1.6.
+
 ## Open
 
-- Which VPS holds the service (the one that serves scorpio.lxxvll.com), and
-  a DNS record for `reports.lxxvll.com`.
 - The gaming PC was not reachable on 2026-11-24, so step 1's Windows checks
   wait for it.

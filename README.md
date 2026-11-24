@@ -257,7 +257,7 @@ Thirteen: ropz, b1t, jL, Twistzz, XANTARES, Spinx, iM, w0nderful, karrigan, apEX
 
 ### Does Scorpio collect data or go online?
 
-Scorpio has no telemetry and no account. It makes one kind of request: the update check to this repository's releases on GitHub, and the download of an update. With automatic updates off, it checks only when you click **Check for updates**. The OBS source listens on your own computer only, and only while it is on.
+Scorpio has no telemetry and no account. It makes two kinds of request. The first is the update check to this repository's releases on GitHub, and the download of an update; with automatic updates off, it checks only when you click **Check for updates**. The second is a problem report, sent only when you press **Send** in the report window after reading it (see **Report a problem** below). The OBS source listens on your own computer only, and only while it is on.
 
 ### Where does Scorpio keep its settings?
 
@@ -297,7 +297,7 @@ Known gaps:
 
 ## Troubleshooting
 
-**Report a problem.** On the **System** tab, click **Show the report**. You can describe what happened and optionally leave a way to reach you, and you see the whole report first: Scorpio's version, your system, processor and memory, graphics cards, displays (resolution, refresh rate, HDR and overlay-plane support), presentation settings (HAGS, windowed-game optimisations, Game Mode and `__COMPAT_LAYER`, or session and compositor on Linux), Scorpio's own CPU time, private memory, uptime and wake-ups, your settings, and the last 200 lines of the log, with your user folder written as `~` and your user name as `<user>`. Then you can copy it, save it as a file in your Downloads folder, or click **Report on GitHub**, which saves the file and opens a new issue in your browser with a short text that asks you to attach it. Scorpio never sends anything by itself and has no telemetry.
+**Report a problem.** On the **System** tab, click **Show the report**. You can describe what happened and optionally leave a way to reach you, and you see the whole report first: Scorpio's version, your system, processor and memory, graphics cards, displays (resolution, refresh rate, HDR and overlay-plane support), presentation settings (HAGS, windowed-game optimisations, Game Mode and `__COMPAT_LAYER`, or session and compositor on Linux), Scorpio's own CPU time, private memory, uptime and wake-ups, your settings, and the last 200 lines of the log, with your user folder written as `~` and your user name as `<user>`. Then you can copy it, save it as a file in your Downloads folder, click **Report on GitHub**, which saves the file and opens a new issue in your browser with a short text that asks you to attach it, or click **Send**. Send needs the description, posts exactly the text you see to `reports.lxxvll.com`, Scorpio's own report service, and shows the report's number. Reports are kept for 180 days and read only by the developer. The service does not store your IP address: it holds it in memory for an hour to limit how many reports one network can send. Nothing is sent until you press Send.
 
 **Files.**
 

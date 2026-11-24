@@ -30,7 +30,7 @@ const FAQ = [
 	[ 'Does Scorpio lower my frame rate?',
 		`Most likely not, though we have not measured it. Scorpio is one small process, nearly idle on the processor, and loads nothing into the game.` ],
 	[ 'Does Scorpio collect data?',
-		`No. It sends no usage data, has no account, and goes online only for updates from GitHub.` ],
+		`No usage data and no account. It goes online for updates from GitHub, and sends a problem report only when you press Send after reading it.` ],
 ]
 const plain = html => html.replace( /<[^>]+>/g, '' )
 
