@@ -4,7 +4,10 @@ reports.lxxvll.com {
 	}
 
 	handle /v1/* {
-		reverse_proxy 127.0.0.1:8798
+		reverse_proxy 127.0.0.1:8798 {
+			# The caller for the rate limit; reports.py reads only this header.
+			header_up X-Real-IP {remote_host}
+		}
 	}
 	handle {
 		respond "Scorpio problem reports. Send one from Scorpio: System, Report a problem." 404

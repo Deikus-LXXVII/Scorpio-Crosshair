@@ -1,19 +1,23 @@
 #!/usr/bin/env python3
 """Scorpio problem reports: the service behind https://reports.lxxvll.com.
 
-    reports.py serve [--db PATH] [--port N]   take reports (behind Caddy)
-    reports.py list [--all]                   open reports, newest first
-    reports.py show ID                        one report in full
-    reports.py close ID                       mark it handled
+    reports.py serve [--port N]   take reports (behind Caddy)
+    reports.py list [--all]       open reports, newest first
+    reports.py show ID            one report in full
+    reports.py close ID           mark it handled
 
 Standard library only. A report is sent by Scorpio when the player presses
 Send after reading it (docs/plans/reports.md). IP addresses are never
 written down: they live in memory for the rate limit and are forgotten.
+Every request gets an HTTP answer after its body was read, so Caddy never
+sees a broken upstream (its error log would hold the caller's address).
 """
 
 import argparse
+import ipaddress
 import json
 import os
+import re
 import secrets
 import sqlite3
 import sys
@@ -21,16 +25,24 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-DB = os.environ.get("SCORPIO_REPORTS_DB", "/var/lib/scorpio-reports/reports.db")
+DB = "/var/lib/scorpio-reports/reports.db"
 PORT = 8798
 MAX_BODY = 512 * 1024
+# Caddy refuses larger bodies itself (reports.caddy); up to this much is read and dropped.
+MAX_DRAIN = 600 * 1000
 FIELDS = {"version": 32, "system": 400, "description": 4000, "contact": 200, "text": 500 * 1024}
 REQUIRED = ("version", "description", "text")
-PER_ADDRESS = (5, 3600)
+SINGLE_LINE = ("version", "system", "contact")
+# Attempts per address (or IPv6 /64) an hour, good or bad; stored reports a day in all.
+PER_ADDRESS = (10, 3600)
 IN_ALL = (200, 86400)
+BUSY = 4
 KEEP_DAYS = 180
+FULL_BYTES = 1024 * 1024 * 1024
 # Crockford base32 without 0/O, 1/I/L, U: easy to read aloud and retype.
 ALPHABET = "23456789ABCDEFGHJKMNPQRSTVWXYZ"
+CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]")
+LINE_BREAKS = re.compile(r"[\r\n\t]+")
 
 SCHEMA = """
 create table if not exists reports (
@@ -49,19 +61,36 @@ create table if not exists reports (
 def connect(path):
     db = sqlite3.connect(path, timeout=10)
     db.execute("pragma journal_mode=wal")
+    db.execute("pragma secure_delete=on")
     db.execute(SCHEMA)
     return db
+
+
+def purge(db, now=None):
+    now = int(now if now is not None else time.time())
+    with db:
+        db.execute("delete from reports where received < ?", (now - KEEP_DAYS * 86400,))
 
 
 def new_id():
     return "SCR-" + "".join(secrets.choice(ALPHABET) for _ in range(6))
 
 
+def clean(name, value):
+    """Text as it may be stored and printed: no terminal escapes, and one
+    line for the fields the listing prints on one line."""
+    if name in SINGLE_LINE:
+        value = LINE_BREAKS.sub(" ", value)
+    else:
+        value = value.replace("\r\n", "\n").replace("\r", "\n")
+    return CONTROL.sub("", value)
+
+
 def parse(body):
     """The report from a request body, or the reason it is refused."""
     try:
         data = json.loads(body.decode("utf-8"))
-    except (UnicodeDecodeError, ValueError):
+    except (UnicodeDecodeError, ValueError, RecursionError):
         return None, "not JSON"
     if not isinstance(data, dict):
         return None, "not a JSON object"
@@ -70,34 +99,58 @@ def parse(body):
         value = data.get(name, "")
         if not isinstance(value, str):
             return None, f"{name} is not text"
-        value = value.strip() if name != "text" else value
+        value = clean(name, value)
+        if name != "text":
+            value = value.strip()
         if len(value) > limit:
             return None, f"{name} is longer than {limit} characters"
-        if name in REQUIRED and not value:
+        if name in REQUIRED and not value.strip():
             return None, f"{name} is empty"
         report[name] = value
     return report, None
 
 
+def address_key(address):
+    """An IPv6 caller can change its address within its /64 at will."""
+    try:
+        ip = ipaddress.ip_address(address)
+    except ValueError:
+        return address
+    if ip.version == 6:
+        if ip.ipv4_mapped:
+            return str(ip.ipv4_mapped)
+        return str(ipaddress.ip_network(f"{ip}/64", strict=False))
+    return str(ip)
+
+
 class Limits:
-    """Sliding windows: a few reports per address, a ceiling for everyone."""
+    """Sliding windows: attempts per address, stored reports for everyone."""
 
     def __init__(self, per_address=PER_ADDRESS, in_all=IN_ALL, clock=time.monotonic):
         self.per_address, self.in_all, self.clock = per_address, in_all, clock
-        self.seen, self.all = {}, []
+        self.seen, self.stored = {}, []
         self.lock = threading.Lock()
 
-    def allow(self, address):
+    def attempt(self, address):
+        """Counts a request from `address`; False once it has used its hour."""
+        key, now = address_key(address), self.clock()
+        with self.lock:
+            for old in [k for k, times in self.seen.items() if now - times[-1] >= self.per_address[1]]:
+                del self.seen[old]
+            mine = [t for t in self.seen.get(key, []) if now - t < self.per_address[1]]
+            if len(mine) >= self.per_address[0]:
+                return False
+            self.seen[key] = mine + [now]
+            return True
+
+    def room(self):
+        """Takes one of the day's places for a report; False when none is left."""
         now = self.clock()
         with self.lock:
-            self.all = [t for t in self.all if now - t < self.in_all[1]]
-            for key in [k for k, times in self.seen.items() if not times or now - times[-1] >= self.per_address[1]]:
-                del self.seen[key]
-            mine = [t for t in self.seen.get(address, []) if now - t < self.per_address[1]]
-            if len(mine) >= self.per_address[0] or len(self.all) >= self.in_all[0]:
+            self.stored = [t for t in self.stored if now - t < self.in_all[1]]
+            if len(self.stored) >= self.in_all[0]:
                 return False
-            self.seen[address] = mine + [now]
-            self.all.append(now)
+            self.stored.append(now)
             return True
 
 
@@ -105,9 +158,9 @@ def store(path, report, now=None):
     now = int(now if now is not None else time.time())
     db = connect(path)
     try:
+        purge(db, now)
         with db:
-            db.execute("delete from reports where received < ?", (now - KEEP_DAYS * 86400,))
-            while True:
+            for _ in range(5):
                 report_id = new_id()
                 try:
                     db.execute(
@@ -117,14 +170,26 @@ def store(path, report, now=None):
                     return report_id
                 except sqlite3.IntegrityError:
                     continue
+        raise RuntimeError("no free report number after 5 tries")
     finally:
         db.close()
 
 
-def handler(path, limits):
+def full(path):
+    try:
+        return os.path.getsize(path) > FULL_BYTES
+    except OSError:
+        return False
+
+
+def handler(path, limits, busy=None):
+    busy = busy or threading.BoundedSemaphore(BUSY)
+
     class Handler(BaseHTTPRequestHandler):
         server_version = "reports"
         sys_version = ""
+        # A caller that stops sending is dropped after this many seconds.
+        timeout = 15
 
         def reply(self, status, payload):
             body = json.dumps(payload).encode()
@@ -135,6 +200,20 @@ def handler(path, limits):
             self.end_headers()
             self.wfile.write(body)
 
+        def body(self):
+            """The body, read whole so the answer never races it; None if too large."""
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                length = 0
+            data = self.rfile.read(min(max(length, 0), MAX_DRAIN))
+            return data if length <= MAX_BODY else None
+
+        def caller(self):
+            # Caddy is the only client (127.0.0.1) and sets X-Real-IP to the caller (reports.caddy).
+            values = self.headers.get_all("X-Real-IP") or [self.client_address[0]]
+            return values[-1].strip()
+
         def do_GET(self):
             if self.path == "/v1/health":
                 self.reply(200, {"ok": True})
@@ -142,25 +221,40 @@ def handler(path, limits):
                 self.reply(404, {"error": "not found"})
 
         def do_POST(self):
-            if self.path != "/v1/reports":
-                return self.reply(404, {"error": "not found"})
             try:
-                length = int(self.headers.get("Content-Length", ""))
-            except ValueError:
-                return self.reply(411, {"error": "length required"})
-            if length < 0 or length > MAX_BODY:
-                return self.reply(413, {"error": "the report is too large"})
-            body = self.rfile.read(length)
-            report, why = parse(body)
-            if why:
-                return self.reply(400, {"error": why})
-            # Caddy is the only client (127.0.0.1) and sets X-Forwarded-For to the caller.
-            address = self.headers.get("X-Forwarded-For", self.client_address[0]).split(",")[-1].strip()
-            if not limits.allow(address):
-                return self.reply(429, {"error": "too many reports; try again in an hour"})
-            report_id = store(path, report)
-            self.log_message("report %s from Scorpio %s", report_id, report["version"])
-            self.reply(201, {"id": report_id})
+                self.take()
+            except (BrokenPipeError, ConnectionResetError, TimeoutError) as error:
+                self.log_message("connection lost: %s", type(error).__name__)
+            except Exception as error:  # an answer, never a dropped connection
+                self.log_message("failed: %s", type(error).__name__)
+                try:
+                    self.reply(500, {"error": "the report could not be kept"})
+                except OSError:
+                    pass
+
+        def take(self):
+            allowed = limits.attempt(self.caller())
+            if not busy.acquire(blocking=False):
+                self.body()
+                return self.reply(503, {"error": "busy; try again in a minute"})
+            try:
+                body = self.body()
+                if self.path != "/v1/reports":
+                    return self.reply(404, {"error": "not found"})
+                if not allowed:
+                    return self.reply(429, {"error": "too many reports; try again in an hour"})
+                if body is None:
+                    return self.reply(413, {"error": "the report is too large"})
+                report, why = parse(body)
+                if why:
+                    return self.reply(400, {"error": why})
+                if full(path) or not limits.room():
+                    return self.reply(503, {"error": "not taking reports today; try again tomorrow"})
+                report_id = store(path, report)
+                self.log_message("report %s from Scorpio %s", report_id, report["version"])
+                self.reply(201, {"id": report_id})
+            finally:
+                busy.release()
 
         def log_message(self, format, *args):
             # No addresses in the log: the request line and the outcome only.
@@ -169,10 +263,19 @@ def handler(path, limits):
     return Handler
 
 
+class Server(ThreadingHTTPServer):
+    daemon_threads = True
+
+    def handle_error(self, request, client_address):
+        # One line, no traceback: the handler already logs what went wrong.
+        sys.stderr.write(f"request failed: {sys.exc_info()[0].__name__}\n")
+
+
 def serve(path, port):
-    connect(path).close()
-    server = ThreadingHTTPServer(("127.0.0.1", port), handler(path, Limits()))
-    server.daemon_threads = True
+    db = connect(path)
+    purge(db)
+    db.close()
+    server = Server(("127.0.0.1", port), handler(path, Limits()))
     print(f"taking reports on 127.0.0.1:{port}, stored in {path}", file=sys.stderr)
     server.serve_forever()
 
@@ -195,33 +298,40 @@ def main(argv=None):
 
     if args.command == "serve":
         return serve(args.db, args.port)
+    if not os.path.exists(args.db):
+        print(f"no reports database at {args.db}", file=sys.stderr)
+        return 1
     db = connect(args.db)
-    if args.command == "list":
-        rows = db.execute(
-            "select id, received, version, closed, description from reports"
-            + ("" if args.all else " where closed = 0")
-            + " order by received desc"
-        ).fetchall()
-        for report_id, received, version, closed, description in rows:
-            first = description.splitlines()[0][:70] if description else ""
-            print(f"{report_id}  {stamp(received)}  {version:<8} {'closed' if closed else 'open  '}  {first}")
-        if not rows:
-            print("no reports")
-    elif args.command == "show":
-        row = db.execute("select * from reports where id = ?", (args.id.upper(),)).fetchone()
-        if not row:
-            print(f"no report {args.id}", file=sys.stderr)
-            return 1
-        report_id, received, version, system, description, contact, text, closed = row
-        print(f"{report_id}, {stamp(received)}, {'closed' if closed else 'open'}")
-        print(f"Scorpio {version} on {system}")
-        print(f"Contact: {contact or '(none)'}\n\nWhat happened:\n{description}\n\n{text}")
-    elif args.command == "close":
-        with db:
-            changed = db.execute("update reports set closed = 1 where id = ?", (args.id.upper(),)).rowcount
-        print("closed" if changed else f"no report {args.id}")
-        return 0 if changed else 1
-    return 0
+    try:
+        purge(db)
+        if args.command == "list":
+            rows = db.execute(
+                "select id, received, version, closed, description from reports"
+                + ("" if args.all else " where closed = 0")
+                + " order by received desc"
+            ).fetchall()
+            for report_id, received, version, closed, description in rows:
+                first = description.splitlines()[0][:70] if description else ""
+                print(f"{report_id}  {stamp(received)}  {version:<8} {'closed' if closed else 'open  '}  {first}")
+            if not rows:
+                print("no reports")
+        elif args.command == "show":
+            row = db.execute("select * from reports where id = ?", (args.id.upper(),)).fetchone()
+            if not row:
+                print(f"no report {args.id}", file=sys.stderr)
+                return 1
+            report_id, received, version, system, description, contact, text, closed = row
+            print(f"{report_id}, {stamp(received)}, {'closed' if closed else 'open'}")
+            print(f"Scorpio {version} on {system}")
+            print(f"Contact: {contact or '(none)'}\n\nWhat happened:\n{description}\n\n{text}")
+        elif args.command == "close":
+            with db:
+                changed = db.execute("update reports set closed = 1 where id = ?", (args.id.upper(),)).rowcount
+            print("closed" if changed else f"no report {args.id}")
+            return 0 if changed else 1
+        return 0
+    finally:
+        db.close()
 
 
 if __name__ == "__main__":
