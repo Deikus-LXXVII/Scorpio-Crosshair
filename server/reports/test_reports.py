@@ -10,7 +10,6 @@ import time
 import unittest
 import urllib.error
 import urllib.request
-from http.server import ThreadingHTTPServer
 from unittest import mock
 
 import reports
@@ -27,7 +26,8 @@ class Server(unittest.TestCase):
         self.log = io.StringIO()
         self.patch = mock.patch("sys.stderr", self.log)
         self.patch.start()
-        self.server = ThreadingHTTPServer(("127.0.0.1", 0), reports.handler(self.db, limits))
+        self.busy = __import__("threading").BoundedSemaphore(reports.BUSY)
+        self.server = reports.Server(("127.0.0.1", 0), reports.handler(self.db, limits, self.busy))
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
         self.url = f"http://127.0.0.1:{self.server.server_address[1]}"
 
@@ -109,7 +109,7 @@ class Server(unittest.TestCase):
         self.assertNotIn("127.0.0.1", self.log.getvalue())
 
     def test_a_caller_that_stops_sending_is_dropped(self):
-        server = ThreadingHTTPServer(("127.0.0.1", 0), reports.handler(self.db, reports.Limits()))
+        server = reports.Server(("127.0.0.1", 0), reports.handler(self.db, reports.Limits()))
         server.RequestHandlerClass.timeout = 1
         threading.Thread(target=server.serve_forever, daemon=True).start()
         try:
@@ -124,6 +124,62 @@ class Server(unittest.TestCase):
             server.shutdown()
             server.server_close()
 
+
+    def raw(self, request):
+        with socket.create_connection(self.server.server_address) as conn:
+            conn.sendall(request)
+            conn.settimeout(5)
+            answer = b""
+            while chunk := conn.recv(4096):
+                answer += chunk
+        return answer.split(b" ", 2)[1].decode(), answer
+
+    def test_health_length_and_methods(self):
+        with urllib.request.urlopen(self.url + "/v1/health") as response:
+            self.assertEqual(json.loads(response.read()), {"ok": True})
+        status, _ = self.raw(b"POST /v1/reports HTTP/1.1\r\nHost: x\r\n\r\n")
+        self.assertEqual(status, "411")
+        good = json.dumps(GOOD).encode()
+        chunks = b"".join(b"%x\r\n%s\r\n" % (len(part), part) for part in (good[:20], good[20:])) + b"0\r\n\r\n"
+        status, _ = self.raw(b"POST /v1/reports HTTP/1.1\r\nHost: x\r\nTransfer-Encoding: chunked\r\n\r\n" + chunks)
+        self.assertEqual(status, "201", "a chunked body is read like any other")
+        status, _ = self.raw(b"PUT /v1/reports HTTP/1.1\r\nHost: x\r\nContent-Length: 5\r\n\r\nhello")
+        self.assertEqual(status, "405")
+
+    def test_busy_is_an_answer_that_costs_no_try(self):
+        for _ in range(reports.BUSY):
+            self.busy.acquire()
+        try:
+            self.assertEqual([self.post(GOOD)[0] for _ in range(5)], [503] * 5)
+        finally:
+            for _ in range(reports.BUSY):
+                self.busy.release()
+        self.assertEqual([self.post(GOOD)[0] for _ in range(4)], [201, 201, 201, 429], "the busy answers used none of the hour")
+
+    def test_the_caller_is_the_last_real_ip_and_mapped_ipv4_is_ipv4(self):
+        def post(headers):
+            import http.client
+            conn = http.client.HTTPConnection(*self.server.server_address)
+            conn.putrequest("POST", "/v1/reports")
+            body = json.dumps(GOOD).encode()
+            conn.putheader("Content-Length", str(len(body)))
+            for value in headers:
+                conn.putheader("X-Real-IP", value)
+            conn.endheaders(body)
+            status = conn.getresponse().status
+            conn.close()
+            return status
+        self.assertEqual([post(["10.0.0.%d" % n, "203.0.113.5"]) for n in range(4)], [201, 201, 201, 429], "a forged first header changes nothing")
+        self.assertEqual(reports.address_key("::ffff:203.0.113.5"), "203.0.113.5")
+
+    def test_a_full_database_refuses_and_freed_room_counts(self):
+        reports.store(self.db, {**GOOD, "text": "x" * 200_000}, now=1_000_000)
+        with mock.patch.object(reports, "FULL_BYTES", 100_000):
+            self.assertEqual(self.post(GOOD)[0], 503, "over the ceiling")
+            with contextlib.closing(reports.connect(self.db)) as db:
+                reports.purge(db)
+            self.assertGreater(os.path.getsize(self.db), 100_000, "the file keeps its size")
+            self.assertEqual(self.post(GOOD, address="198.51.100.9")[0], 201, "but the freed pages are room again")
 
 class Keeping(unittest.TestCase):
     def test_reports_older_than_180_days_are_deleted(self):

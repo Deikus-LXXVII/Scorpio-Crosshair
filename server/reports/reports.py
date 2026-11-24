@@ -176,10 +176,16 @@ def store(path, report, now=None):
 
 
 def full(path):
-    try:
-        return os.path.getsize(path) > FULL_BYTES
-    except OSError:
+    """Over the ceiling in live data: pages freed by the 180-day purge count
+    as room, though the file does not shrink."""
+    if not os.path.exists(path):
         return False
+    db = connect(path)
+    try:
+        pages = db.execute("pragma page_count").fetchone()[0] - db.execute("pragma freelist_count").fetchone()[0]
+        return pages * db.execute("pragma page_size").fetchone()[0] > FULL_BYTES
+    finally:
+        db.close()
 
 
 def handler(path, limits, busy=None):
@@ -200,13 +206,33 @@ def handler(path, limits, busy=None):
             self.end_headers()
             self.wfile.write(body)
 
+        def chunked(self):
+            return "chunked" in self.headers.get("Transfer-Encoding", "").lower()
+
+        def length(self):
+            """Content-Length, or None when there is neither it nor a chunked body."""
+            if self.chunked():
+                return 0
+            try:
+                length = int(self.headers.get("Content-Length", ""))
+            except ValueError:
+                return None
+            return length if length >= 0 else None
+
         def body(self):
             """The body, read whole so the answer never races it; None if too large."""
-            try:
-                length = int(self.headers.get("Content-Length", "0"))
-            except ValueError:
-                length = 0
-            data = self.rfile.read(min(max(length, 0), MAX_DRAIN))
+            if self.chunked():
+                data = b""
+                while len(data) <= MAX_DRAIN:
+                    size = int(self.rfile.readline(64).split(b";")[0].strip() or b"0", 16)
+                    if size == 0:
+                        self.rfile.readline(64)
+                        break
+                    data += self.rfile.read(min(size, MAX_DRAIN + 1 - len(data)))
+                    self.rfile.readline(64)
+                return data if len(data) <= MAX_BODY else None
+            length = self.length() or 0
+            data = self.rfile.read(min(length, MAX_DRAIN))
             return data if length <= MAX_BODY else None
 
         def caller(self):
@@ -219,6 +245,12 @@ def handler(path, limits, busy=None):
                 self.reply(200, {"ok": True})
             else:
                 self.reply(404, {"error": "not found"})
+
+        def refuse_method(self):
+            self.body()
+            self.reply(405, {"error": "not allowed"})
+
+        do_PUT = do_PATCH = do_DELETE = do_OPTIONS = refuse_method
 
         def do_POST(self):
             try:
@@ -233,11 +265,13 @@ def handler(path, limits, busy=None):
                     pass
 
         def take(self):
-            allowed = limits.attempt(self.caller())
             if not busy.acquire(blocking=False):
                 self.body()
                 return self.reply(503, {"error": "busy; try again in a minute"})
             try:
+                if self.length() is None:
+                    return self.reply(411, {"error": "length required"})
+                allowed = limits.attempt(self.caller())
                 body = self.body()
                 if self.path != "/v1/reports":
                     return self.reply(404, {"error": "not found"})

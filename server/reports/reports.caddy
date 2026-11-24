@@ -5,6 +5,9 @@ reports.lxxvll.com {
 
 	handle /v1/* {
 		reverse_proxy 127.0.0.1:8798 {
+			# The whole body first: a slow caller holds Caddy, not one of the
+			# service's few workers, and the service always gets a Content-Length.
+			request_buffers 600KB
 			# The caller for the rate limit; reports.py reads only this header.
 			header_up X-Real-IP {remote_host}
 		}

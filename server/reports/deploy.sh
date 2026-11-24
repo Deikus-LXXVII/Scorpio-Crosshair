@@ -12,16 +12,20 @@ COPYFILE_DISABLE=1 tar --no-xattrs -czf - reports.py reports.caddy scorpio-repor
 		new=$(mktemp -d)
 		old=$(mktemp -d)
 		restore() {
+			# A first deploy that failed: stop and disable while the unit file still exists.
+			if [ -e "$old/_etc_systemd_system_scorpio-reports.service.none" ]; then
+				systemctl disable --now scorpio-reports >/dev/null 2>&1 || true
+			fi
 			for file in /etc/caddy/Caddyfile /etc/caddy/reports.caddy /opt/scorpio-reports/reports.py /etc/systemd/system/scorpio-reports.service; do
 				saved="$old/$(echo "$file" | tr / _)"
 				if [ -e "$saved" ]; then cp -p "$saved" "$file"; elif [ -e "$saved.none" ]; then rm -f "$file"; fi
 			done
 			systemctl daemon-reload
-			systemctl restart scorpio-reports 2>/dev/null || true
+			[ -e /etc/systemd/system/scorpio-reports.service ] && systemctl restart scorpio-reports 2>/dev/null || true
 			systemctl reload caddy || true
 			echo "deploy failed; the previous files are back" >&2
 		}
-		trap "restore; rm -rf \"$new\" \"$old\"" EXIT
+		trap "rm -rf \"$new\" \"$old\"" EXIT
 		tar -xzf - -C "$new"
 		for file in /etc/caddy/Caddyfile /etc/caddy/reports.caddy /opt/scorpio-reports/reports.py /etc/systemd/system/scorpio-reports.service; do
 			saved="$old/$(echo "$file" | tr / _)"
@@ -36,6 +40,8 @@ COPYFILE_DISABLE=1 tar --no-xattrs -czf - reports.py reports.caddy scorpio-repor
 			exit 1
 		fi
 
+		# From here on the live files change; any failure puts them back.
+		trap "restore; rm -rf \"$new\" \"$old\"" EXIT
 		id scorpio-reports >/dev/null 2>&1 || useradd --system --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin scorpio-reports
 		install -d -m 0755 /opt/scorpio-reports
 		install -m 0644 "$new/reports.py" /opt/scorpio-reports/reports.py
