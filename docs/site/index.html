@@ -386,7 +386,7 @@ html.js .rv.in{opacity:1;transform:none}
 		<div class="hb-copy">
 			<h1 class="hb-name">Scorpio</h1>
 			<p class="caps">A crosshair over your game, only while you play</p>
-			<a class="btn" href="https://github.com/Deikus-LXXVII/Scorpio-Crosshair/releases/tag/installer">Download Scorpio</a>
+			<a class="btn" href="https://github.com/Deikus-LXXVII/Scorpio-Crosshair/releases/tag/installer" data-count="click: Scorpio download Windows">Download Scorpio</a>
 		</div>
 		<a class="cue" href="#crosshair" aria-label="Go to the first section"><i></i></a>
 	</header>
@@ -505,14 +505,15 @@ html.js .rv.in{opacity:1;transform:none}
 			<li>Click the tray icon, make a crosshair or paste a code, and start your game.</li>
 		</ol>
 		<p>Free for non-commercial use under the PolyForm Noncommercial 1.0.0 licence.</p>
-		<a class="btn" href="https://github.com/Deikus-LXXVII/Scorpio-Crosshair/releases/tag/installer">Download from GitHub</a>
+		<a class="btn" href="https://github.com/Deikus-LXXVII/Scorpio-Crosshair/releases/tag/installer" data-count="click: Scorpio download Windows">Download from GitHub</a>
 	</div>
 	<div class="foot">
 		<span class="sig"><svg viewBox="128 128 768 768" role="img" aria-label="Scorpio"><path fill="#ebe5da" d="M647.8 403.4L896 512L512 680L484.2 667.8L453.5 597.7L512 623.2L766.3 512L678.5 473.6ZM403.4 376.2L512 128L680 512L667.8 539.8L597.7 570.5L623.2 512L512 257.7L473.6 345.5ZM376.2 620.6L128 512L512 344L539.8 356.2L570.5 426.3L512 400.8L257.7 512L345.5 550.4ZM620.6 647.8L512 896L344 512L356.2 484.2L426.3 453.5L400.8 512L512 766.3L550.4 678.5Z"/><path fill="#c8435a" d="M468 512L512 468L556 512L512 556Z"/></svg>Scorpio</span>
 		<nav aria-label="Links">
-			<a class="go" href="https://github.com/Deikus-LXXVII/Scorpio-Crosshair">GitHub</a>
-			<a class="go" href="https://github.com/Deikus-LXXVII/Scorpio-Crosshair/blob/main/LICENSE">Licence</a>
-			<a class="go" href="https://lxxvll.com">LXXVII</a>
+			<a class="go" href="https://github.com/Deikus-LXXVII/Scorpio-Crosshair/releases/latest" data-count="click: Scorpio download Linux">Linux</a>
+			<a class="go" href="https://github.com/Deikus-LXXVII/Scorpio-Crosshair" data-count="click: Scorpio source">GitHub</a>
+			<a class="go" href="https://github.com/Deikus-LXXVII/Scorpio-Crosshair/blob/main/LICENSE" data-count="click: Scorpio licence">Licence</a>
+			<a class="go" href="https://lxxvll.com" data-count="click: Scorpio to lxxvll.com">LXXVII</a>
 		</nav>
 		<span class="year" title="2026">MMXXVI</span>
 	</div>
@@ -562,6 +563,23 @@ for ( const d of document.querySelectorAll( '.qa' ) ) {
 	document.querySelectorAll('.block').forEach((el) => lit.observe(el))
 	if (get) new IntersectionObserver(([e]) => { end = e.isIntersecting; paint() }, { threshold: 1 }).observe(get)
 })()
+</script>
+<script>
+// Visits and download clicks for stats.lxxvll.com (GoatCounter). Reads
+// nothing from the browser and stores nothing in it: no consent banner.
+(function () {
+  if (location.protocol !== "https:" || document.visibilityState === "prerender") return;
+  var send = function (path, title, event) {
+    var url = "https://stats.lxxvll.com/count?p=" + encodeURIComponent(path) + "&t=" + encodeURIComponent(title) + "&e=" + event +
+      "&r=" + encodeURIComponent(event ? "" : document.referrer) + "&q=" + encodeURIComponent(event ? "" : location.search) + "&rnd=" + Math.random().toString(36).slice(2, 7);
+    if (!(navigator.sendBeacon && navigator.sendBeacon(url))) new Image().src = url;
+  };
+  send(location.host + location.pathname, document.title, false);
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest ? e.target.closest("a[data-count]") : null;
+    if (a) send(a.getAttribute("data-count"), a.getAttribute("data-count"), true);
+  });
+})();
 </script>
 </body>
 </html>

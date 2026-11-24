@@ -137,7 +137,7 @@ const hall = () => {
 const crosshair = `<svg class="hb-x" viewBox="-16 -16 32 32" aria-hidden="true"><g fill="#c8435a" stroke="#060605" stroke-width="1"><rect x="-1.5" y="-13.5" width="3" height="9"/><rect x="-1.5" y="4.5" width="3" height="9"/><rect x="-13.5" y="-1.5" width="9" height="3"/><rect x="4.5" y="-1.5" width="9" height="3"/></g></svg>`
 
 const cue = cls => `<a class="cue${cls ? ' ' + cls : ''}" href="#crosshair" aria-label="Go to the first section"><i></i></a>`
-const download = `<a class="btn" href="${DOWNLOAD}">Download Scorpio</a>`
+const download = `<a class="btn" href="${DOWNLOAD}" data-count="click: Scorpio download Windows">Download Scorpio</a>`
 
 const HEROES = {
 	a: `
@@ -678,19 +678,37 @@ ${FAQ.map( ( [ q, a ] ) => `\t\t<details class="qa"><summary>${q}<i aria-hidden=
 			<li>Click the tray icon, make a crosshair or paste a code, and start your game.</li>
 		</ol>
 		<p>Free for non-commercial use under the PolyForm Noncommercial 1.0.0 licence.</p>
-		<a class="btn" href="${DOWNLOAD}">Download from GitHub</a>
+		<a class="btn" href="${DOWNLOAD}" data-count="click: Scorpio download Windows">Download from GitHub</a>
 	</div>
 	<div class="foot">
 		<span class="sig">${mark( 'Scorpio' )}Scorpio</span>
 		<nav aria-label="Links">
-			<a class="go" href="${REPO}">GitHub</a>
-			<a class="go" href="${REPO}/blob/main/LICENSE">Licence</a>
-			<a class="go" href="https://lxxvll.com">LXXVII</a>
+			<a class="go" href="${REPO}/releases/latest" data-count="click: Scorpio download Linux">Linux</a>
+			<a class="go" href="${REPO}" data-count="click: Scorpio source">GitHub</a>
+			<a class="go" href="${REPO}/blob/main/LICENSE" data-count="click: Scorpio licence">Licence</a>
+			<a class="go" href="https://lxxvll.com" data-count="click: Scorpio to lxxvll.com">LXXVII</a>
 		</nav>
 		<span class="year" title="2026">MMXXVI</span>
 	</div>
 </footer>
 <script>${js}</script>
+<script>
+// Visits and download clicks for stats.lxxvll.com (GoatCounter). Reads
+// nothing from the browser and stores nothing in it: no consent banner.
+(function () {
+  if (location.protocol !== "https:" || document.visibilityState === "prerender") return;
+  var send = function (path, title, event) {
+    var url = "https://stats.lxxvll.com/count?p=" + encodeURIComponent(path) + "&t=" + encodeURIComponent(title) + "&e=" + event +
+      "&r=" + encodeURIComponent(event ? "" : document.referrer) + "&q=" + encodeURIComponent(event ? "" : location.search) + "&rnd=" + Math.random().toString(36).slice(2, 7);
+    if (!(navigator.sendBeacon && navigator.sendBeacon(url))) new Image().src = url;
+  };
+  send(location.host + location.pathname, document.title, false);
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest ? e.target.closest("a[data-count]") : null;
+    if (a) send(a.getAttribute("data-count"), a.getAttribute("data-count"), true);
+  });
+})();
+</script>
 </body>
 </html>
 `
