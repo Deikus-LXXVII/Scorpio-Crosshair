@@ -568,13 +568,15 @@ for ( const d of document.querySelectorAll( '.qa' ) ) {
 // Visits and download clicks for stats.lxxvll.com (GoatCounter). Reads
 // nothing from the browser and stores nothing in it: no consent banner.
 (function () {
-  if (location.protocol !== "https:" || document.visibilityState === "prerender") return;
+  if (location.protocol !== "https:" || !navigator.sendBeacon) return;
   var send = function (path, title, event) {
-    var url = "https://stats.lxxvll.com/count?p=" + encodeURIComponent(path) + "&t=" + encodeURIComponent(title) + "&e=" + event +
-      "&r=" + encodeURIComponent(event ? "" : document.referrer) + "&q=" + encodeURIComponent(event ? "" : location.search) + "&rnd=" + Math.random().toString(36).slice(2, 7);
-    if (!(navigator.sendBeacon && navigator.sendBeacon(url))) new Image().src = url;
+    try {
+      navigator.sendBeacon("https://stats.lxxvll.com/count?p=" + encodeURIComponent(path) + "&t=" + encodeURIComponent(title) + "&e=" + event +
+        "&r=" + encodeURIComponent(event ? "" : document.referrer) + "&q=" + encodeURIComponent(event ? "" : location.search) + "&rnd=" + Math.random().toString(36).slice(2, 7));
+    } catch (e) {}
   };
-  send(location.host + location.pathname, document.title, false);
+  var view = function () { send(location.host + location.pathname, document.title, false); };
+  if (document.prerendering) document.addEventListener("prerenderingchange", view, { once: true }); else view();
   document.addEventListener("click", function (e) {
     var a = e.target.closest ? e.target.closest("a[data-count]") : null;
     if (a) send(a.getAttribute("data-count"), a.getAttribute("data-count"), true);
