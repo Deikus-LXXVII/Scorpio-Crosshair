@@ -1,0 +1,26 @@
+reports.lxxvll.com {
+	request_body {
+		max_size 600KB
+	}
+
+	handle /v1/* {
+		reverse_proxy 127.0.0.1:8798
+	}
+	handle {
+		respond "Scorpio problem reports. Send one from Scorpio: System, Report a problem." 404
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		Content-Security-Policy "default-src 'none'; frame-ancestors 'none'"
+		-Server
+	}
+
+	# No access log: it would keep the addresses the service itself never writes down.
+	log {
+		output discard
+	}
+}
