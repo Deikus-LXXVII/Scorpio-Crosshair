@@ -696,7 +696,7 @@ ${FAQ.map( ( [ q, a ] ) => `\t\t<details class="qa"><summary>${q}<i aria-hidden=
 // Visits and download clicks for stats.lxxvll.com (GoatCounter). Reads
 // nothing from the browser and stores nothing in it: no consent banner.
 (function () {
-  if (location.protocol !== "https:" || !navigator.sendBeacon) return;
+  if (location.protocol !== "https:" || !/(^|\.)lxxvll\.com$/.test(location.hostname) || !navigator.sendBeacon) return;
   var send = function (path, title, event) {
     try {
       navigator.sendBeacon("https://stats.lxxvll.com/count?p=" + encodeURIComponent(path) + "&t=" + encodeURIComponent(title) + "&e=" + event +
@@ -706,7 +706,7 @@ ${FAQ.map( ( [ q, a ] ) => `\t\t<details class="qa"><summary>${q}<i aria-hidden=
   var view = function () { send(location.host + location.pathname, document.title, false); };
   if (document.prerendering) document.addEventListener("prerenderingchange", view, { once: true }); else view();
   document.addEventListener("click", function (e) {
-    var a = e.target.closest ? e.target.closest("a[data-count]") : null;
+    var a = e.target && e.target.closest ? e.target.closest("a[data-count]") : null;
     if (a) send(a.getAttribute("data-count"), a.getAttribute("data-count"), true);
   });
 })();
