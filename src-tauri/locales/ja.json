@@ -232,5 +232,6 @@
   "The report service did not take the report. Save it and attach it on GitHub.": "レポートサービスがレポートを受け付けませんでした。保存して GitHub に添付してください。",
   "Too many reports from this network. Try again in an hour.": "このネットワークからのレポートが多すぎます。1 時間後にもう一度お試しください。",
   "Version, system, hardware, displays, Scorpio's cost, settings and the end of the log. Your user folder and name are taken out. Nothing is sent until you press Send.": "バージョン、システム、ハードウェア、ディスプレイ、Scorpio の負荷、設定、ログの末尾。ユーザーフォルダーとユーザー名は取り除かれます。「送信」を押すまで何も送信されません。",
-  "Write what happened first.": "まず何が起きたかを書いてください。"
+  "Write what happened first.": "まず何が起きたかを書いてください。",
+  "The report is being sent.": "レポートを送信しています。"
 }

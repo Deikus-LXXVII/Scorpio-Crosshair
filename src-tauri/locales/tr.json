@@ -233,5 +233,6 @@
   "The report service did not take the report. Save it and attach it on GitHub.": "Rapor servisi raporu kabul etmedi. Kaydedip GitHub'a ekleyin.",
   "Too many reports from this network. Try again in an hour.": "Bu ağdan çok fazla rapor geldi. Bir saat sonra tekrar deneyin.",
   "Version, system, hardware, displays, Scorpio's cost, settings and the end of the log. Your user folder and name are taken out. Nothing is sent until you press Send.": "Sürüm, sistem, donanım, ekranlar, Scorpio'nun yükü, ayarlar ve günlüğün sonu. Kullanıcı klasörünüz ve adınız çıkarıldı. Gönder'e basana kadar hiçbir şey gönderilmez.",
-  "Write what happened first.": "Önce ne olduğunu yazın."
+  "Write what happened first.": "Önce ne olduğunu yazın.",
+  "The report is being sent.": "Rapor gönderiliyor."
 }

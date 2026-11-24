@@ -233,5 +233,6 @@
   "The report service did not take the report. Save it and attach it on GitHub.": "Der Berichtsdienst hat den Bericht nicht angenommen. Speichere ihn und hänge ihn auf GitHub an.",
   "Too many reports from this network. Try again in an hour.": "Zu viele Berichte aus diesem Netzwerk. Versuche es in einer Stunde erneut.",
   "Version, system, hardware, displays, Scorpio's cost, settings and the end of the log. Your user folder and name are taken out. Nothing is sent until you press Send.": "Version, System, Hardware, Bildschirme, Scorpios Last, Einstellungen und das Ende des Protokolls. Dein Benutzerordner und -name sind entfernt. Nichts wird gesendet, bis du auf Senden drückst.",
-  "Write what happened first.": "Schreibe zuerst, was passiert ist."
+  "Write what happened first.": "Schreibe zuerst, was passiert ist.",
+  "The report is being sent.": "Der Bericht wird gesendet."
 }

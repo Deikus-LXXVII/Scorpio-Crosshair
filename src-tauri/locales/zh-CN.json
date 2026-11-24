@@ -232,5 +232,6 @@
   "The report service did not take the report. Save it and attach it on GitHub.": "报告服务未接受该报告。请保存后在 GitHub 上附加。",
   "Too many reports from this network. Try again in an hour.": "来自此网络的报告过多。请一小时后再试。",
   "Version, system, hardware, displays, Scorpio's cost, settings and the end of the log. Your user folder and name are taken out. Nothing is sent until you press Send.": "版本、系统、硬件、显示器、Scorpio 的开销、设置和日志末尾。已去除你的用户文件夹和用户名。在你按下“发送”之前不会发送任何内容。",
-  "Write what happened first.": "请先写下发生了什么。"
+  "Write what happened first.": "请先写下发生了什么。",
+  "The report is being sent.": "报告正在发送。"
 }

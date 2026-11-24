@@ -30,6 +30,28 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
 pub const SETTINGS_WINDOW: &str = "settings";
 
+/// The report the settings window shows: compose, save and send take its
+/// token, so a report opened again elsewhere is never the one sent from here.
+struct ShownReport {
+    token: u64,
+    draft: report::Draft,
+    sending: bool,
+    /// The number and text once sent: pressing Send again sends nothing.
+    sent: Option<(String, String)>,
+}
+
+#[derive(Serialize)]
+struct ReportView {
+    token: u64,
+    text: String,
+}
+
+#[derive(Serialize)]
+struct SentReport {
+    id: String,
+    text: String,
+}
+
 struct Shared {
     app: Mutex<App>,
     platform: Platform,
@@ -50,7 +72,7 @@ struct Shared {
     /// When this run started reading the settings, to find its own copy.
     started: u64,
     /// The report last shown in the settings window, before the player's notes.
-    report: Mutex<Option<report::Draft>>,
+    report: Mutex<Option<ShownReport>>,
 }
 
 fn shared(handle: &AppHandle) -> tauri::State<'_, Shared> {
@@ -407,7 +429,7 @@ async fn image_file(handle: AppHandle, name: String) -> Result<tauri::ipc::Respo
 
 /// The problem report, for the player to read before anything leaves.
 #[tauri::command]
-async fn problem_report(handle: AppHandle) -> Result<String, String> {
+async fn problem_report(handle: AppHandle) -> Result<ReportView, String> {
     let (settings, state) = {
         let shared = shared(&handle);
         let app = shared.app.lock().unwrap();
@@ -439,28 +461,62 @@ async fn problem_report(handle: AppHandle) -> Result<String, String> {
         .await
         .map_err(|error| format!("Scorpio problem report could not be gathered: {error}"))?;
     let text = draft.with("", "");
-    *shared(&handle).report.lock().unwrap() = Some(draft);
-    Ok(text)
+    let state = shared(&handle);
+    let mut shown = state.report.lock().unwrap();
+    let token = shown.as_ref().map_or(1, |shown| shown.token + 1);
+    *shown = Some(ShownReport { token, draft, sending: false, sent: None });
+    Ok(ReportView { token, text })
+}
+
+/// The draft of the report with this token, or why there is none.
+fn shown_draft(handle: &AppHandle, token: u64) -> Result<report::Draft, String> {
+    let state = shared(handle);
+    let shown = state.report.lock().unwrap();
+    shown.as_ref().filter(|shown| shown.token == token).map(|shown| shown.draft.clone()).ok_or_else(|| i18n::tr("Open the report again.", &[]))
 }
 
 /// The shown report with the player's notes, made here so that what is
 /// shown, copied, saved and sent is one text.
 #[tauri::command]
-fn compose_report(handle: AppHandle, description: String, contact: String) -> Result<String, String> {
-    let draft = shared(&handle).report.lock().unwrap().clone();
-    draft.map(|draft| draft.with(&description, &contact)).ok_or_else(|| i18n::tr("Open the report again.", &[]))
+fn compose_report(handle: AppHandle, token: u64, description: String, contact: String) -> Result<String, String> {
+    Ok(shown_draft(&handle, token)?.with(&description, &contact))
 }
 
-/// Sends the shown report to Scorpio's report service; its number.
+/// Sends the shown report to Scorpio's report service: its number and the
+/// text that was sent. Once sent, the same report is not sent again.
 #[tauri::command]
-async fn send_report(handle: AppHandle, description: String, contact: String) -> Result<String, String> {
-    let draft = shared(&handle).report.lock().unwrap().clone().ok_or_else(|| i18n::tr("Open the report again.", &[]))?;
-    report::send(report::payload(&draft, &description, &contact)?).await
+async fn send_report(handle: AppHandle, token: u64, description: String, contact: String) -> Result<SentReport, String> {
+    let state = shared(&handle);
+    let draft = {
+        let mut shown = state.report.lock().unwrap();
+        let shown = shown.as_mut().filter(|shown| shown.token == token).ok_or_else(|| i18n::tr("Open the report again.", &[]))?;
+        if let Some((id, text)) = &shown.sent {
+            return Ok(SentReport { id: id.clone(), text: text.clone() });
+        }
+        if shown.sending {
+            return Err(i18n::tr("The report is being sent.", &[]));
+        }
+        shown.sending = true;
+        shown.draft.clone()
+    };
+    let result = match report::payload(&draft, &description, &contact) {
+        Ok((body, text)) => report::send(body).await.map(|id| SentReport { id, text }),
+        Err(why) => Err(why),
+    };
+    let mut shown = state.report.lock().unwrap();
+    if let Some(shown) = shown.as_mut().filter(|shown| shown.token == token) {
+        shown.sending = false;
+        if let Ok(sent) = &result {
+            shown.sent = Some((sent.id.clone(), sent.text.clone()));
+        }
+    }
+    result
 }
 
-/// Saves the report the player read, and says where.
+/// Saves the shown report with the player's notes, and says where.
 #[tauri::command]
-async fn save_report(text: String) -> Result<String, String> {
+async fn save_report(handle: AppHandle, token: u64, description: String, contact: String) -> Result<String, String> {
+    let text = shown_draft(&handle, token)?.with(&description, &contact);
     if text.len() > report::TEXT_LIMIT {
         return Err(i18n::tr("The report is too long to save.", &[]));
     }

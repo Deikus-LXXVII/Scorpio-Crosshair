@@ -235,5 +235,6 @@
   "The report service did not take the report. Save it and attach it on GitHub.": "Служба звітів не прийняла звіт. Збережіть його й додайте на GitHub.",
   "Too many reports from this network. Try again in an hour.": "Забагато звітів із цієї мережі. Спробуйте за годину.",
   "Version, system, hardware, displays, Scorpio's cost, settings and the end of the log. Your user folder and name are taken out. Nothing is sent until you press Send.": "Версія, система, залізо, монітори, навантаження Scorpio, налаштування й кінець журналу. Теку та ім'я користувача з нього прибрано. Нічого не надсилається, доки ви не натиснете «Надіслати».",
-  "Write what happened first.": "Спершу напишіть, що сталося."
+  "Write what happened first.": "Спершу напишіть, що сталося.",
+  "The report is being sent.": "Звіт надсилається."
 }

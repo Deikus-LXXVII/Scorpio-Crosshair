@@ -306,7 +306,7 @@ fn draft_with_redaction(facts: &Facts, home: Option<&Path>, user: Option<&str>) 
         paths = "your user folder is written as ~ and your user name as <user>",
         count = facts.log.len(),
     );
-    Draft { head, body: redact(&body, home, user), version: facts.version, system: facts.system.clone() }
+    Draft { head, body: redact(&body, home, user), version: facts.version, system: redact(&facts.system, home, user) }
 }
 
 /// Combines the report header, optional player-typed fields (unredacted,
@@ -621,14 +621,14 @@ fn replace_ignoring_case(text: &str, from: &str, to: &str, whole_word: bool) -> 
 
 /// What Send posts: the report exactly as the dialog shows it, and the
 /// fields the service lists reports by.
-pub fn payload(draft: &Draft, description: &str, contact: &str) -> Result<Vec<u8>, String> {
+/// What Send posts, and the text in it: the report exactly as the dialog
+/// shows it, and the fields the service lists reports by.
+pub fn payload(draft: &Draft, description: &str, contact: &str) -> Result<(Vec<u8>, String), String> {
+    let text = draft.with(description, contact);
+    // The same trimming and clipping `compose` applied to the text.
     let description = clip(description.trim(), DESCRIPTION_LIMIT);
     if description.is_empty() {
         return Err(crate::i18n::tr("Write what happened first.", &[]));
-    }
-    let text = draft.with(description, contact);
-    if text.len() > SEND_LIMIT {
-        return Err(crate::i18n::tr("The report is too long to send. Save it and attach it on GitHub.", &[]));
     }
     let body = serde_json::json!({
         "version": draft.version,
@@ -636,13 +636,32 @@ pub fn payload(draft: &Draft, description: &str, contact: &str) -> Result<Vec<u8
         "description": description,
         "contact": clip(contact.trim(), CONTACT_LIMIT),
         "text": text,
-    });
-    Ok(body.to_string().into_bytes())
+    })
+    .to_string()
+    .into_bytes();
+    if body.len() > SEND_LIMIT {
+        return Err(too_long());
+    }
+    Ok((body, text))
+}
+
+fn too_long() -> String {
+    crate::i18n::tr("The report is too long to send. Save it and attach it on GitHub.", &[])
+}
+
+fn unreachable() -> String {
+    crate::i18n::tr("The report service could not be reached. Save the report and attach it on GitHub.", &[])
+}
+
+/// A report number as the service makes them: `SCR-` and six letters or digits.
+fn is_report_id(id: &str) -> bool {
+    id.len() == 10 && id.starts_with("SCR-") && id[4..].bytes().all(|b| b.is_ascii_uppercase() || b.is_ascii_digit())
 }
 
 /// Sends a report the player read and asked to send; the report's number.
-/// The bundled root certificates first, then the system's (an antivirus or
-/// proxy that re-signs HTTPS), as for updates.
+/// The bundled root certificates first; the system's only when the bundled
+/// ones could not make the connection (an antivirus or proxy that re-signs
+/// HTTPS), so a report that reached the service is never posted twice.
 pub async fn send(payload: Vec<u8>) -> Result<String, String> {
     send_to(REPORTS, payload).await
 }
@@ -653,27 +672,38 @@ async fn send_to(url: &str, payload: Vec<u8>) -> Result<String, String> {
     if rustls::crypto::CryptoProvider::get_default().is_none() {
         let _ = rustls::crypto::ring::default_provider().install_default();
     }
-    let post = |client: reqwest::Client| {
-        client.post(url).header("Content-Type", "application/json").timeout(Duration::from_secs(20)).body(payload.clone()).send()
+    let client = |bundled: bool| {
+        let builder = reqwest::Client::builder().redirect(reqwest::redirect::Policy::none()).timeout(Duration::from_secs(20));
+        // `build`, never `Client::new`: the system's roots can fail to load, and a panic aborts Scorpio.
+        if bundled { builder.tls_certs_only(crate::update::bundled_roots()) } else { builder }.build().map_err(|error| {
+            log::warn!("report client: {error}");
+            unreachable()
+        })
     };
-    let bundled = reqwest::Client::builder().tls_certs_only(crate::update::bundled_roots()).build().map_err(|e| e.to_string())?;
-    let response = match post(bundled).await {
+    let post = |client: reqwest::Client| client.post(url).header("Content-Type", "application/json").body(payload.clone()).send();
+    let response = match post(client(true)?).await {
         Ok(response) => response,
-        Err(_) => post(reqwest::Client::new()).await.map_err(|error| {
+        Err(error) if error.is_connect() => post(client(false)?).await.map_err(|error| {
             log::warn!("report not sent: {error}");
-            crate::i18n::tr("The report service could not be reached. Save the report and attach it on GitHub.", &[])
+            unreachable()
         })?,
+        Err(error) => {
+            log::warn!("report not sent: {error}");
+            return Err(unreachable());
+        }
     };
     let status = response.status().as_u16();
-    let answer: serde_json::Value = response.bytes().await.ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default();
+    let small = response.content_length().is_some_and(|length| length <= 4096);
+    let answer: serde_json::Value = if small { response.bytes().await.ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default() } else { Default::default() };
     match (status, answer.get("id").and_then(|id| id.as_str())) {
-        (201, Some(id)) if id.starts_with("SCR-") && id.len() <= 16 => {
+        (201, Some(id)) if is_report_id(id) => {
             log::info!("problem report sent as {id}");
             Ok(id.to_string())
         }
+        (413, _) => Err(too_long()),
         (429, _) => Err(crate::i18n::tr("Too many reports from this network. Try again in an hour.", &[])),
         _ => {
-            log::warn!("report service answered {status}: {answer}");
+            log::warn!("report service answered {status}");
             Err(crate::i18n::tr("The report service did not take the report. Save it and attach it on GitHub.", &[]))
         }
     }
@@ -979,14 +1009,52 @@ mod tests {
     fn send_posts_exactly_the_shown_text() {
         let draft = sample_draft();
         assert!(payload(&draft, "   ", "x").is_err(), "nothing is sent without a description");
-        let body: serde_json::Value = serde_json::from_slice(&payload(&draft, " FPS drops ", " me@example.com ").unwrap()).unwrap();
-        assert_eq!(body["text"], draft.with(" FPS drops ", " me@example.com "), "the text is the one the dialog shows");
+        let (bytes, text) = payload(&draft, " FPS drops ", " me@example.com ").unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(text, draft.with(" FPS drops ", " me@example.com "), "the text is the one the dialog shows");
+        assert_eq!(body["text"], text);
         assert_eq!(body["description"], "FPS drops");
         assert_eq!(body["contact"], "me@example.com");
         assert_eq!(body["version"], "9.9.9");
         assert_eq!(body["system"], "Testix 1");
-        let huge = Draft { body: "x".repeat(SEND_LIMIT), ..sample_draft() };
-        assert!(payload(&huge, "a", "").is_err(), "too long to send");
+
+        let edge = format!("{}   x", "a".repeat(DESCRIPTION_LIMIT - 3));
+        let (bytes, text) = payload(&draft, &edge, "").unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(text, draft.with(&edge, ""), "spaces at the 4000-character edge do not make shown and sent differ");
+        assert!(text.contains(body["description"].as_str().unwrap()), "the listed description is the one in the text");
+
+        let quotes = Draft { body: "\\\"".repeat(SEND_LIMIT / 4), ..sample_draft() };
+        assert!(quotes.with("a", "").len() < SEND_LIMIT, "the text alone fits");
+        assert!(payload(&quotes, "a", "").is_err(), "but escaped as JSON it does not, so it is not sent");
+    }
+
+    #[test]
+    fn the_listed_system_is_redacted_like_the_text() {
+        let mut facts = Facts {
+            version: "9.9.9",
+            system: "Linux custom-lena-kernel x86_64".into(),
+            made: "now".into(),
+            state: String::new(),
+            system_facts: Err("none".into()),
+            cost: None,
+            description: String::new(),
+            contact: String::new(),
+            settings: Err("none".into()),
+            log: Vec::new(),
+        };
+        facts.description.clear();
+        let draft = draft_with_redaction(&facts, None, Some("lena"));
+        assert_eq!(draft.system, "Linux custom-<user>-kernel x86_64");
+        assert!(!draft.with("a", "").contains("lena"));
+    }
+
+    #[test]
+    fn only_a_report_number_counts_as_one() {
+        assert!(is_report_id("SCR-F3MZNA"));
+        for bad in ["SCR-F3MZN", "SCR-F3MZNAA", "SCR-f3mzna", "SCR-F3\nZNA", "XYZ-F3MZNA"] {
+            assert!(!is_report_id(bad), "{bad:?}");
+        }
     }
 
     /// One HTTP exchange on a local port: the request it got, and `answer` sent back.
@@ -1022,7 +1090,7 @@ mod tests {
     #[test]
     fn send_reads_the_number_and_turns_refusals_into_advice() {
         let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
-        let body = payload(&sample_draft(), "FPS drops", "").unwrap();
+        let (body, _) = payload(&sample_draft(), "FPS drops", "").unwrap();
 
         let (url, server) = one_answer("HTTP/1.1 201 Created\r\nContent-Type: application/json\r\nContent-Length: 20\r\nConnection: close\r\n\r\n{\"id\": \"SCR-F3MZNA\"}");
         assert_eq!(runtime.block_on(send_to(&url, body.clone())), Ok("SCR-F3MZNA".into()));
@@ -1036,8 +1104,35 @@ mod tests {
         server.join().unwrap();
 
         let (url, server) = one_answer("HTTP/1.1 201 Created\r\nContent-Length: 24\r\nConnection: close\r\n\r\n{\"id\": \"<script>x</sc\"}");
-        assert!(runtime.block_on(send_to(&url, body)).is_err(), "an answer that is not a report number is not shown");
+        assert!(runtime.block_on(send_to(&url, body.clone())).is_err(), "an answer that is not a report number is not shown");
         server.join().unwrap();
+
+        let (url, server) = one_answer("HTTP/1.1 413 Payload Too Large\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}");
+        assert!(runtime.block_on(send_to(&url, body.clone())).unwrap_err().contains("too long"));
+        server.join().unwrap();
+
+        let (url, server) = one_answer("HTTP/1.1 308 Permanent Redirect\r\nLocation: http://127.0.0.1:9/elsewhere\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+        assert!(runtime.block_on(send_to(&url, body.clone())).is_err(), "a redirect is not followed");
+        server.join().unwrap();
+
+        // The service took the report and the answer was lost: one POST, no second try.
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/v1/reports", listener.local_addr().unwrap());
+        let counter = std::thread::spawn(move || {
+            listener.set_nonblocking(false).unwrap();
+            let mut posts = 0;
+            let (stream, _) = listener.accept().unwrap();
+            posts += 1;
+            drop(stream);
+            listener.set_nonblocking(true).unwrap();
+            std::thread::sleep(Duration::from_millis(500));
+            while listener.accept().is_ok() {
+                posts += 1;
+            }
+            posts
+        });
+        assert!(runtime.block_on(send_to(&url, body)).is_err());
+        assert_eq!(counter.join().unwrap(), 1, "a lost answer is not followed by a second POST");
     }
 
 }

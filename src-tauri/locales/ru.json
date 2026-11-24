@@ -235,5 +235,6 @@
   "The report service did not take the report. Save it and attach it on GitHub.": "Служба репортов не приняла репорт. Сохраните его и приложите на GitHub.",
   "Too many reports from this network. Try again in an hour.": "Слишком много репортов из этой сети. Попробуйте через час.",
   "Version, system, hardware, displays, Scorpio's cost, settings and the end of the log. Your user folder and name are taken out. Nothing is sent until you press Send.": "Версия, система, железо, мониторы, нагрузка Scorpio, настройки и конец журнала. Папка и имя пользователя из него убраны. Ничего не отправляется, пока вы не нажмёте «Отправить».",
-  "Write what happened first.": "Сначала напишите, что случилось."
+  "Write what happened first.": "Сначала напишите, что случилось.",
+  "The report is being sent.": "Репорт отправляется."
 }

@@ -979,18 +979,19 @@ const REPORT_CONTACT_LIMIT = 200
 let reportOpening = false
 
 // The report is shown in full before anything happens to it. Rust makes the
-// text with the player's notes, so what is shown is what is copied, saved
-// and sent. Send posts it to Scorpio's report service; Save and GitHub keep
-// it on this computer until the player attaches it.
+// text with the player's notes for the report this dialog opened (`token`),
+// so what is shown is what is copied, saved and sent. Send posts it to
+// Scorpio's report service; Save and GitHub keep it on this computer until
+// the player attaches it.
 const showReport = async () => {
 
 	if ( reportOpening ) return
 	reportOpening = true
-	let base
+	let opened
 
 	try {
 
-		base = await invoke( 'problem_report' )
+		opened = await invoke( 'problem_report' )
 
 	} catch ( error ) {
 
@@ -1003,6 +1004,7 @@ const showReport = async () => {
 
 	}
 
+	const { token } = opened
 	const what = h( 'textarea.textarea.report-what#report-what', {
 		maxlength: String( REPORT_WHAT_LIMIT ),
 		rows: '3',
@@ -1014,40 +1016,36 @@ const showReport = async () => {
 	} )
 	const area = h( 'textarea.textarea.report', { readonly: true, spellcheck: 'false', 'aria-label': t( 'The report' ) } )
 	const sentLine = h( 'p.report-sent' )
-	sentLine.hidden = true
 	let saved = null
 	let savedText = null
-	let sentId = null
+	let sent = null
 	let asked = 0
 
-	area.value = base
-	// Answers can come back out of order while typing: only the newest is shown.
-	const refresh = async () => {
-
-		const mine = ++asked
-		const text = await invoke( 'compose_report', { description: what.value, contact: contact.value } )
-
-		if ( mine === asked ) area.value = text
-
-	}
-	const notes = () => ( { description: what.value, contact: contact.value } )
-
-	what.addEventListener( 'input', refresh )
-	contact.addEventListener( 'input', refresh )
-
+	sentLine.hidden = true
+	area.value = opened.text
+	const notes = () => ( { token, description: what.value, contact: contact.value } )
+	// Answers can come back out of order while typing: only the newest is shown,
+	// and `current` waits for the one that matches the fields as they are now.
 	const current = async () => {
 
-		await refresh()
-		return area.value
+		const mine = ++asked
+		const text = await invoke( 'compose_report', notes() )
+
+		if ( mine === asked ) area.value = text
+		return text
 
 	}
+
+	what.addEventListener( 'input', current )
+	contact.addEventListener( 'input', current )
+
 	const saveFile = async () => {
 
 		const text = await current()
 
 		if ( !saved || savedText !== text ) {
 
-			saved = await invoke( 'save_report', { text } )
+			saved = await invoke( 'save_report', notes() )
 			savedText = text
 
 		}
@@ -1056,11 +1054,17 @@ const showReport = async () => {
 
 	}
 
+	const lock = locked => {
+
+		what.readOnly = locked
+		contact.readOnly = locked
+
+	}
 	const send = h( 'button.btn.primary', { type: 'button', text: t( 'Send' ) } )
 
 	send.onclick = async () => {
 
-		if ( sentId ) return
+		if ( sent ) return
 		if ( !what.value.trim() ) {
 
 			toast( t( 'Write what happened first.' ) )
@@ -1069,20 +1073,24 @@ const showReport = async () => {
 
 		}
 
+		// Nothing can change between pressing Send and the answer.
+		lock( true )
 		send.disabled = true
 
 		try {
 
-			await current()
-			sentId = await invoke( 'send_report', notes() )
-			what.readOnly = true
-			contact.readOnly = true
-			sentLine.textContent = t( 'Sent as {id}. Keep this number if you write to us about it.', { id: sentId } )
+			sent = await invoke( 'send_report', notes() )
+			asked++
+			area.value = sent.text
+			sentLine.textContent = t( 'Sent as {id}. Keep this number if you write to us about it.', { id: sent.id } )
 			sentLine.hidden = false
 			send.textContent = t( 'Sent' )
+			// Also outside the dialog, in case it was closed while sending.
+			toast( sentLine.textContent )
 
 		} catch ( error ) {
 
+			lock( false )
 			send.disabled = false
 			failed( error )
 
@@ -1107,8 +1115,16 @@ const showReport = async () => {
 		h( 'button.btn.quiet', { type: 'button', text: t( 'Close' ), onclick: () => close() } ),
 		h( 'button.btn', { type: 'button', text: t( 'Copy' ), onclick: async () => {
 
-			await navigator.clipboard.writeText( await current() )
-			toast( t( 'Report copied.' ) )
+			try {
+
+				await navigator.clipboard.writeText( sent ? sent.text : await current() )
+				toast( t( 'Report copied.' ) )
+
+			} catch ( error ) {
+
+				failed( error )
+
+			}
 
 		} } ),
 		h( 'button.btn', { type: 'button', text: t( 'Save as file' ), onclick: async () => {
