@@ -696,7 +696,7 @@ ${FAQ.map( ( [ q, a ] ) => `\t\t<details class="qa"><summary>${q}<i aria-hidden=
 // Visits and download clicks for stats.lxxvll.com (GoatCounter). Reads
 // nothing from the browser and stores nothing in it: no consent banner.
 (function () {
-  if (location.protocol !== "https:" || !/(^|\.)lxxvll\.com$/.test(location.hostname) || !navigator.sendBeacon) return;
+  if (location.protocol !== "https:" || !/(^|\\.)lxxvll\\.com$/.test(location.hostname) || !navigator.sendBeacon) return;
   var send = function (path, title, event) {
     try {
       navigator.sendBeacon("https://stats.lxxvll.com/count?p=" + encodeURIComponent(path) + "&t=" + encodeURIComponent(title) + "&e=" + event +
