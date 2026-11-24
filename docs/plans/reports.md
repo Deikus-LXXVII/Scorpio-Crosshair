@@ -105,9 +105,16 @@ the site says the same.
   callers at once could reach the unit's TasksMax=64 and get a dropped
   connection (Caddy would then log that caller's address); with Caddy
   buffering each body, the service's connections last milliseconds.
-- Left: a send from the gaming PC, `tools/measure-windows.ps1`, release 0.1.6.
+- Released as 0.1.6 on 2026-11-24, with the site (counter included).
+  Checked on the gaming PC before release: the 0.1.6 `--system-facts`
+  in the player's session read the CPU, three adapters, both displays
+  (5120x1440 at 240 Hz with HDR, 3840x2160 at 60 Hz) and the presentation
+  settings; over ssh it sees no displays, as a service session has none. A
+  POST from the gaming PC got 201 and read back with `tools/reports.sh`,
+  then was deleted. Not checked: Send pressed in the app's own window on
+  Windows (the Rust send path is covered by the local HTTP tests).
+- Left: `tools/measure-windows.ps1` on the installed 0.1.6.
 
 ## Open
 
-- The gaming PC was not reachable on 2026-11-24, so step 1's Windows checks
-  wait for it.
+- Idle memory and CPU of the installed 0.1.6 on Windows.
