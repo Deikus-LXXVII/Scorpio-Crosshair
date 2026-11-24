@@ -4,7 +4,7 @@
 
 Facts to get right:
 
-- Version 0.1.5, state of 2026-11-23. Made by LXXVII. Also written "Scorpio Crosshair".
+- Version 0.1.6, state of 2026-11-24. Made by LXXVII. Also written "Scorpio Crosshair".
 - Systems: Windows 10 and 11, Linux with X11 or XWayland. No native Wayland windows, no macOS.
 - CS2-based crosshairs in five static styles (Static Cross, Static Circle, Dot Only, Static Square, Static Quad). Also the player's own image as a crosshair (PNG, JPG, WebP, GIF first frame or SVG). No dynamic crosshairs. A dynamic code shows as its static resting style.
 - CS2 crosshair codes work in Scorpio, in and out (codes start with `CSGO-` or `CS`).
