@@ -75,3 +75,11 @@ costs more than Windows.
 Measured with `/proc/<pid>/smaps_rollup` and `/proc/<pid>/stat`; there is
 no Linux check script yet. Not measured again after the one-worker runtime
 and the bundled root certificates, which apply to Linux too.
+
+0.1.6 on an Xfce desktop (the AppImage, `tools/linux-desktop`, Xvfb,
+2026-11-25), a minute after start with a game window in front: 10.7 MB
+private dirty, 13 threads, no WebKit process; over the following minute the
+main thread used 0 ticks and did not wake once. After the settings window
+was opened and closed: 36.5 MB private dirty, 30 threads, and
+`WebKitNetworkProcess` (about 50 MB resident) stays running; the web
+content process ends. Closing the window does not give that back on Linux.

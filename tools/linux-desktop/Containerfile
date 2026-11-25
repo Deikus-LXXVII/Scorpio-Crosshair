@@ -1,0 +1,10 @@
+FROM docker.io/library/ubuntu:24.04
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends xvfb xfce4-session xfwm4 xfce4-panel xfdesktop4 xfce4-settings dbus-x11 xdotool x11-utils imagemagick libwebkit2gtk-4.1-0 libayatana-appindicator3-1 libgtk-3-0 adwaita-icon-theme fonts-dejavu-core xterm procps ca-certificates >/dev/null && rm -rf /var/lib/apt/lists/*
+RUN useradd -m player
+COPY Scorpio.AppImage /home/player/Scorpio.AppImage
+RUN chmod +x /home/player/Scorpio.AppImage && cd /home/player && ./Scorpio.AppImage --appimage-extract >/dev/null
+COPY xfce4-panel.xml /home/player/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml
+RUN mkdir -p /home/player/Desktop "/home/player/Games/THE FINALS" && cp /usr/bin/xterm "/home/player/Games/THE FINALS/Discovery" && chown -R 1001:1001 /home/player && chmod 755 /home/player
+USER player
+WORKDIR /home/player

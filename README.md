@@ -221,7 +221,7 @@ Yes. Click **Copy** next to the share code and import the code in the game. Thic
 
 ### Does Scorpio work on Linux?
 
-Scorpio is built for Linux with X11 or XWayland, as an AppImage and a `.deb`. It is less proven there than on Windows: the X11 layer has run under a virtual X server, and the full app has not been tested on a Linux desktop or in a game yet. Native Wayland windows are not supported.
+Scorpio is built for Linux with X11 or XWayland, as an AppImage and a `.deb`. It is less proven there than on Windows: the full app has run on an Xfce desktop under a virtual display, but not yet on a physical Linux PC or in a game. Native Wayland windows are not supported.
 
 ### Does the crosshair show on my stream or recording?
 
@@ -280,13 +280,13 @@ Scorpio is at version 0.1.6. This is the state on 2026-11-25.
 | Crosshair maths, share codes, game matching, launcher parsers, app state | Unit tests (`npm test`) |
 | Windows build | Built, run and driven on Windows 11. Memory and CPU measured idle and with the settings window |
 | Windows, inside a real game session | Not tested yet |
-| Linux X11 layer | Run under a virtual X server (Xvfb). The full app has not been run or measured on a Linux desktop |
+| Linux desktop | The 0.1.6 AppImage run on an Xfce desktop under a virtual display (`tools/linux-desktop`): tray icon and menu, settings window, the crosshair only over a game's window, hidden over other windows, Quit. Not yet on a physical Linux PC |
 | Crosshair in OBS | The local server has a test. Not tested inside OBS yet |
 | Your own image | Drawing, size changes and file checks run in headless Chromium with a stand-in for Scorpio; the PNG check and the bitmap have unit tests. Not yet tried in the real settings window on Windows or Linux |
 | Centre on the game window | Following a window's moves is run under Xvfb on Linux and with a test window on Windows. Not tried with a game |
 | Log and problem report | The log and `--report` run on Linux under Xvfb and `--report` on Windows 11. The 0.1.6 hardware and display facts were read on Windows 11 in the player's session. Sending is tested against a local server, and a report posted from the Windows PC reached the service. The report window runs in headless Chromium with a stand-in; Send has not been pressed in the real window yet |
 | Automatic updates | Exercised against a published release: on 2026-11-25 an installed 0.1.5 on Windows 11 found 0.1.6, waited three quiet minutes, installed it and started again |
-| Settings window | Rendered in headless Chromium. Not yet checked in WebKitGTK |
+| Settings window | Rendered in headless Chromium, and in WebKitGTK on the Xfce desktop above |
 | Any specific anti-cheat | Not tested |
 
 Known gaps:
