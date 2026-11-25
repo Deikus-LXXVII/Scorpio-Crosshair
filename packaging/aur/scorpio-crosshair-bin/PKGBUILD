@@ -1,0 +1,24 @@
+# Maintainer: LXXVII
+pkgname=scorpio-crosshair-bin
+pkgver=0.1.6
+pkgrel=1
+pkgdesc='CS2-style crosshair overlay that shows only while the game is in front'
+arch=('x86_64')
+url='https://scorpio.lxxvll.com/'
+license=('LicenseRef-PolyForm-Noncommercial-1.0.0')
+depends=('gtk3' 'webkit2gtk-4.1' 'libayatana-appindicator')
+provides=('scorpio-crosshair')
+conflicts=('scorpio-crosshair')
+options=('!strip' '!debug')
+source_x86_64=("Scorpio_${pkgver}_amd64.deb::https://github.com/Deikus-LXXVII/Scorpio-Crosshair/releases/download/v${pkgver}/Scorpio_${pkgver}_amd64.deb")
+source=("LICENSE-${pkgver}::https://raw.githubusercontent.com/Deikus-LXXVII/Scorpio-Crosshair/v${pkgver}/LICENSE")
+noextract=("Scorpio_${pkgver}_amd64.deb")
+sha256sums=('04f22490d0b194fb067c4116475c24832cc5d593511fa8e48cd7522a955bdd4e')
+sha256sums_x86_64=('32986e1531d8323fd349f2252fd60c97e89bbdf543cea38d6b0ddab9fbbed2f8')
+
+package() {
+  bsdtar -xf "Scorpio_${pkgver}_amd64.deb" data.tar.gz
+  bsdtar -xf data.tar.gz -C "$pkgdir"
+  rm -f data.tar.gz
+  install -Dm644 "LICENSE-${pkgver}" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

@@ -1,0 +1,21 @@
+pkgbase = scorpio-crosshair-bin
+	pkgdesc = CS2-style crosshair overlay that shows only while the game is in front
+	pkgver = 0.1.6
+	pkgrel = 1
+	url = https://scorpio.lxxvll.com/
+	arch = x86_64
+	license = LicenseRef-PolyForm-Noncommercial-1.0.0
+	depends = gtk3
+	depends = webkit2gtk-4.1
+	depends = libayatana-appindicator
+	provides = scorpio-crosshair
+	conflicts = scorpio-crosshair
+	noextract = Scorpio_0.1.6_amd64.deb
+	options = !strip
+	options = !debug
+	source = LICENSE-0.1.6::https://raw.githubusercontent.com/Deikus-LXXVII/Scorpio-Crosshair/v0.1.6/LICENSE
+	sha256sums = 04f22490d0b194fb067c4116475c24832cc5d593511fa8e48cd7522a955bdd4e
+	source_x86_64 = Scorpio_0.1.6_amd64.deb::https://github.com/Deikus-LXXVII/Scorpio-Crosshair/releases/download/v0.1.6/Scorpio_0.1.6_amd64.deb
+	sha256sums_x86_64 = 32986e1531d8323fd349f2252fd60c97e89bbdf543cea38d6b0ddab9fbbed2f8
+
+pkgname = scorpio-crosshair-bin
