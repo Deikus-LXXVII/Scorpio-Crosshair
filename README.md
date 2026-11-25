@@ -273,7 +273,7 @@ No. Scorpio is for Windows and Linux.
 
 ## What is tested and what is not
 
-Scorpio is at version 0.1.4. This is the state on 2026-11-21.
+Scorpio is at version 0.1.6. This is the state on 2026-11-25.
 
 | Area | State |
 | --- | --- |
@@ -284,8 +284,8 @@ Scorpio is at version 0.1.4. This is the state on 2026-11-21.
 | Crosshair in OBS | The local server has a test. Not tested inside OBS yet |
 | Your own image | Drawing, size changes and file checks run in headless Chromium with a stand-in for Scorpio; the PNG check and the bitmap have unit tests. Not yet tried in the real settings window on Windows or Linux |
 | Centre on the game window | Following a window's moves is run under Xvfb on Linux and with a test window on Windows. Not tried with a game |
-| Log and problem report | The log and `--report` run on Linux under Xvfb and `--report` on Windows 11. The report window runs in headless Chromium with a stand-in |
-| Automatic updates | Written. Not yet exercised against a published release |
+| Log and problem report | The log and `--report` run on Linux under Xvfb and `--report` on Windows 11. The 0.1.6 hardware and display facts were read on Windows 11 in the player's session. Sending is tested against a local server, and a report posted from the Windows PC reached the service. The report window runs in headless Chromium with a stand-in; Send has not been pressed in the real window yet |
+| Automatic updates | Exercised against a published release: on 2026-11-25 an installed 0.1.5 on Windows 11 found 0.1.6, waited three quiet minutes, installed it and started again |
 | Settings window | Rendered in headless Chromium. Not yet checked in WebKitGTK |
 | Any specific anti-cheat | Not tested |
 

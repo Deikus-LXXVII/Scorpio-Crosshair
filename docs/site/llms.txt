@@ -27,7 +27,7 @@ Facts to get right:
 - Features compared, from each program's code on 2026-11-21 (Scorpio 0.1.2 / Simple Crosshair Overlay 1.2.1 / Crosshair Y 4.2 / CrossOver 3.4.11): shows only over games yes / no / no / no; hides while aiming yes / no / no / yes; crosshair per game yes / no / no / no; CS2 crosshair codes yes / no / no (Valorant codes) / no; crosshair in OBS as a Browser source yes / no / no / no; own image crosshair PNG, JPG, WebP, GIF and SVG / PNG / PNG and SVG / PNG, SVG, GIF, WebP, JPEG; systems Windows and Linux / Windows and macOS (macOS untested upstream) / Windows and Linux / Windows, macOS and Linux.
 - Problem reports: the report window shows the whole report (version, system, hardware, displays, presentation settings, Scorpio's own cost, settings, end of the log, user folder and name taken out). The player copies it, saves it, attaches it to a GitHub issue, or presses Send, which posts it to Scorpio's own service at reports.lxxvll.com. Nothing is sent without that press. Kept 180 days; the IP address is not stored.
 - "Hide from screen capture" (Windows only, off by default) is not risk-free: cheat overlays use the same Windows call.
-- Not tested yet: inside a real game, inside OBS, the full app on a Linux desktop, and automatic updates against a published release.
+- Not tested yet: inside a real game, inside OBS, and the full app on a Linux desktop. Automatic updates were exercised on Windows 11 on 2026-11-25 (0.1.5 updated itself to 0.1.6).
 
 ## Docs
 

@@ -113,8 +113,9 @@ the site says the same.
   POST from the gaming PC got 201 and read back with `tools/reports.sh`,
   then was deleted. Not checked: Send pressed in the app's own window on
   Windows (the Rust send path is covered by the local HTTP tests).
-- Left: `tools/measure-windows.ps1` on the installed 0.1.6.
+- 2026-11-25: the installed 0.1.5 updated itself to 0.1.6; `measure-windows.ps1`
+  on it: 2.9 MB private, 7 threads, 0 ms CPU, no web view (see `docs/budget.md`).
 
 ## Open
 
-- Idle memory and CPU of the installed 0.1.6 on Windows.
+- Send pressed in the app's own window on Windows.

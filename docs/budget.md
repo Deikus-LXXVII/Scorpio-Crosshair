@@ -36,6 +36,12 @@ Where the idle 7.4 MB goes:
 - 0.4 MB stays after an update check: Winsock and DNS (0.13 MB) and what
   rustls and hyper keep. Ten checks 15 s apart stayed within 0.05 MB.
 
+0.1.6, measured on 2026-11-25 after it had updated itself from 0.1.5 (so
+started by the updater, without the system-wide `__COMPAT_LAYER`, and after
+its first update check): 2.9 MB private, 7 threads, 0 ms CPU over 30 s, no
+web view process. That matches the 2.6 MB + 0.4 MB above: the problem report
+work added nothing to the idle cost.
+
 What used to cost more, and the fix:
 
 - Tauri's default async runtime starts a worker per logical processor (20
