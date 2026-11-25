@@ -714,7 +714,21 @@ ${FAQ.map( ( [ q, a ] ) => `\t\t<details class="qa"><summary>${q}<i aria-hidden=
 </body>
 </html>
 `
+// The sitemap's lastmod is the day the page last changed, so an unchanged rebuild keeps it.
+const SITEMAP = require( 'path' ).join( __dirname, '../../docs/site/sitemap.xml' )
+const before = fs.existsSync( OUT ) ? fs.readFileSync( OUT, 'utf8' ) : ''
+const lastmod = before === html && fs.existsSync( SITEMAP )
+	? ( fs.readFileSync( SITEMAP, 'utf8' ).match( /<lastmod>([\d-]+)<\/lastmod>/ ) || [] )[1]
+	: undefined
 fs.writeFileSync( OUT, html )
+fs.writeFileSync( SITEMAP, `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+	<url>
+		<loc>https://scorpio.lxxvll.com/</loc>
+		<lastmod>${lastmod || new Date().toISOString().slice( 0, 10 )}</lastmod>
+	</url>
+</urlset>
+` )
 console.log( OUT, html.length )
 
 // /favicon.ico for readers that never look at <link rel="icon">: the app's own
